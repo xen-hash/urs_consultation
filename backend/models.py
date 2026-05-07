@@ -41,6 +41,8 @@ def init_db():
                     year_level VARCHAR(20),
                     department VARCHAR(255),
                     qr_code_path VARCHAR(500),
+                    pin_hash VARCHAR(255),
+                    photo MEDIUMTEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB
             """)
@@ -53,6 +55,7 @@ def init_db():
                     department VARCHAR(255) NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
                     qr_code_path VARCHAR(500),
+                    photo MEDIUMTEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB
             """)
@@ -89,6 +92,18 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB
             """)
+
+            # ── Migrations: add columns that may be missing in existing tables ──
+            migrations = [
+                "ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255)",
+                "ALTER TABLE students ADD COLUMN IF NOT EXISTS photo MEDIUMTEXT",
+                "ALTER TABLE teacher_accounts ADD COLUMN IF NOT EXISTS photo MEDIUMTEXT",
+            ]
+            for sql in migrations:
+                try:
+                    cur.execute(sql)
+                except Exception as e:
+                    print(f"[DB] Migration skipped ({e}): {sql}")
 
             # Seed professors
             for dept, profs in PROFESSOR_LIST.items():
