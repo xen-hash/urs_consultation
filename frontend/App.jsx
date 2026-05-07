@@ -1,13 +1,13 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import LandingPage      from "./pages/LandingPage.jsx";
-import StudentPortal    from "./pages/StudentPortal.jsx";
-import TeacherPortal    from "./pages/TeacherPortal.jsx";
-import StudentRegister  from "./pages/StudentRegister.jsx";
-import StudentDashboard from "./pages/StudentDashboard.jsx";
-import TeacherDashboard from "./pages/TeacherDashboard.jsx";
-import DeanLogin        from "./pages/DeanLogin.jsx";
-import DeanDashboard    from "./pages/DeanDashboard.jsx";
-import KioskView        from "./pages/KioskView.jsx";
+import LandingPage      from "./LandingPage.jsx";
+import StudentPortal    from "./StudentPortal.jsx";
+import TeacherPortal    from "./TeacherPortal.jsx";
+import StudentRegister  from "./StudentRegister.jsx";
+import StudentDashboard from "./StudentDashboard.jsx";
+import TeacherDashboard from "./TeacherDashboard.jsx";
+import DeanLogin        from "./DeanLogin.jsx";
+import DeanDashboard    from "./DeanDashboard.jsx";
+import KioskView        from "./KioskView.jsx";
 
 export default function App() {
   return (
