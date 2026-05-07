@@ -251,8 +251,10 @@ export default function StudentDashboard() {
   useEffect(() => {
     fetchProfessors();
     const iv = setInterval(fetchProfessors, 15000);
-    socket = io(SOCKET_URL, { transports: ["websocket"] });
-    socket.on("status_update", fetchProfessors);
+    try {
+      socket = io(SOCKET_URL || window.location.origin, { transports: ["websocket"], reconnectionAttempts: 3 });
+      socket.on("status_update", fetchProfessors);
+    } catch (e) { console.warn("Socket unavailable:", e); }
     return () => { clearInterval(iv); socket?.disconnect(); };
   }, []);
 

@@ -172,9 +172,11 @@ export default function TeacherDashboard() {
       piperSpeak(`Welcome, Engineer ${getFirstName(teacher.professor_name)}!`);
     }
     const iv = setInterval(fetchRequests, 8000);
-    socket = io("/", { transports:["websocket"] });
-    socket.on("consultation_update", fetchRequests);
-    socket.on("new_request", fetchRequests);
+    try {
+      socket = io("/", { transports:["websocket"], reconnectionAttempts: 3 });
+      socket.on("consultation_update", fetchRequests);
+      socket.on("new_request", fetchRequests);
+    } catch(e) { console.warn("Socket unavailable:", e); }
 
     QRCodeLib.toDataURL(teacher.employee_id, { width:400, margin:2, color:{dark:"#000000",light:"#ffffff"} })
       .then(url => setTeacherQR(url.split(",")[1])).catch(()=>{});

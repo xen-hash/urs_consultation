@@ -8,9 +8,6 @@ qrcode[pil]
 Pillow
 bcrypt
 python-dotenv
-eventlet
-gunicorn
 gevent
 gevent-websocket
-requests
-cryptography
+gunicorn

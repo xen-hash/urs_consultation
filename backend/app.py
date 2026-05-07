@@ -19,7 +19,7 @@ app.secret_key = os.getenv("SECRET_KEY", "urs-secret-2024")
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
 CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}})
-socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="gevent")
 
 PH = pytz.timezone("Asia/Manila")
 
