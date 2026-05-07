@@ -179,6 +179,14 @@ export default function DeanDashboard() {
   const [activeTab, setActiveTab]     = useState("overview");
   const [expandedDept, setExpandedDept] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Pagination
+  const [studentPage, setStudentPage]   = useState(1);
+  const [studentTotal, setStudentTotal] = useState(0);
+  const [requestPage, setRequestPage]   = useState(1);
+  const [requestTotal, setRequestTotal] = useState(0);
+  const PAGE_SIZE = 20;
   const [searchQuery, setSearchQuery] = useState("");
 
   // Add Teacher state
@@ -191,16 +199,19 @@ export default function DeanDashboard() {
     try {
       const [deptRes, studRes, reqRes] = await Promise.all([
         axios.get(`${API_BASE}/teacher-logs`),
-        axios.get(`${API_BASE}/dean/students`),
-        axios.get(`${API_BASE}/dean/requests`),
+        axios.get(`${API_BASE}/dean/students?page=${studentPage}&limit=${PAGE_SIZE}`),
+        axios.get(`${API_BASE}/dean/requests?page=${requestPage}&limit=${PAGE_SIZE}`),
       ]);
       setDepartments(deptRes.data || []);
       const allTeachers = (deptRes.data || []).flatMap(d =>
         d.professors.map(p => ({ ...p, department: d.department }))
       );
       setTeachers(allTeachers);
-      setStudents(studRes.data || []);
-      const newReqs = reqRes.data || [];
+      const studData = studRes.data?.data ?? studRes.data ?? [];
+      setStudents(studData);
+      setStudentTotal(studRes.data?.total ?? studData.length);
+      const newReqs = reqRes.data?.data ?? reqRes.data ?? [];
+      setRequestTotal(reqRes.data?.total ?? newReqs.length);
       setRequests(newReqs);
 
       // Announce any new consultation requests not yet seen
@@ -343,15 +354,21 @@ export default function DeanDashboard() {
         .status-inmeeting { background:#ffedd5; color:#c2410c; }
       `}</style>
 
-      <div className="dean-root flex h-screen bg-[#f0f4f8] overflow-hidden">
+      <div className="dean-root flex h-screen overflow-hidden" style={{background:"#f0f4f8"}}>
         <Toast toasts={toasts} removeToast={removeToast} />
+
+        {/* Mobile overlay */}
+        {mobileSidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileSidebarOpen(false)} />
+        )}
 
         {/* ── SIDEBAR ─────────────────────────────────────────────────── */}
         <aside className={`dean-sidebar shrink-0 flex flex-col h-screen overflow-hidden
           ${sidebarOpen ? "w-60" : "w-[68px]"}`}
           style={{ background: "linear-gradient(180deg,#0d1b2a 0%,#1a2a40 60%,#0d1b2a 100%)" }}
           onMouseEnter={() => setSidebarOpen(true)}
-          onMouseLeave={() => setSidebarOpen(false)}>
+          onMouseLeave={() => setSidebarOpen(false)}
+          onTouchStart={() => setMobileSidebarOpen(false)}>
 
           {/* Brand */}
           <div className="flex items-center gap-3 px-4 py-5 border-b border-white/10 shrink-0">
@@ -379,7 +396,7 @@ export default function DeanDashboard() {
                 active={activeTab === tab.id}
                 badge={tab.badge}
                 collapsed={!sidebarOpen}
-                onClick={() => { setActiveTab(tab.id); setSearchQuery(""); }}
+                onClick={() => { setActiveTab(tab.id); setSearchQuery(""); setMobileSidebarOpen(false); }}
               />
             ))}
           </nav>
@@ -447,6 +464,11 @@ export default function DeanDashboard() {
           {/* ── TOP BAR ───────────────────────────────────────────────── */}
           <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center gap-4 shrink-0 shadow-sm z-10">
 
+            {/* Mobile hamburger */}
+            <button className="lg:hidden w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center mr-2"
+              onClick={() => setMobileSidebarOpen(v => !v)}>
+              <Menu size={18} className="text-gray-600" />
+            </button>
             {/* Breadcrumb */}
             <div className="flex items-center gap-1.5 text-sm">
               <span className="text-gray-400 font-medium">Administrator</span>

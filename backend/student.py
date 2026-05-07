@@ -69,11 +69,24 @@ def submit_request():
 
 @student_bp.route("/consultation/history/<student_id>", methods=["GET"])
 def get_history(student_id):
-    rows = query(
-        "SELECT * FROM consultation_requests WHERE student_id=%s ORDER BY created_at DESC",
-        (student_id,), fetchall=True
+    page   = max(1, int(request.args.get("page", 1)))
+    limit  = min(50, int(request.args.get("limit", 10)))
+    offset = (page - 1) * limit
+    rows   = query(
+        "SELECT * FROM consultation_requests WHERE student_id=%s ORDER BY created_at DESC LIMIT %s OFFSET %s",
+        (student_id, limit, offset), fetchall=True
     )
-    return jsonify([_serialize_row(r) for r in (rows or [])])
+    total  = query(
+        "SELECT COUNT(*) as c FROM consultation_requests WHERE student_id=%s",
+        (student_id,), fetchone=True
+    )["c"]
+    return jsonify({
+        "data":  [_serialize_row(r) for r in (rows or [])],
+        "page":  page,
+        "limit": limit,
+        "total": total,
+        "pages": -(-total // limit)
+    })
 
 
 @student_bp.route("/student/update-profile", methods=["POST"])

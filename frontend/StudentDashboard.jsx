@@ -242,8 +242,9 @@ export default function StudentDashboard() {
   const fetchInbox = useCallback(async () => {
     setLoadingInbox(true);
     try {
-      const res = await axios.get(`${API_BASE}/consultation/history/${student.student_id}`);
-      setMyRequests(res.data || []);
+      const res = await axios.get(`${API_BASE}/consultation/history/${student.student_id}?page=1&limit=10`);
+      const data = res.data?.data ?? res.data ?? [];
+      setMyRequests(data);
     } catch (_) {}
     finally { setLoadingInbox(false); }
   }, [student.student_id]);
