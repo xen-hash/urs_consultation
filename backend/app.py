@@ -23,10 +23,6 @@ socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="event
 
 PH = pytz.timezone("Asia/Manila")
 
-# ─── Initialize Database (runs on gunicorn startup too) ───────────────────────
-print("[URS] Initializing database...")
-init_db()
-
 # ─── Blueprints ───────────────────────────────────────────────────────────────
 app.register_blueprint(auth_bp,      url_prefix="/api/auth")
 app.register_blueprint(teacher_bp,   url_prefix="/api")
@@ -71,6 +67,10 @@ def handle_request_broadcast(data):
 @socketio.on("broadcast_request_done")
 def handle_done_broadcast(data):
     emit("request_done", data, broadcast=True)
+
+# ─── Initialize DB (runs under gunicorn AND direct) ───────────────────────────
+print("[URS] Initializing database...")
+init_db()
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
