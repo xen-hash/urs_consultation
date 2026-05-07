@@ -89,6 +89,10 @@ def init_db():
                     status ENUM('pending','done','declined') DEFAULT 'pending',
                     request_time DATETIME,
                     department VARCHAR(255),
+                    appointment_date DATE,
+                    appointment_time VARCHAR(20),
+                    appointment_notes TEXT,
+                    appointment_set_at DATETIME,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB
             """)
@@ -107,6 +111,10 @@ def init_db():
             add_column_if_missing("students", "pin_hash", "VARCHAR(255)")
             add_column_if_missing("students", "photo", "MEDIUMTEXT")
             add_column_if_missing("teacher_accounts", "photo", "MEDIUMTEXT")
+            add_column_if_missing("consultation_requests", "appointment_date", "DATE")
+            add_column_if_missing("consultation_requests", "appointment_time", "VARCHAR(20)")
+            add_column_if_missing("consultation_requests", "appointment_notes", "TEXT")
+            add_column_if_missing("consultation_requests", "appointment_set_at", "DATETIME")
 
             # Seed professors
             for dept, profs in PROFESSOR_LIST.items():
