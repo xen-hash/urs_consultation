@@ -12,4 +12,4 @@ eventlet
 gunicorn
 gevent
 gevent-websocket
-requestsgit 
+requests
