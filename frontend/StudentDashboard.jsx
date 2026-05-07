@@ -212,6 +212,10 @@ export default function StudentDashboard() {
   const [submitting, setSubmitting]     = useState(false);
   const purposeRef = useRef(null);
   const [myRequests, setMyRequests]     = useState([]);
+  const [readIds, setReadIds]           = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("urs_read_ids") || "[]")); }
+    catch { return new Set(); }
+  });
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [selectedReq, setSelectedReq]   = useState(null);
 
@@ -343,7 +347,7 @@ export default function StudentDashboard() {
 
   const TABS = [
     { id: "home",    icon: <GraduationCap size={16} />, label: "Faculty" },
-    { id: "inbox",   icon: <Inbox size={16} />,          label: "My Requests" },
+    { id: "inbox",   icon: <Inbox size={16} />,          label: "Inbox" },
     { id: "profile", icon: <User size={16} />,            label: "My Profile" },
   ];
 
@@ -580,86 +584,130 @@ export default function StudentDashboard() {
 
         {/* ── INBOX TAB ── */}
         {tab === "inbox" && (
-          <div className="animate-slide-up">
-            <div className="mb-5 flex items-center justify-between">
+          <div className="animate-slide-up space-y-4">
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-display font-bold text-xl text-white">My Consultation Requests</h2>
-                <p className="text-white/50 text-sm mt-0.5">Track your requests and appointments</p>
+                <h2 className="font-display font-bold text-xl text-white">Inbox</h2>
+                <p className="text-white/50 text-sm mt-0.5">
+                  {myRequests.filter(r => !readIds.has(r.id)).length > 0
+                    ? `${myRequests.filter(r => !readIds.has(r.id)).length} unread`
+                    : "All caught up"}
+                </p>
               </div>
-              <button onClick={fetchInbox}
-                className="flex items-center gap-1.5 text-white/50 hover:text-white text-xs
-                           bg-white/10 px-3 py-2 rounded-xl border border-white/20 transition-all">
-                <RefreshCw size={12} className={loadingInbox ? "animate-spin" : ""} /> Refresh
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  const all = new Set(myRequests.map(r => r.id));
+                  setReadIds(all);
+                  localStorage.setItem("urs_read_ids", JSON.stringify([...all]));
+                }}
+                  className="text-xs text-white/40 hover:text-white bg-white/10 px-3 py-2 rounded-xl border border-white/20 transition-all">
+                  Mark all read
+                </button>
+                <button onClick={fetchInbox}
+                  className="flex items-center gap-1.5 text-white/50 hover:text-white text-xs bg-white/10 px-3 py-2 rounded-xl border border-white/20 transition-all">
+                  <RefreshCw size={12} className={loadingInbox ? "animate-spin" : ""} />
+                </button>
+              </div>
             </div>
+
             {loadingInbox ? (
               <div className="flex justify-center py-16"><Spinner size={10} light /></div>
             ) : myRequests.length === 0 ? (
               <div className="text-center py-16 text-white/40">
                 <Inbox size={48} className="mx-auto mb-3 opacity-30" />
                 <p className="font-semibold">No requests yet</p>
-                <p className="text-sm mt-1">Your consultation requests will appear here</p>
+                <p className="text-sm mt-1">Submit a consultation request to get started</p>
               </div>
             ) : (
-              <div className="grid grid-cols-8 gap-2.5">
+              <div className="space-y-3">
                 {myRequests.map(req => {
+                  const isRead     = readIds.has(req.id);
                   const hasAppt    = !!req.appointment_date;
                   const isDone     = req.status === "done";
                   const isDeclined = req.status === "declined";
+                  const isPending  = req.status === "pending";
 
-                  // glass tint + glow colours per status
-                  const scheme = hasAppt
-                    ? { glow: "shadow-orange-500/30",  ring: "ring-orange-400/60",  avatarBg: "from-orange-400 to-orange-500",  badge: "bg-orange-400/20 text-orange-200 border-orange-400/40",  label: "Appointment" }
-                    : isDone
-                    ? { glow: "shadow-emerald-500/30", ring: "ring-emerald-400/60", avatarBg: "from-emerald-400 to-emerald-500", badge: "bg-emerald-400/20 text-emerald-200 border-emerald-400/40", label: "Done" }
-                    : isDeclined
-                    ? { glow: "shadow-red-500/30",     ring: "ring-red-400/60",     avatarBg: "from-red-400 to-red-500",         badge: "bg-red-400/20 text-red-200 border-red-400/40",           label: "Declined" }
-                    : { glow: "shadow-yellow-400/30",  ring: "ring-yellow-300/60",  avatarBg: "from-yellow-300 to-yellow-400",   badge: "bg-yellow-400/20 text-yellow-100 border-yellow-400/40",  label: "Pending" };
+                  const markRead = () => {
+                    if (!isRead) {
+                      const next = new Set(readIds); next.add(req.id);
+                      setReadIds(next);
+                      localStorage.setItem("urs_read_ids", JSON.stringify([...next]));
+                    }
+                  };
 
-                  const initials = req.professor_name
-                    ? req.professor_name.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i, "")
-                        .split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase()
-                    : "?";
+                  const borderColor = hasAppt  ? "border-l-orange-400"
+                    : isDone     ? "border-l-emerald-400"
+                    : isDeclined ? "border-l-red-400"
+                    :              "border-l-yellow-400";
 
-                  const dateStr = req.request_time
-                    ? new Date(req.request_time).toLocaleDateString("en-PH", { month: "short", day: "numeric" })
-                    : "";
+                  const badgeCls = hasAppt  ? "bg-orange-400/20 text-orange-200 border-orange-400/40"
+                    : isDone     ? "bg-emerald-400/20 text-emerald-200 border-emerald-400/40"
+                    : isDeclined ? "bg-red-400/20 text-red-200 border-red-400/40"
+                    :              "bg-yellow-400/20 text-yellow-100 border-yellow-400/40";
+
+                  const badgeLabel = hasAppt ? "📅 Appointment Set"
+                    : isDone     ? "✅ Done"
+                    : isDeclined ? "❌ Declined"
+                    :              "⏳ Pending";
 
                   return (
-                    <button
-                      key={req.id}
-                      onClick={() => setSelectedReq(req)}
-                      className={`flex flex-col items-center gap-1.5 p-2.5 rounded-2xl
-                        backdrop-blur-xl bg-white/10 border border-white/20
-                        shadow-lg ${scheme.glow} hover:bg-white/18 hover:border-white/35
-                        hover:-translate-y-0.5 hover:shadow-xl active:scale-95
-                        transition-all cursor-pointer ring-0 hover:ring-2 ${scheme.ring}`}>
+                    <div key={req.id}
+                      className={`relative bg-white/10 backdrop-blur-xl border border-white/20
+                                  rounded-2xl p-4 border-l-4 ${borderColor} transition-all
+                                  ${!isRead ? "ring-1 ring-white/20" : "opacity-80"}`}
+                      onClick={markRead}>
 
-                      {/* Coloured gradient avatar */}
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${scheme.avatarBg}
-                        flex items-center justify-center shrink-0 shadow-md`}>
-                        <span className="text-white font-display font-bold text-base leading-none drop-shadow">
-                          {initials}
+                      {/* Unread dot */}
+                      {!isRead && (
+                        <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#ffa000] rounded-full" />
+                      )}
+
+                      {/* Top row */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#003366] to-[#0055aa]
+                                        flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          {req.professor_name?.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i,"")
+                            .split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase() || "?"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-semibold text-sm truncate">{req.professor_name}</p>
+                          <p className="text-white/50 text-xs">{req.category} · {req.department?.replace(" Department","")}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full border shrink-0 ${badgeCls}`}>
+                          {badgeLabel}
                         </span>
                       </div>
 
-                      {/* Professor name */}
-                      <p className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2 w-full">
-                        {req.professor_name?.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i, "") || "—"}
-                      </p>
+                      {/* Purpose */}
+                      <p className="text-white/70 text-xs italic mb-3 line-clamp-2">"{req.purpose}"</p>
 
-                      {/* Category */}
-                      <p className="text-[9px] text-white/50 text-center line-clamp-1 w-full">
-                        {req.category}
-                      </p>
+                      {/* Appointment details */}
+                      {hasAppt && (
+                        <div className="bg-orange-500/15 border border-orange-400/30 rounded-xl px-3 py-2 mb-3">
+                          <p className="text-orange-200 text-xs font-bold mb-0.5">📅 Appointment Details</p>
+                          <p className="text-white text-sm font-semibold">
+                            {new Date(req.appointment_date).toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
+                            {req.appointment_time && ` at ${req.appointment_time}`}
+                          </p>
+                          {req.appointment_notes && (
+                            <p className="text-white/60 text-xs mt-1 italic">"{req.appointment_notes}"</p>
+                          )}
+                        </div>
+                      )}
 
-                      {/* Status pill */}
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${scheme.badge}`}>
-                        {scheme.label}
-                      </span>
-
-                      {dateStr && <p className="text-[8px] text-white/30">{dateStr}</p>}
-                    </button>
+                      {/* Footer */}
+                      <div className="flex items-center justify-between">
+                        <p className="text-white/30 text-xs">
+                          {req.request_time ? new Date(req.request_time).toLocaleDateString("en-PH",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}
+                        </p>
+                        <button onClick={e => { e.stopPropagation(); setSelectedReq(req); }}
+                          className="text-xs text-white/50 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1 rounded-lg transition-all">
+                          View Details
+                        </button>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
