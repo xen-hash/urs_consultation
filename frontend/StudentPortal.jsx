@@ -334,12 +334,10 @@ export default function StudentPortal() {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError]     = useState(null);
   const [pendingStudent, setPendingStudent] = useState(null);
-  const [kbOpen, setKbOpen]         = useState(false);
 
   const findStudent = async (id) => {
     const sid = (id || studentId).trim();
     if (!sid) return addToast("Please enter your Student ID.", "warning");
-    setKbOpen(false);
     setLoading(true);
     try {
       const res = await axios.post(`${API_BASE}/auth/student/find`, { student_id: sid });
@@ -374,7 +372,7 @@ export default function StudentPortal() {
 
   const resetToHome = () => {
     setMode(null); setStudentId(""); setPendingStudent(null);
-    setPinError(null); setLoading(false); setPinLoading(false); setKbOpen(false);
+    setPinError(null); setLoading(false); setPinLoading(false);
   };
 
   return (
@@ -398,10 +396,8 @@ export default function StudentPortal() {
         </div>
       </nav>
 
-      {/* Page body — shifts up when keyboard open */}
-      <div
-        className="flex-1 flex items-center justify-center px-4 transition-all duration-300"
-        style={{ paddingTop: "40px", paddingBottom: kbOpen ? "300px" : "40px" }}>
+      {/* Page body */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8 overflow-y-auto">
         <div className="w-full max-w-sm">
 
           {/* Face + Eye Biometric Login */}
@@ -477,30 +473,19 @@ export default function StudentPortal() {
                 </div>
 
                 <div className="space-y-3">
-                  {/* Tap-to-type field */}
-                  <div
-                    onClick={() => setKbOpen(true)}
-                    className={`w-full rounded-2xl px-4 py-3.5 cursor-pointer transition-all
-                      flex items-center gap-2 min-h-[52px]
-                      ${kbOpen
-                        ? "bg-white/25 border-2 border-white ring-2 ring-white/20"
-                        : "bg-white/15 border border-white/25 hover:bg-white/20 hover:border-white/40"}`}>
-                    <Hash size={15} className="text-white/50 shrink-0" />
-                    <span className={`flex-1 font-mono tracking-wider text-sm
-                      ${studentId ? "text-white" : "text-white/40"}`}>
-                      {studentId || "M2022-0247"}
-                      {kbOpen && (
-                        <span className="inline-block w-0.5 h-4 bg-[#ffa000] ml-0.5 align-middle animate-pulse" />
-                      )}
-                    </span>
-                    {studentId.length > 0 && (
-                      <button
-                        onPointerDown={e => { e.preventDefault(); setStudentId(""); }}
-                        className="text-white/40 hover:text-white transition-colors shrink-0 text-xs">
-                        ✕
-                      </button>
-                    )}
-                  </div>
+                  <input
+                    type="text"
+                    inputMode="text"
+                    autoFocus
+                    value={studentId}
+                    onChange={e => setStudentId(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && findStudent()}
+                    placeholder="e.g. M2022-0247"
+                    maxLength={40}
+                    className="w-full rounded-2xl px-4 py-3.5 bg-white/15 border border-white/25
+                               text-white placeholder:text-white/30 font-mono tracking-wider text-sm
+                               focus:outline-none focus:border-white focus:bg-white/25 transition-all"
+                  />
 
                   <button onClick={() => findStudent()} disabled={loading || !studentId.trim()}
                     className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
@@ -614,21 +599,6 @@ export default function StudentPortal() {
         </div>
       </div>
 
-      {/* Dim backdrop — tap to close keyboard */}
-      {kbOpen && (
-        <div className="fixed inset-0 z-[99] bg-black/10" onClick={() => setKbOpen(false)} />
-      )}
-
-      {/* Floating keyboard — only shown during manual ID entry */}
-      {mode === "manual" && kbOpen && (
-        <FloatingKeyboard
-          value={studentId}
-          onChange={v => setStudentId(v.slice(0, 40))}
-          onDone={() => setKbOpen(false)}
-          maxLength={40}
-        />
-      )}
     </URSBackground>
   );
 }
-

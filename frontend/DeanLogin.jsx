@@ -111,12 +111,6 @@ export default function DeanLogin() {
               {!loading && <ArrowRight size={15} />}
             </button>
 
-            <div className="bg-gray-50 rounded-2xl p-3 mt-2 border border-gray-100">
-              <p className="text-xs text-gray-400 text-center">
-                Default: <code className="bg-white border border-gray-200 px-1.5 py-0.5 rounded-lg font-mono text-gray-600">dean</code> / <code className="bg-white border border-gray-200 px-1.5 py-0.5 rounded-lg font-mono text-gray-600">dean2024</code>
-              </p>
-            </div>
-
             <div className="border-t border-gray-100 pt-3">
               <button onClick={() => setFaceMode(v => !v)}
                 className="w-full flex items-center justify-center gap-2 text-sm text-gray-500
@@ -147,4 +141,3 @@ export default function DeanLogin() {
     </div>
   );
 }
-

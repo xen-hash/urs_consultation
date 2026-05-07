@@ -179,6 +179,7 @@ export default function DeanDashboard() {
   const [activeTab, setActiveTab]     = useState("overview");
   const [expandedDept, setExpandedDept] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Add Teacher state
@@ -343,12 +344,20 @@ export default function DeanDashboard() {
         .status-inmeeting { background:#ffedd5; color:#c2410c; }
       `}</style>
 
-      <div className="dean-root flex h-screen bg-[#f0f4f8] overflow-hidden">
+      <div className="dean-root flex h-screen overflow-hidden" style={{background:"#f0f4f8"}}>
         <Toast toasts={toasts} removeToast={removeToast} />
 
+        {/* Mobile overlay */}
+        {mobileSidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileSidebarOpen(false)} />
+        )}
+
         {/* ── SIDEBAR ─────────────────────────────────────────────────── */}
-        <aside className={`dean-sidebar shrink-0 flex flex-col h-screen overflow-hidden
-          ${sidebarOpen ? "w-60" : "w-[68px]"}`}
+        <aside className={`dean-sidebar shrink-0 flex flex-col h-screen overflow-hidden z-50
+          fixed lg:relative
+          ${mobileSidebarOpen ? "w-60 translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          ${sidebarOpen ? "lg:w-60" : "lg:w-[68px]"}
+          transition-all duration-300`}
           style={{ background: "linear-gradient(180deg,#0d1b2a 0%,#1a2a40 60%,#0d1b2a 100%)" }}
           onMouseEnter={() => setSidebarOpen(true)}
           onMouseLeave={() => setSidebarOpen(false)}>
@@ -379,7 +388,7 @@ export default function DeanDashboard() {
                 active={activeTab === tab.id}
                 badge={tab.badge}
                 collapsed={!sidebarOpen}
-                onClick={() => { setActiveTab(tab.id); setSearchQuery(""); }}
+                onClick={() => { setActiveTab(tab.id); setSearchQuery(""); setMobileSidebarOpen(false); }}
               />
             ))}
           </nav>
@@ -445,7 +454,12 @@ export default function DeanDashboard() {
         <div className="dean-main flex-1 flex flex-col overflow-hidden">
 
           {/* ── TOP BAR ───────────────────────────────────────────────── */}
-          <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center gap-4 shrink-0 shadow-sm z-10">
+          <header className="bg-white border-b border-gray-100 px-4 py-3.5 flex items-center gap-3 shrink-0 shadow-sm z-10">
+            {/* Mobile hamburger */}
+            <button className="lg:hidden w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all"
+              onClick={() => setMobileSidebarOpen(v => !v)}>
+              <Menu size={18} className="text-gray-600" />
+            </button>
 
             {/* Breadcrumb */}
             <div className="flex items-center gap-1.5 text-sm">
@@ -1038,4 +1052,3 @@ export default function DeanDashboard() {
     </>
   );
 }
-
