@@ -7,7 +7,7 @@ import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
 import FaceLoginPanel from "./FaceLoginPanel.jsx";
 import { API_BASE } from "./constants.js";
-import ursLogo from "../URS_LOGO.png";
+import ursLogo from "./URS_LOGO.png";
 
 /* ── Shared styles ─────────────────────────────────────────────────── */
 const PIN_STYLES = `

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle, LogOut, Home } from "lucide-react";
 import { Link } from "react-router-dom";
-import ursLogo from "../URS_LOGO.png";
+import ursLogo from "./URS_LOGO.png";
 
 
 // ── URS Logo Badge (used in headers) ─────────────────────────────────────────

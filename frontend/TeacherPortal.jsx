@@ -8,7 +8,7 @@ import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
 import FaceLoginPanel from "./FaceLoginPanel.jsx";
 import { API_BASE, PROFESSOR_LIST, DEPARTMENTS } from "./constants.js";
-import ursLogo from "../URS_LOGO.png";
+import ursLogo from "./URS_LOGO.png";
 
 const DEPT_ICONS = {
   "Civil Engineering Department":       "🏗️",

@@ -6,7 +6,7 @@ import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
 import QRDisplay from "./QRDisplay.jsx";
 import URSBackground from "./URSBackground.jsx";
 import { API_BASE, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
-import ursLogo from "../URS_LOGO.png";
+import ursLogo from "./URS_LOGO.png";
 
 // ── Keyboard rows ─────────────────────────────────────────────────────────────
 const L_ROW1 = ["q","w","e","r","t","y","u","i","o","p"];
