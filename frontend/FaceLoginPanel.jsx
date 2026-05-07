@@ -8,12 +8,12 @@ import {
   Pencil, X, Check, User, Camera, CalendarCheck, FileText, ScanFace,
   Scan
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, EmptyState } from "./SharedUI.jsx";
-import ScheduleModal from "./ScheduleModal.jsx";
-import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
-import FaceEnrollModal from "./FaceEnrollModal.jsx";
-import FaceLoginPanel from "./FaceLoginPanel.jsx";
-import { API_BASE } from "./constants.js";
+import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, EmptyState } from "../components/SharedUI.jsx";
+import ScheduleModal from "../components/ScheduleModal.jsx";
+import { WebcamCapture, IDCardPreview, generateIDCard } from "../components/ProfileEditor.jsx";
+import FaceEnrollModal from "../components/FaceEnrollModal.jsx";
+import FaceLoginPanel from "../components/FaceLoginPanel.jsx";
+import { API_BASE } from "../constants.js";
 import QRCodeLib from "qrcode";
 
 let socket = null;
@@ -171,7 +171,7 @@ export default function TeacherDashboard() {
       _teacherSeenIds.clear();
       piperSpeak(`Welcome, Engineer ${getFirstName(teacher.professor_name)}!`);
     }
-    const iv = setInterval(fetchRequests, 3000);
+    const iv = setInterval(fetchRequests, 8000);
     socket = io("/", { transports:["websocket"] });
     socket.on("consultation_update", fetchRequests);
     socket.on("new_request", fetchRequests);
@@ -700,4 +700,3 @@ export default function TeacherDashboard() {
     </PageWrapper>
   );
 }
-
