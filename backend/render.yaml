@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: urs-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_NAME
+        value: consultation_system
+      - key: DB_PORT
+        value: 3306
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: KIOSK_PASSWORD
+        value: admin123
+      - key: ADMIN_PASSWORD
+        value: admin123

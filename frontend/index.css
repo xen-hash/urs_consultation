@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    color: #1a1f36;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
+           text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-200
+           shadow-lg hover:shadow-xl active:scale-[0.97] tracking-wide text-sm;
+  }
+  .btn-orange {
+    @apply inline-flex items-center justify-center gap-2 bg-[#ff6f00] hover:bg-[#e65c00]
+           text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-200
+           shadow-lg hover:shadow-xl active:scale-[0.97] text-sm;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-[#003366]
+           text-[#003366] hover:bg-[#003366] hover:text-white
+           font-semibold py-2.5 px-5 rounded-2xl transition-all duration-200 text-sm active:scale-[0.97];
+  }
+  .card {
+    @apply bg-white rounded-3xl shadow-sm border border-gray-100/80 p-6;
+  }
+  .input-field {
+    @apply w-full border border-gray-200 bg-gray-50 rounded-2xl px-4 py-3.5 text-sm
+           focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366]
+           focus:bg-white transition-all duration-200 placeholder:text-gray-400 font-medium;
+  }
+  .status-available   { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
+  .status-unavailable { @apply bg-slate-50 text-slate-500 border border-slate-200; }
+  .status-on-leave    { @apply bg-amber-50 text-amber-700 border border-amber-200; }
+  .status-in-meeting  { @apply bg-orange-50 text-orange-700 border border-orange-200; }
+  .glass {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20;
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: 'Playfair Display', serif; }
+  .font-body    { font-family: 'DM Sans', sans-serif; }
+  .dot-pattern {
+    background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
+
+@keyframes fadeIn    { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp   { from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-12px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes bounceIn  { 0% { opacity: 0; transform: scale(0.9) } 60% { transform: scale(1.03) } 100% { opacity: 1; transform: scale(1) } }
+@keyframes marquee   { from { transform: translateX(100%) } to { transform: translateX(-100%) } }
+@keyframes float     { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes ping-slow { 0% { transform: scale(1); opacity: 1 } 75%,100% { transform: scale(2); opacity: 0 } }
+
+.animate-fade-in    { animation: fadeIn 0.4s ease-out both }
+.animate-slide-up   { animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1) both }
+.animate-slide-down { animation: slideDown 0.4s cubic-bezier(0.16,1,0.3,1) both }
+.animate-bounce-in  { animation: bounceIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both }
+.animate-marquee    { animation: marquee 25s linear infinite }
+.animate-float      { animation: float 3s ease-in-out infinite }
+.animate-ping-slow  { animation: ping-slow 2s cubic-bezier(0,0,0.2,1) infinite }
+.animate-spin       { animation: spin 1s linear infinite }
+
+.delay-100 { animation-delay: 0.1s }
+.delay-200 { animation-delay: 0.2s }
+.delay-300 { animation-delay: 0.3s }
+.delay-400 { animation-delay: 0.4s }
+
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }

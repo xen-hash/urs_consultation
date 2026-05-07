@@ -1,0 +1,12 @@
+flask
+flask-socketio
+flask-cors
+pymysql
+pytz
+openpyxl
+qrcode[pil]
+Pillow
+bcrypt
+python-dotenv
+eventlet
+gunicorn
