@@ -94,16 +94,19 @@ def init_db():
             """)
 
             # ── Migrations: add columns that may be missing in existing tables ──
-            migrations = [
-                "ALTER TABLE students ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255)",
-                "ALTER TABLE students ADD COLUMN IF NOT EXISTS photo MEDIUMTEXT",
-                "ALTER TABLE teacher_accounts ADD COLUMN IF NOT EXISTS photo MEDIUMTEXT",
-            ]
-            for sql in migrations:
-                try:
-                    cur.execute(sql)
-                except Exception as e:
-                    print(f"[DB] Migration skipped ({e}): {sql}")
+            def add_column_if_missing(table, column, definition):
+                cur.execute("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s AND COLUMN_NAME=%s
+                """, (DB_NAME, table, column))
+                exists = cur.fetchone()[0]
+                if not exists:
+                    cur.execute(f"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}")
+                    print(f"[DB] Added column {table}.{column}")
+
+            add_column_if_missing("students", "pin_hash", "VARCHAR(255)")
+            add_column_if_missing("students", "photo", "MEDIUMTEXT")
+            add_column_if_missing("teacher_accounts", "photo", "MEDIUMTEXT")
 
             # Seed professors
             for dept, profs in PROFESSOR_LIST.items():
