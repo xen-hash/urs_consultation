@@ -89,32 +89,33 @@ def init_db():
                     status ENUM('pending','done','declined') DEFAULT 'pending',
                     request_time DATETIME,
                     department VARCHAR(255),
-                    appointment_date DATE,
-                    appointment_time VARCHAR(20),
-                    appointment_notes TEXT,
-                    appointment_set_at DATETIME,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB
             """)
 
             # ── Migrations: add columns that may be missing in existing tables ──
-            def add_column_if_missing(table, column, definition):
-                cur.execute("""
-                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s AND COLUMN_NAME=%s
-                """, (DB_NAME, table, column))
-                exists = cur.fetchone()[0]
-                if not exists:
+            # Single-query batch migration
+            needed = [
+                ("students",              "pin_hash",           "VARCHAR(255)"),
+                ("students",              "photo",              "MEDIUMTEXT"),
+                ("teacher_accounts",      "photo",              "MEDIUMTEXT"),
+                ("consultation_requests", "appointment_date",   "DATE"),
+                ("consultation_requests", "appointment_time",   "VARCHAR(20)"),
+                ("consultation_requests", "appointment_notes",  "TEXT"),
+                ("consultation_requests", "appointment_set_at", "DATETIME"),
+            ]
+            tables = list({t for t, _, _ in needed})
+            fmt    = ",".join(["%s"] * len(tables))
+            cur.execute(
+                f"SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                f"WHERE TABLE_SCHEMA=%s AND TABLE_NAME IN ({fmt})",
+                [DB_NAME] + tables
+            )
+            existing = {(r[0], r[1]) for r in cur.fetchall()}
+            for table, column, definition in needed:
+                if (table, column) not in existing:
                     cur.execute(f"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}")
                     print(f"[DB] Added column {table}.{column}")
-
-            add_column_if_missing("students", "pin_hash", "VARCHAR(255)")
-            add_column_if_missing("students", "photo", "MEDIUMTEXT")
-            add_column_if_missing("teacher_accounts", "photo", "MEDIUMTEXT")
-            add_column_if_missing("consultation_requests", "appointment_date", "DATE")
-            add_column_if_missing("consultation_requests", "appointment_time", "VARCHAR(20)")
-            add_column_if_missing("consultation_requests", "appointment_notes", "TEXT")
-            add_column_if_missing("consultation_requests", "appointment_set_at", "DATETIME")
 
             # Seed professors
             for dept, profs in PROFESSOR_LIST.items():
