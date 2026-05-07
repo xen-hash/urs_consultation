@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import URSBackground from "../components/URSBackground.jsx";
+import URSBackground from "./URSBackground.jsx";
 import { GraduationCap, BookOpen, ArrowRight, Wifi, Shield, Monitor } from "lucide-react";
 
 export default function LandingPage() {
