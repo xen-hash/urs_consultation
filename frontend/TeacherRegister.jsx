@@ -4,7 +4,7 @@ import axios from "axios";
 import { ArrowLeft, BookOpen, UserPlus, Eye, EyeOff } from "lucide-react";
 import { Toast, useToastState, PageWrapper, Spinner } from "./SharedUI.jsx";
 import QRDisplay from "./QRDisplay.jsx";
-import { API_BASE, DEPARTMENTS, PROFESSOR_LIST } from "../constants.js";
+import { API_BASE, DEPARTMENTS, PROFESSOR_LIST } from "./constants.js";
 
 export default function TeacherRegister() {
   const navigate = useNavigate();

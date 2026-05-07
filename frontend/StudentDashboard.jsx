@@ -10,7 +10,7 @@ import {
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Spinner } from "./SharedUI.jsx";
 import FaceEnrollModal from "./FaceEnrollModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
-import { API_BASE, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "../constants.js";
+import { API_BASE, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
 
 let socket = null;

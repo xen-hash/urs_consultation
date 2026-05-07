@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Save, Clock, Ban } from "lucide-react";
 import { Modal } from "./SharedUI.jsx";
-import { DAYS, DAY_LABELS, TIME_OPTIONS } from "../constants.js";
+import { DAYS, DAY_LABELS, TIME_OPTIONS } from "./constants.js";
 
 const DEFAULT_SCHEDULE = () =>
   Object.fromEntries(

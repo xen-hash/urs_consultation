@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { X, Camera, CheckCircle2, Loader, Trash2, ScanFace, AlertTriangle, Wifi, WifiOff } from "lucide-react";
 import FaceOverlay from "./FaceOverlay.jsx";
-import { API_BASE } from "../constants.js";
+import { API_BASE } from "./constants.js";
 import { Spinner } from "./SharedUI.jsx";
 const REQUIRED_CAPTURES = 5;
 

@@ -5,7 +5,7 @@ import { ArrowLeft, GraduationCap, ArrowRight, Check, Delete } from "lucide-reac
 import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
 import QRDisplay from "./QRDisplay.jsx";
 import URSBackground from "./URSBackground.jsx";
-import { API_BASE, DEPARTMENTS, YEAR_LEVELS } from "../constants.js";
+import { API_BASE, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import ursLogo from "../URS_LOGO.png";
 
 // ── Keyboard rows ─────────────────────────────────────────────────────────────

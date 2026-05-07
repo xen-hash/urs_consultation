@@ -9,7 +9,7 @@ import {
   Users, Shield, AlertCircle, ChevronUp, Layers, Trash2, VolumeX, Volume2
 } from "lucide-react";
 import { StatusBadge, Toast, useToastState, Spinner } from "./SharedUI.jsx";
-import { API_BASE, DEPARTMENTS } from "../constants.js";
+import { API_BASE, DEPARTMENTS } from "./constants.js";
 
 // Piper TTS — queued speaker so announcements never overlap
 const _ttsQueue = [];

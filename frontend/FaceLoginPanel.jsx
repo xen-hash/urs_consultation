@@ -13,7 +13,7 @@ import ScheduleModal from "./ScheduleModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import FaceEnrollModal from "./FaceEnrollModal.jsx";
 import FaceLoginPanel from "./FaceLoginPanel.jsx";
-import { API_BASE } from "../constants.js";
+import { API_BASE } from "./constants.js";
 import QRCodeLib from "qrcode";
 
 let socket = null;

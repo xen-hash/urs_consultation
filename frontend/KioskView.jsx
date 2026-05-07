@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 import { Monitor, RefreshCw, LogOut, Search, ChevronDown, ChevronRight } from "lucide-react";
 import { StatusBadge } from "./SharedUI.jsx";
 import VirtualKeyboard from "./VirtualKeyboard.jsx";
-import { API_BASE, KIOSK_PASSWORD } from "../constants.js";
+import { API_BASE, KIOSK_PASSWORD } from "./constants.js";
 
 let socket = null;
 
