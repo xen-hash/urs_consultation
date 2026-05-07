@@ -2,11 +2,11 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, GraduationCap, ArrowRight, Check, Delete } from "lucide-react";
-import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
-import QRDisplay from "./QRDisplay.jsx";
-import URSBackground from "./URSBackground.jsx";
-import { API_BASE, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
-import ursLogo from "./URS_LOGO.png";
+import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
+import QRDisplay from "../components/QRDisplay.jsx";
+import URSBackground from "../components/URSBackground.jsx";
+import { API_BASE, DEPARTMENTS, YEAR_LEVELS } from "../constants.js";
+import ursLogo from "../URS_LOGO.png";
 
 // ── Keyboard rows ─────────────────────────────────────────────────────────────
 const L_ROW1 = ["q","w","e","r","t","y","u","i","o","p"];
@@ -115,6 +115,9 @@ export default function StudentRegister() {
   const [loading, setLoading]         = useState(false);
   const [qrData, setQrData]           = useState(null);
   const [activeField, setActiveField] = useState(null);
+  const [step, setStep]               = useState(1);
+  const [pin, setPin]                 = useState("");
+  const [pinConfirm, setPinConfirm]   = useState("");
   const fieldRefs = useRef({});
 
   const tapField = (key) => {
@@ -134,13 +137,21 @@ export default function StudentRegister() {
 
   const activeCfg = FIELDS.find(f => f.key === activeField);
 
-  const handleSubmit = async () => {
+  const handleNext = () => {
     setActiveField(null);
     if (!form.student_id.trim() || !form.full_name.trim() || !form.course.trim() || !form.year_level)
       return addToast("Please fill in all required fields.", "warning");
+    setStep(2);
+  };
+
+  const handleSubmit = async () => {
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin))
+      return addToast("PIN must be exactly 4 digits.", "warning");
+    if (pin !== pinConfirm)
+      return addToast("PINs do not match. Please try again.", "warning");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/auth/student/register`, form);
+      const res = await axios.post(`${API_BASE}/auth/student/register`, { ...form, pin });
       setQrData(res.data);
     } catch (e) { addToast(e.response?.data?.error || "Registration failed.", "error"); }
     finally { setLoading(false); }
@@ -178,6 +189,7 @@ export default function StudentRegister() {
         <div className="w-full max-w-md">
 
           {!qrData ? (
+            step === 1 ? (
             <div className="animate-slide-up">
               <div className="mb-6">
                 <div className="w-14 h-14 bg-white/15 backdrop-blur-sm border border-white/25 rounded-3xl
@@ -274,12 +286,12 @@ export default function StudentRegister() {
                   </select>
                 </div>
 
-                <button onClick={handleSubmit} disabled={loading}
+                <button onClick={handleNext} disabled={loading}
                   className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
                              text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg
                              disabled:opacity-60 active:scale-[0.98]">
-                  {loading ? <Spinner size={4} light /> : <ArrowRight size={16} />}
-                  {loading ? "Registering..." : "Next — Set PIN"}
+                  <ArrowRight size={16} />
+                  Next — Set PIN
                 </button>
 
                 <p className="text-center text-sm text-white/40">
@@ -289,6 +301,93 @@ export default function StudentRegister() {
               </div>
             </div>
           ) : (
+            /* ── Step 2: Set PIN ── */
+            <div className="animate-slide-up">
+              <div className="mb-6">
+                <button onClick={() => setStep(1)} className="flex items-center gap-1 text-white/50 hover:text-white text-sm mb-4">
+                  <ArrowLeft size={14} /> Back
+                </button>
+                <div className="w-14 h-14 bg-white/15 backdrop-blur-sm border border-white/25 rounded-3xl
+                               flex items-center justify-center mb-4 shadow-xl">
+                  <GraduationCap size={26} className="text-white" />
+                </div>
+                <h2 className="font-display font-bold text-3xl text-white mb-1">Set Your PIN</h2>
+                <p className="text-white/50 text-sm">Choose a 4-digit PIN to secure your account</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-6 space-y-5">
+
+                {/* PIN */}
+                <div>
+                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-3 block">Enter PIN</label>
+                  <div className="flex gap-3 justify-center">
+                    {[0,1,2,3].map(i => (
+                      <div key={i} className="w-14 h-14 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-2xl font-bold text-white">
+                        {pin[i] ? "●" : ""}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Confirm PIN */}
+                <div>
+                  <label className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-3 block">Confirm PIN</label>
+                  <div className="flex gap-3 justify-center">
+                    {[0,1,2,3].map(i => (
+                      <div key={i} className={`w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl font-bold text-white
+                        ${pinConfirm.length > 0 && pin.slice(0, pinConfirm.length) !== pinConfirm.slice(0, pin.length)
+                          ? "bg-red-500/20 border-red-400/50"
+                          : "bg-white/15 border-white/25"}`}>
+                        {pinConfirm[i] ? "●" : ""}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Number pad */}
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                  {[1,2,3,4,5,6,7,8,9].map(n => (
+                    <button key={n} onPointerDown={e => { e.preventDefault();
+                      if (pin.length < 4) setPin(p => p + n);
+                      else if (pinConfirm.length < 4) setPinConfirm(p => p + n);
+                    }}
+                      className="h-14 rounded-2xl bg-white/15 border border-white/20 text-white text-xl font-bold
+                                 active:bg-white/30 transition-colors">
+                      {n}
+                    </button>
+                  ))}
+                  <button onPointerDown={e => { e.preventDefault();
+                    if (pinConfirm.length > 0) setPinConfirm(p => p.slice(0,-1));
+                    else if (pin.length > 0) { setPin(p => p.slice(0,-1)); setPinConfirm(""); }
+                  }}
+                    className="h-14 rounded-2xl bg-white/10 border border-white/15 text-white text-xl
+                               active:bg-white/20 transition-colors flex items-center justify-center">
+                    <Delete size={20} />
+                  </button>
+                  <button onPointerDown={e => { e.preventDefault();
+                    if (pin.length < 4) setPin(p => p + "0");
+                    else if (pinConfirm.length < 4) setPinConfirm(p => p + "0");
+                  }}
+                    className="h-14 rounded-2xl bg-white/15 border border-white/20 text-white text-xl font-bold
+                               active:bg-white/30 transition-colors">
+                    0
+                  </button>
+                  <button onPointerDown={e => { e.preventDefault(); setPin(""); setPinConfirm(""); }}
+                    className="h-14 rounded-2xl bg-white/10 border border-white/15 text-white/50 text-xs
+                               active:bg-white/20 transition-colors">
+                    CLR
+                  </button>
+                </div>
+
+                <button onClick={handleSubmit} disabled={loading || pin.length < 4 || pinConfirm.length < 4}
+                  className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
+                             text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg
+                             disabled:opacity-40 active:scale-[0.98]">
+                  {loading ? <Spinner size={4} light /> : <Check size={16} />}
+                  {loading ? "Registering..." : "Complete Registration"}
+                </button>
+              </div>
+            </div>
+          )) : (
             <div className="animate-bounce-in">
               <div className="mb-6">
                 <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
@@ -329,4 +428,3 @@ export default function StudentRegister() {
     </URSBackground>
   );
 }
-
