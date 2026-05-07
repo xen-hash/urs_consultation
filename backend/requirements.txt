@@ -12,3 +12,4 @@ eventlet
 gunicorn
 gevent
 gevent-websocket
+requestscd D:\deploy
