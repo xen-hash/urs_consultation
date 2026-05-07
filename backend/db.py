@@ -13,6 +13,7 @@ def get_connection():
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=True,
+        ssl={"ssl": True},
         ssl={"ssl": True}
     )
 
