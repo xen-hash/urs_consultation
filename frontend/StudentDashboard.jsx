@@ -259,6 +259,7 @@ export default function StudentDashboard() {
     return () => { clearInterval(iv); socket?.disconnect(); };
   }, []);
 
+  useEffect(() => { fetchInbox(); }, []); // load on mount for appointment banner
   useEffect(() => { if (tab === "inbox") fetchInbox(); }, [tab]);
 
   useEffect(() => {
@@ -378,6 +379,28 @@ export default function StudentDashboard() {
         {/* ── FACULTY TAB ── */}
         {tab === "home" && (
           <>
+            {/* ── Appointment Alert Banner ── */}
+            {myRequests.filter(r => r.appointment_date && r.status === "pending").length > 0 && (
+              <div className="mb-4 animate-slide-up">
+                {myRequests.filter(r => r.appointment_date && r.status === "pending").map(req => (
+                  <div key={req.id}
+                    className="flex items-start gap-3 bg-orange-500 rounded-2xl p-4 shadow-xl border border-orange-400 cursor-pointer"
+                    onClick={() => setTab("inbox")}>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0 text-xl">📅</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-bold text-sm">New Appointment Set!</p>
+                      <p className="text-white/90 text-xs mt-0.5 truncate">
+                        {req.professor_name} — {new Date(req.appointment_date).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })} at {req.appointment_time || "TBD"}
+                      </p>
+                      {req.appointment_notes && (
+                        <p className="text-white/75 text-xs mt-0.5 italic truncate">"{req.appointment_notes}"</p>
+                      )}
+                    </div>
+                    <span className="text-white/80 text-xs font-semibold shrink-0 mt-1">View →</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="bg-gradient-to-r from-[#003366] to-[#0055aa] rounded-3xl p-5 text-white shadow-xl mb-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-4">

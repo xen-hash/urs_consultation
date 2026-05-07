@@ -84,3 +84,10 @@
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 
 @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+/* ── Hero backgrounds used by login pages ── */
+.bg-hero {
+  background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 40%, #0f2a50 70%, #0a1628 100%);
+}
+.bg-hero-dean {
+  background: linear-gradient(160deg, #0d1b2a 0%, #1a2a40 50%, #0d2137 80%, #091520 100%);
+}
