@@ -1,4 +1,4 @@
-import ursBg from "./URS_BCKGRND.png";
+import ursBg from "./URS_BACKGROUND.jfif";
 
 /**
  * Wraps any page with the URS campus background image
