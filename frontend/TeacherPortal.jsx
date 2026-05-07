@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { BookOpen, QrCode, ScanLine, ChevronLeft, Search, Users, ArrowRight, Shield, Camera, CreditCard, Pencil, X, Check } from "lucide-react";
-import QRScanner from "../components/QRScanner.jsx";
-import { FacultyIDCard, WebcamCapture } from "../components/FacultyIDCard.jsx";
-import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
-import URSBackground from "../components/URSBackground.jsx";
-import FaceLoginPanel from "../components/FaceLoginPanel.jsx";
+import QRScanner from "./QRScanner.jsx";
+import { FacultyIDCard, WebcamCapture } from "./FacultyIDCard.jsx";
+import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import URSBackground from "./URSBackground.jsx";
+import FaceLoginPanel from "./FaceLoginPanel.jsx";
 import { API_BASE, PROFESSOR_LIST, DEPARTMENTS } from "../constants.js";
 import ursLogo from "../URS_LOGO.png";
 

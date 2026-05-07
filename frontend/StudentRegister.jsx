@@ -2,9 +2,9 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, GraduationCap, ArrowRight, Check, Delete } from "lucide-react";
-import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
-import QRDisplay from "../components/QRDisplay.jsx";
-import URSBackground from "../components/URSBackground.jsx";
+import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import QRDisplay from "./QRDisplay.jsx";
+import URSBackground from "./URSBackground.jsx";
 import { API_BASE, DEPARTMENTS, YEAR_LEVELS } from "../constants.js";
 import ursLogo from "../URS_LOGO.png";
 

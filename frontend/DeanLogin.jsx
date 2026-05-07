@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, Lock, ArrowRight } from "lucide-react";
-import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
-import FaceLoginPanel from "../components/FaceLoginPanel.jsx";
+import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import FaceLoginPanel from "./FaceLoginPanel.jsx";
 
 const DEAN_USER = "dean";
 const DEAN_PASS = "dean2024";

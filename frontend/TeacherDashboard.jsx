@@ -7,10 +7,10 @@ import {
   RefreshCw, ClipboardList, Sliders, BookOpen, Clock,
   Pencil, X, Check, User, Camera, CalendarCheck, FileText, ScanFace
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, EmptyState } from "../components/SharedUI.jsx";
-import ScheduleModal from "../components/ScheduleModal.jsx";
-import { WebcamCapture, IDCardPreview, generateIDCard } from "../components/ProfileEditor.jsx";
-import FaceEnrollModal from "../components/FaceEnrollModal.jsx";
+import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, EmptyState } from "./SharedUI.jsx";
+import ScheduleModal from "./ScheduleModal.jsx";
+import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
+import FaceEnrollModal from "./FaceEnrollModal.jsx";
 import { API_BASE, SOCKET_URL } from "../constants.js";
 import QRCodeLib from "qrcode";
 

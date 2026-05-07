@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { GraduationCap, QrCode, Hash, ArrowRight, UserPlus, Delete, ChevronLeft, Lock, ShieldCheck } from "lucide-react";
-import QRScanner from "../components/QRScanner.jsx";
-import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
-import URSBackground from "../components/URSBackground.jsx";
-import FaceLoginPanel from "../components/FaceLoginPanel.jsx";
+import QRScanner from "./QRScanner.jsx";
+import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import URSBackground from "./URSBackground.jsx";
+import FaceLoginPanel from "./FaceLoginPanel.jsx";
 import { API_BASE } from "../constants.js";
 import ursLogo from "../URS_LOGO.png";
 
