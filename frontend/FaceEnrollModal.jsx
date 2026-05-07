@@ -414,3 +414,4 @@ export default function FaceEnrollModal({ open, onClose, students = [] }) {
     </div>
   );
 }
+

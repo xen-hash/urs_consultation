@@ -1103,3 +1103,4 @@ function formatTime(t) {
   const hour = parseInt(h, 10);
   return `${hour % 12 || 12}:${m} ${hour >= 12 ? "PM" : "AM"}`;
 }
+

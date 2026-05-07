@@ -72,3 +72,4 @@ export const TIME_OPTIONS = [
 export const YEAR_LEVELS = ["1st Year","2nd Year","3rd Year","4th Year","5th Year","Graduate"];
 
 export const KIOSK_PASSWORD = "admin123";
+

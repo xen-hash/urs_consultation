@@ -52,3 +52,4 @@ export default function VirtualKeyboard({ onKey, onDelete, onClear, onEnter }) {
     </div>
   );
 }
+

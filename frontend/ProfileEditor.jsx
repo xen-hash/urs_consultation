@@ -434,3 +434,4 @@ export function IDCardPreview({ name, subtitle, idNumber, role, photo, qrBase64,
     </div>
   );
 }
+

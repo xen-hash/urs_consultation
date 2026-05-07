@@ -143,3 +143,4 @@ export default function QRScanner({ onScan, onError, autoStart = true }) {
     </div>
   );
 }
+

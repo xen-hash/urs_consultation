@@ -43,3 +43,4 @@ export default function QRDisplay({ base64, label, filename = "qrcode.png" }) {
     </div>
   );
 }
+

@@ -89,3 +89,4 @@ export default function ScheduleModal({ open, onClose, onSave, initial }) {
     </Modal>
   );
 }
+
