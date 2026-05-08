@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { BookOpen, QrCode, ScanLine, ChevronLeft, Search, Users, ArrowRight, Shield, Camera, CreditCard, Pencil, X, Check } from "lucide-react";
-import QRScanner from "../components/QRScanner.jsx";
-import { FacultyIDCard, WebcamCapture } from "../components/FacultyIDCard.jsx";
-import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
-import URSBackground from "../components/URSBackground.jsx";
-import { API_BASE, PROFESSOR_LIST, DEPARTMENTS } from "../constants.js";
-import ursLogo from "../URS_LOGO.png";
+import QRScanner from "./QRScanner.jsx";
+import { FacultyIDCard, WebcamCapture } from "./FacultyIDCard.jsx";
+import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import URSBackground from "./URSBackground.jsx";
+import { API_BASE, PROFESSOR_LIST, DEPARTMENTS } from "./constants.js";
+import ursLogo from "./URS_LOGO.png";
 
 const DEPT_ICONS = {
   "Civil Engineering Department":       "🏗️",
@@ -235,6 +235,7 @@ export default function TeacherPortal() {
               </p>
             </button>
           </div>
+
 
           {/* Admin Dashboard card — same row styling as the others */}
           <div className="mt-4 w-full max-w-2xl">
