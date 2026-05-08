@@ -2,11 +2,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { GraduationCap, QrCode, Hash, ArrowRight, UserPlus, Delete, ChevronLeft, Lock, ShieldCheck } from "lucide-react";
-import QRScanner from "../components/QRScanner.jsx";
-import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
-import URSBackground from "../components/URSBackground.jsx";
-import { API_BASE } from "../constants.js";
-import ursLogo from "../URS_LOGO.png";
+import QRScanner from "./QRScanner.jsx";
+import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import URSBackground from "./URSBackground.jsx";
+import { API_BASE } from "./constants.js";
+import ursLogo from "./URS_LOGO.png";
 
 /* ── Shared styles ─────────────────────────────────────────────────── */
 const PIN_STYLES = `
@@ -403,6 +403,7 @@ export default function StudentPortal() {
         style={{ paddingTop: "40px", paddingBottom: kbOpen ? "300px" : "40px" }}>
         <div className="w-full max-w-sm">
 
+
           {/* QR Scan */}
           {mode === "qr" && (
             <div className="animate-slide-up">
@@ -546,6 +547,7 @@ export default function StudentPortal() {
                   </div>
                   <ArrowRight size={16} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
                 </button>
+
 
                 <Link to="/student/register"
                   className="w-full flex items-center justify-between p-4 bg-white/8 hover:bg-white/15
