@@ -87,7 +87,7 @@ def init_db():
                     professor_id INT,
                     purpose TEXT,
                     category VARCHAR(100),
-                    status ENUM('pending','done','declined') DEFAULT 'pending',
+                    status ENUM('pending','done','declined','archived') DEFAULT 'pending',
                     request_time DATETIME,
                     department VARCHAR(255),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

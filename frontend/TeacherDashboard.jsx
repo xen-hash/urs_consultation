@@ -87,6 +87,7 @@ export default function TeacherDashboard() {
   const [accepted, setAccepted]         = useState(new Set());
   const [reqPage, setReqPage]           = useState(1);
   const REQ_PAGE_SIZE = 10;
+  const [resettingSession, setResettingSession] = useState(false);
 
   // Profile state
   const [profilePhoto, setProfilePhoto] = useState(teacher.photo || null);
@@ -246,6 +247,19 @@ export default function TeacherDashboard() {
     finally { setSavingPin(false); }
   };
 
+  const handleResetSession = async () => {
+    if (!window.confirm("Reset today\'s consultation count? This will archive all today\'s requests and start a fresh session.")) return;
+    setResettingSession(true);
+    try {
+      await axios.post(`${API_BASE}/teacher/reset-daily-count`, { employee_id: teacher.employee_id });
+      setRequests([]);
+      setAccepted(new Set());
+      addToast("Session reset! You can now accept a new batch of consultations.", "success");
+      fetchRequests();
+    } catch(e) { addToast("Failed to reset session.", "error"); }
+    finally { setResettingSession(false); }
+  };
+
   const downloadID = () => generateIDCard({
     name: teacher.professor_name, subtitle: teacher.department,
     idNumber: teacher.employee_id, role: "Faculty",
@@ -316,6 +330,12 @@ export default function TeacherDashboard() {
               {accepted.size > 0 && (
                 <button onClick={() => setAccepted(new Set())} className="text-xs text-white/40 hover:text-white bg-white/10 px-2 py-1 rounded-lg">Reset</button>
               )}
+              <button onClick={handleResetSession} disabled={resettingSession}
+                title="Archive today's consultations and start a new session"
+                className="flex items-center gap-1.5 text-xs font-semibold bg-white/10 hover:bg-[#ffa000]/20 border border-white/20 hover:border-[#ffa000]/40 text-white/60 hover:text-[#ffa000] px-3 py-1.5 rounded-xl transition-all disabled:opacity-40">
+                {resettingSession ? <Spinner size={3} light /> : "🔄"}
+                {resettingSession ? "Resetting..." : "New Session"}
+              </button>
             </div>
 
             {requests.length===0 ? (

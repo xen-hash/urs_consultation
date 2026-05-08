@@ -207,6 +207,32 @@ def get_teacher_logs():
     _logs_cache = {"data": result, "ts": now}
     return jsonify(result)
 
+
+# ─── RESET DAILY CONSULTATION COUNT ──────────────────────────────────────────
+@teacher_bp.route("/teacher/reset-daily-count", methods=["POST"])
+def reset_daily_count():
+    global _logs_cache
+    data = request.json or {}
+    employee_id = (data.get("employee_id") or "").strip()
+    if not employee_id:
+        return jsonify({"error": "employee_id required"}), 400
+    teacher = query(
+        "SELECT professor_name FROM teacher_accounts WHERE employee_id=%s",
+        (employee_id,), fetchone=True
+    )
+    if not teacher:
+        return jsonify({"error": "Teacher not found"}), 404
+    today_ph = datetime.now(PH).strftime("%Y-%m-%d")
+    execute(
+        """UPDATE consultation_requests
+           SET status='archived'
+           WHERE professor_name=%s AND status IN ('pending','done')
+           AND DATE(request_time)=%s""",
+        (teacher["professor_name"], today_ph)
+    )
+    _logs_cache["ts"] = 0
+    return jsonify({"message": "Daily count reset. New session started."})
+
 @teacher_bp.route("/teacher/save-schedule", methods=["POST"])
 def save_schedule():
     data = request.json or {}
