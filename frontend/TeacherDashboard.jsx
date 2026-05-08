@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
 import {
-  ScanFace, Send, RefreshCw, Search, GraduationCap, BookOpen, X,
+  Send, RefreshCw, Search, GraduationCap, BookOpen, X,
   ChevronLeft, Users, Inbox, User, Camera, Download,
   CalendarCheck, Pencil, Delete
 } from "lucide-react";
