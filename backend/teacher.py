@@ -286,14 +286,44 @@ def clear_logs():
 
 @teacher_bp.route("/dean/students", methods=["GET"])
 def dean_get_students():
-    rows = query("SELECT * FROM students ORDER BY created_at DESC", fetchall=True)
-    return jsonify([_serialize_row(r) for r in (rows or [])])
+    page   = max(1, int(request.args.get("page", 1)))
+    limit  = min(50, int(request.args.get("limit", 20)))
+    offset = (page - 1) * limit
+    rows   = query(
+        "SELECT * FROM students ORDER BY created_at DESC LIMIT %s OFFSET %s",
+        (limit, offset), fetchall=True
+    )
+    total  = query("SELECT COUNT(*) as c FROM students", fetchone=True)["c"]
+    return jsonify({
+        "data":  [_serialize_row(r) for r in (rows or [])],
+        "page":  page, "limit": limit, "total": total,
+        "pages": -(-total // limit)
+    })
 
 
 @teacher_bp.route("/dean/requests", methods=["GET"])
 def dean_get_requests():
-    rows = query("SELECT * FROM consultation_requests ORDER BY created_at DESC", fetchall=True)
-    return jsonify([_serialize_row(r) for r in (rows or [])])
+    page   = max(1, int(request.args.get("page", 1)))
+    limit  = min(50, int(request.args.get("limit", 20)))
+    offset = (page - 1) * limit
+    status = request.args.get("status", "")
+    if status:
+        rows  = query(
+            "SELECT * FROM consultation_requests WHERE status=%s ORDER BY created_at DESC LIMIT %s OFFSET %s",
+            (status, limit, offset), fetchall=True
+        )
+        total = query("SELECT COUNT(*) as c FROM consultation_requests WHERE status=%s", (status,), fetchone=True)["c"]
+    else:
+        rows  = query(
+            "SELECT * FROM consultation_requests ORDER BY created_at DESC LIMIT %s OFFSET %s",
+            (limit, offset), fetchall=True
+        )
+        total = query("SELECT COUNT(*) as c FROM consultation_requests", fetchone=True)["c"]
+    return jsonify({
+        "data":  [_serialize_row(r) for r in (rows or [])],
+        "page":  page, "limit": limit, "total": total,
+        "pages": -(-total // limit)
+    })
 
 
 @teacher_bp.route("/dean/teachers", methods=["GET"])

@@ -82,9 +82,7 @@ def get_history(student_id):
     )["c"]
     return jsonify({
         "data":  [_serialize_row(r) for r in (rows or [])],
-        "page":  page,
-        "limit": limit,
-        "total": total,
+        "page":  page, "limit": limit, "total": total,
         "pages": -(-total // limit)
     })
 
