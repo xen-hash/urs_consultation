@@ -9,6 +9,7 @@ Pillow
 bcrypt
 python-dotenv
 requests
+cryptography
 gevent
 gevent-websocket
 gunicorn
