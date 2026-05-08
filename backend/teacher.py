@@ -152,6 +152,17 @@ def get_teacher_logs():
     ) or []
     photo_map = {(r["professor_name"], r["department"]): r.get("photo") for r in photo_rows}
 
+    # Batch-fetch today's pending request counts per professor
+    today_ph = datetime.now(PH).strftime("%Y-%m-%d")
+    pending_rows = query(
+        """SELECT professor_name, COUNT(*) as cnt
+           FROM consultation_requests
+           WHERE status='pending' AND DATE(request_time)=%s
+           GROUP BY professor_name""",
+        (today_ph,), fetchall=True
+    ) or []
+    pending_map = {r["professor_name"]: r["cnt"] for r in pending_rows}
+
     result = []
     for dept, profs in merged.items():
         dept_list = []
@@ -169,12 +180,23 @@ def get_teacher_logs():
             if weekly:
                 try: weekly = json.loads(weekly) if isinstance(weekly, str) else weekly
                 except: weekly = None
+            # Calculate slots remaining for today
+            today_key = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"][datetime.now(PH).weekday()]
+            day_limit = 0
+            if weekly and isinstance(weekly, dict) and today_key in weekly:
+                day_limit = weekly[today_key].get("limit", 0) if isinstance(weekly[today_key], dict) else 0
+            pending_today = pending_map.get(name, 0)
+            slots_left = max(0, day_limit - pending_today) if day_limit > 0 else None
+
             dept_list.append({
                 "name": name, "department": dept, "status": status,
                 "manual_status": combined["manual_status"],
                 "manual": combined["manual"],
                 "weekly_schedule": weekly,
                 "photo": photo_map.get(key),
+                "pending_today": pending_today,
+                "slots_left": slots_left,
+                "day_limit": day_limit,
             })
         result.append({"department": dept, "professors": dept_list})
 
