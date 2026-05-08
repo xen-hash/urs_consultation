@@ -24,8 +24,9 @@ def _generate_qr_b64(data: str) -> str:
 
 
 def _make_employee_id(professor_name: str, department: str) -> str:
-    raw = f"{professor_name}|{department}"
-    return "EMP-" + hashlib.md5(raw.encode()).hexdigest()[:8].upper()
+    raw = f"{professor_name.strip().lower()}|{department.strip().lower()}"
+    num = int(hashlib.md5(raw.encode()).hexdigest(), 16) % 90000 + 10000
+    return f"T-{num}"
 
 
 # ─── STUDENT REGISTER ─────────────────────────────────────────────────────────
@@ -146,8 +147,8 @@ def teacher_quick_login():
                 # Auto-register new teacher
                 pw = bcrypt.hashpw(employee_id.encode(), bcrypt.gensalt()).decode()
                 execute(
-                    "INSERT INTO teacher_accounts (employee_id, professor_name, department, password_hash) VALUES (%s,%s,%s,%s)",
-                    (employee_id, professor_name, department, pw)
+                    "INSERT INTO teacher_accounts (employee_id, professor_name, department, password_hash, pin_hash) VALUES (%s,%s,%s,%s,%s)",
+                    (employee_id, professor_name, department, pw, None)
                 )
                 execute(
                     "INSERT IGNORE INTO professors (name, department) VALUES (%s,%s)",
@@ -192,9 +193,65 @@ def teacher_qr_login():
             "employee_id": teacher["employee_id"],
             "professor_name": teacher["professor_name"],
             "department": teacher["department"],
-            "photo": teacher.get("photo")
+            "photo": teacher.get("photo"),
+            "has_pin": bool(teacher.get("pin_hash"))
         }
     })
+
+
+# ─── TEACHER PIN LOGIN ────────────────────────────────────────────────────────
+@auth_bp.route("/teacher/pin-login", methods=["POST"])
+def teacher_pin_login():
+    data = request.json or {}
+    employee_id = (data.get("employee_id") or "").strip().upper()
+    pin         = str(data.get("pin") or "").strip()
+
+    if not employee_id or not pin:
+        return jsonify({"error": "Employee ID and PIN required"}), 400
+
+    teacher = query(
+        "SELECT * FROM teacher_accounts WHERE employee_id=%s", (employee_id,), fetchone=True
+    )
+    if not teacher:
+        return jsonify({"error": "Employee ID not found."}), 404
+
+    if not teacher.get("pin_hash"):
+        return jsonify({"error": "No PIN set. Please log in via QR code first then set your PIN."}), 400
+
+    if not bcrypt.checkpw(pin.encode(), teacher["pin_hash"].encode()):
+        return jsonify({"error": "Incorrect PIN."}), 401
+
+    return jsonify({
+        "message": "Login successful",
+        "teacher": {
+            "id": teacher["id"],
+            "employee_id": teacher["employee_id"],
+            "professor_name": teacher["professor_name"],
+            "department": teacher["department"],
+            "photo": teacher.get("photo"),
+            "has_pin": True
+        }
+    })
+
+
+# ─── TEACHER SET PIN ──────────────────────────────────────────────────────────
+@auth_bp.route("/teacher/set-pin", methods=["POST"])
+def teacher_set_pin():
+    data = request.json or {}
+    employee_id = (data.get("employee_id") or "").strip()
+    pin         = str(data.get("pin") or "").strip()
+
+    if not employee_id or not pin:
+        return jsonify({"error": "Employee ID and PIN required"}), 400
+    if len(pin) != 4 or not pin.isdigit():
+        return jsonify({"error": "PIN must be exactly 4 digits"}), 400
+
+    pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
+    execute(
+        "UPDATE teacher_accounts SET pin_hash=%s WHERE employee_id=%s",
+        (pin_hash, employee_id)
+    )
+    return jsonify({"message": "PIN set successfully"})
 
 
 # ─── TEACHER REGISTER (legacy) ────────────────────────────────────────────────

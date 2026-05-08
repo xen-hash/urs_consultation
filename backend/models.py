@@ -54,6 +54,7 @@ def init_db():
                     professor_name VARCHAR(255) NOT NULL,
                     department VARCHAR(255) NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
+                    pin_hash VARCHAR(255),
                     qr_code_path VARCHAR(500),
                     photo MEDIUMTEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -94,28 +95,20 @@ def init_db():
             """)
 
             # ── Migrations: add columns that may be missing in existing tables ──
-            # Single-query batch migration
-            needed = [
-                ("students",              "pin_hash",           "VARCHAR(255)"),
-                ("students",              "photo",              "MEDIUMTEXT"),
-                ("teacher_accounts",      "photo",              "MEDIUMTEXT"),
-                ("consultation_requests", "appointment_date",   "DATE"),
-                ("consultation_requests", "appointment_time",   "VARCHAR(20)"),
-                ("consultation_requests", "appointment_notes",  "TEXT"),
-                ("consultation_requests", "appointment_set_at", "DATETIME"),
-            ]
-            tables = list({t for t, _, _ in needed})
-            fmt    = ",".join(["%s"] * len(tables))
-            cur.execute(
-                f"SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
-                f"WHERE TABLE_SCHEMA=%s AND TABLE_NAME IN ({fmt})",
-                [DB_NAME] + tables
-            )
-            existing = {(r[0], r[1]) for r in cur.fetchall()}
-            for table, column, definition in needed:
-                if (table, column) not in existing:
+            def add_column_if_missing(table, column, definition):
+                cur.execute("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s AND COLUMN_NAME=%s
+                """, (DB_NAME, table, column))
+                exists = cur.fetchone()[0]
+                if not exists:
                     cur.execute(f"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}")
                     print(f"[DB] Added column {table}.{column}")
+
+            add_column_if_missing("students", "pin_hash", "VARCHAR(255)")
+            add_column_if_missing("students", "photo", "MEDIUMTEXT")
+            add_column_if_missing("teacher_accounts", "photo", "MEDIUMTEXT")
+            add_column_if_missing("teacher_accounts", "pin_hash", "VARCHAR(255)")
 
             # Seed professors
             for dept, profs in PROFESSOR_LIST.items():

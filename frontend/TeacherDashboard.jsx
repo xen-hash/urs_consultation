@@ -93,6 +93,10 @@ export default function TeacherDashboard() {
   const [editName, setEditName]         = useState(false);
   const [newName, setNewName]           = useState(teacher.professor_name);
   const [savingName, setSavingName]     = useState(false);
+  const [settingPin, setSettingPin]     = useState(false);
+  const [pinForm, setPinForm]           = useState({ pin: '', confirm: '' });
+  const [savingPin, setSavingPin]       = useState(false);
+  const [hasPin, setHasPin]             = useState(teacher.has_pin || false);
 
   const prevCount   = useRef(-1);
   const hasWelcomed = useRef(false);
@@ -220,6 +224,24 @@ export default function TeacherDashboard() {
       sessionStorage.setItem("teacher", JSON.stringify({ ...current, photo: dataUrl }));
       addToast("Photo saved!", "success");
     } catch(_) { addToast("Failed to save photo.", "error"); }
+  };
+
+  const handleSetPin = async () => {
+    if (pinForm.pin.length !== 4 || !/^\d{4}$/.test(pinForm.pin))
+      return addToast("PIN must be exactly 4 digits.", "warning");
+    if (pinForm.pin !== pinForm.confirm)
+      return addToast("PINs do not match.", "warning");
+    setSavingPin(true);
+    try {
+      await axios.post(`${API_BASE}/auth/teacher/set-pin`, { employee_id: teacher.employee_id, pin: pinForm.pin });
+      const updated = { ...teacher, has_pin: true };
+      sessionStorage.setItem("teacher", JSON.stringify(updated));
+      setHasPin(true);
+      setSettingPin(false);
+      setPinForm({ pin: '', confirm: '' });
+      addToast("PIN set successfully! You can now log in with your ID + PIN.", "success");
+    } catch(e) { addToast(e.response?.data?.error || "Failed to set PIN.", "error"); }
+    finally { setSavingPin(false); }
   };
 
   const downloadID = () => generateIDCard({
@@ -478,6 +500,96 @@ export default function TeacherDashboard() {
                     </div>
                   ) : (
                     <p className="text-gray-600 text-sm">Use the Edit button to correct misspellings or update your surname.</p>
+                  )}
+                </div>
+
+                {/* PIN Setup Card */}
+                <div className="bg-white/95 rounded-3xl border border-white/30 shadow-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-display font-bold text-[#003366]">Login PIN</h3>
+                      <p className="text-gray-400 text-xs mt-0.5">
+                        {hasPin ? "✅ PIN is set — you can log in with ID + PIN" : "⚠️ No PIN set yet"}
+                      </p>
+                    </div>
+                    <button onClick={() => { setSettingPin(v => !v); setPinForm({ pin: '', confirm: '' }); }}
+                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#003366] transition-colors">
+                      <Pencil size={12}/> {settingPin ? "Cancel" : hasPin ? "Change PIN" : "Set PIN"}
+                    </button>
+                  </div>
+                  {settingPin ? (
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-2">Your Employee ID (share this with no one):</p>
+                        <div className="bg-[#003366]/10 border border-[#003366]/20 rounded-xl px-4 py-2.5 flex items-center gap-2">
+                          <span className="font-mono font-bold text-[#003366] text-lg tracking-widest">{teacher.employee_id}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">Enter 4-digit PIN</label>
+                        <div className="flex gap-3 justify-center">
+                          {[0,1,2,3].map(i => (
+                            <div key={i} className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-xl font-bold text-[#003366]">
+                              {pinForm.pin[i] ? "●" : ""}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">Confirm PIN</label>
+                        <div className="flex gap-3 justify-center">
+                          {[0,1,2,3].map(i => (
+                            <div key={i} className={`w-12 h-12 rounded-xl border flex items-center justify-center text-xl font-bold
+                              ${pinForm.confirm.length > 0 && pinForm.pin !== pinForm.confirm.slice(0,pinForm.pin.length) && i < pinForm.confirm.length
+                                ? "bg-red-50 border-red-300 text-red-600" : "bg-gray-100 border-gray-200 text-[#003366]"}`}>
+                              {pinForm.confirm[i] ? "●" : ""}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Numpad */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {[1,2,3,4,5,6,7,8,9].map(n => (
+                          <button key={n} onPointerDown={e => { e.preventDefault();
+                            if (pinForm.pin.length < 4) setPinForm(p => ({ ...p, pin: p.pin + n }));
+                            else if (pinForm.confirm.length < 4) setPinForm(p => ({ ...p, confirm: p.confirm + n }));
+                          }}
+                            className="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-lg font-bold transition-colors active:scale-95">
+                            {n}
+                          </button>
+                        ))}
+                        <button onPointerDown={e => { e.preventDefault();
+                          if (pinForm.confirm.length > 0) setPinForm(p => ({ ...p, confirm: p.confirm.slice(0,-1) }));
+                          else if (pinForm.pin.length > 0) { setPinForm(p => ({ ...p, pin: p.pin.slice(0,-1), confirm: '' })); }
+                        }}
+                          className="h-12 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 text-lg transition-colors flex items-center justify-center">
+                          ⌫
+                        </button>
+                        <button onPointerDown={e => { e.preventDefault();
+                          if (pinForm.pin.length < 4) setPinForm(p => ({ ...p, pin: p.pin + '0' }));
+                          else if (pinForm.confirm.length < 4) setPinForm(p => ({ ...p, confirm: p.confirm + '0' }));
+                        }}
+                          className="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-lg font-bold transition-colors">
+                          0
+                        </button>
+                        <button onPointerDown={e => { e.preventDefault(); setPinForm({ pin: '', confirm: '' }); }}
+                          className="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-semibold transition-colors">
+                          CLR
+                        </button>
+                      </div>
+                      <button onClick={handleSetPin} disabled={savingPin || pinForm.pin.length < 4 || pinForm.confirm.length < 4}
+                        className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080] text-white font-semibold py-3 rounded-2xl transition-all text-sm disabled:opacity-50">
+                        {savingPin ? <Spinner size={4} light/> : <Check size={15}/>}
+                        {savingPin ? "Saving..." : "Save PIN"}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">
+                      {hasPin
+                        ? `Your Employee ID is: `
+                        : "Set a 4-digit PIN so you can log in quickly using your Employee ID + PIN instead of scanning QR."}
+                      {hasPin && <span className="font-mono font-bold text-[#003366] ml-1 tracking-widest">{teacher.employee_id}</span>}
+                    </p>
                   )}
                 </div>
               </>

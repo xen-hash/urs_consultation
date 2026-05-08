@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { BookOpen, QrCode, ScanLine, ChevronLeft, Search, Users, ArrowRight, Shield, Camera, CreditCard, Pencil, X, Check } from "lucide-react";
+import { BookOpen, QrCode, ScanLine, ChevronLeft, Search, Users, ArrowRight, Shield, Camera, CreditCard, Pencil, X, Check, Lock, Delete } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
 import { FacultyIDCard, WebcamCapture } from "./FacultyIDCard.jsx";
 import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
@@ -34,6 +34,29 @@ export default function TeacherPortal() {
   const [idData, setIdData] = useState(null);              // { qr_base64, employee_id }
   const [photo, setPhoto] = useState(null);                // base64 photo
   const [loadingProf, setLoadingProf] = useState(null);
+
+  // PIN Login state
+  const [pinEmpId, setPinEmpId] = useState("");
+  const [pin, setPin]           = useState("");
+  const [pinLoading, setPinLoading] = useState(false);
+
+  const handlePinLogin = async () => {
+    if (!pinEmpId.trim()) return addToast("Enter your Employee ID.", "warning");
+    if (pin.length !== 4) return addToast("Enter your 4-digit PIN.", "warning");
+    setPinLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE}/auth/teacher/pin-login`, {
+        employee_id: pinEmpId.trim().toUpperCase(), pin
+      });
+      sessionStorage.removeItem("student");
+      sessionStorage.setItem("teacher", JSON.stringify(res.data.teacher));
+      addToast(`Welcome, ${res.data.teacher.professor_name}!`, "success");
+      setTimeout(() => navigate("/teacher/dashboard"), 600);
+    } catch(e) {
+      addToast(e.response?.data?.error || "Login failed.", "error");
+      setPin("");
+    } finally { setPinLoading(false); }
+  };
 
   // Live professor list fetched from API (merges DB + static list)
   const [liveProfList, setLiveProfList] = useState({}); // { dept: [names] }
@@ -80,6 +103,7 @@ export default function TeacherPortal() {
     else if (view === "getid_step1") { setSelectedDept(null); setSearch(""); setView("dept"); }
     else if (view === "dept")    { setView("home"); }
     else if (view === "scanqr")  { setView("home"); }
+    else if (view === "pinlogin") { setView("home"); setPin(""); setPinEmpId(""); }
     else if (view === "face")     { setView("home"); }
     else if (view === "dean")    { setView("home"); }
     else goHome();
@@ -239,6 +263,23 @@ export default function TeacherPortal() {
           </div>
 
 
+          {/* PIN Login */}
+          <div className="mt-4 w-full max-w-2xl">
+            <button onClick={() => setView("pinlogin")}
+              className="w-full glass border border-white/20 rounded-3xl p-8 flex items-center gap-6
+                         hover:bg-white/20 transition-all active:scale-[0.97] group">
+              <div className="w-20 h-20 bg-emerald-600 rounded-3xl flex items-center justify-center shrink-0
+                             group-hover:scale-110 transition-transform shadow-lg">
+                <Lock size={40} className="text-white" />
+              </div>
+              <div className="text-left">
+                <p className="text-white font-display font-bold text-2xl">ID + PIN Login</p>
+                <p className="text-white/60 text-base mt-1">Log in with your Employee ID and 4-digit PIN</p>
+              </div>
+              <ArrowRight size={24} className="text-white/30 group-hover:text-white ml-auto transition-colors shrink-0" />
+            </button>
+          </div>
+
           {/* Admin Dashboard card — same row styling as the others */}
           <div className="mt-4 w-full max-w-2xl">
             <button onClick={() => setView("dean")}
@@ -254,6 +295,80 @@ export default function TeacherPortal() {
               </div>
               <ArrowRight size={24} className="text-white/30 group-hover:text-white ml-auto transition-colors shrink-0" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── PIN LOGIN ───────────────────────────────────────────────────────── */}
+      {view === "pinlogin" && (
+        <div className="flex-1 flex items-center justify-center px-6 py-10 animate-slide-up">
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+                <Lock size={30} className="text-white" />
+              </div>
+              <h2 className="font-display font-bold text-3xl text-white mb-2">ID + PIN Login</h2>
+              <p className="text-white/50">Enter your Employee ID and 4-digit PIN</p>
+            </div>
+            <div className="glass border border-white/20 rounded-3xl p-6 space-y-5 shadow-2xl">
+              {/* Employee ID input */}
+              <div>
+                <label className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-1.5 block">Employee ID</label>
+                <input type="text" value={pinEmpId}
+                  onChange={e => setPinEmpId(e.target.value.toUpperCase())}
+                  placeholder="e.g. T-48291"
+                  className="w-full bg-white/15 border border-white/25 text-white placeholder:text-white/30
+                             font-mono tracking-widest rounded-2xl px-4 py-3 text-lg font-bold
+                             focus:outline-none focus:border-white focus:bg-white/25 transition-all" />
+              </div>
+
+              {/* PIN display */}
+              <div>
+                <label className="text-xs font-semibold text-white/60 uppercase tracking-wide mb-3 block">4-Digit PIN</label>
+                <div className="flex gap-3 justify-center">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="w-14 h-14 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-2xl font-bold text-white">
+                      {pin[i] ? "●" : ""}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Numpad */}
+              <div className="grid grid-cols-3 gap-3">
+                {[1,2,3,4,5,6,7,8,9].map(n => (
+                  <button key={n} onPointerDown={e => { e.preventDefault();
+                    if (pin.length < 4) setPin(p => p + n);
+                  }}
+                    className="h-14 rounded-2xl bg-white/15 border border-white/20 text-white text-xl font-bold active:bg-white/30 transition-colors">
+                    {n}
+                  </button>
+                ))}
+                <button onPointerDown={e => { e.preventDefault(); setPin(p => p.slice(0,-1)); }}
+                  className="h-14 rounded-2xl bg-white/10 border border-white/15 text-white text-xl active:bg-white/20 transition-colors flex items-center justify-center">
+                  <Delete size={20} />
+                </button>
+                <button onPointerDown={e => { e.preventDefault(); if (pin.length < 4) setPin(p => p + "0"); }}
+                  className="h-14 rounded-2xl bg-white/15 border border-white/20 text-white text-xl font-bold active:bg-white/30 transition-colors">
+                  0
+                </button>
+                <button onPointerDown={e => { e.preventDefault(); setPin(""); }}
+                  className="h-14 rounded-2xl bg-white/10 border border-white/15 text-white/50 text-xs active:bg-white/20 transition-colors">
+                  CLR
+                </button>
+              </div>
+
+              <button onClick={handlePinLogin} disabled={pinLoading || pin.length < 4 || !pinEmpId.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700
+                           text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg disabled:opacity-40 active:scale-[0.98]">
+                {pinLoading ? <Spinner size={4} light /> : <Lock size={16} />}
+                {pinLoading ? "Logging in..." : "Login"}
+              </button>
+
+              <p className="text-center text-xs text-white/30">
+                Don't have a PIN yet? Log in via QR code first, then set your PIN in your profile.
+              </p>
+            </div>
           </div>
         </div>
       )}
