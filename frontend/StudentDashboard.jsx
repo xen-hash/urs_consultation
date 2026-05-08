@@ -512,14 +512,14 @@ export default function StudentDashboard() {
                               ? <span className="text-[9px] font-bold text-emerald-300 bg-emerald-500/30 border border-emerald-400/50 px-2 py-0.5 rounded-full backdrop-blur-sm">Available</span>
                               : <span className="text-[9px] font-medium text-white/50">{prof.status}</span>
                             }
-                            {isAvail && prof.slots_left !== null && prof.slots_left !== undefined && (
+                            {prof.day_limit > 0 && prof.slots_left !== null && prof.slots_left !== undefined && (
                               <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm
                                 ${prof.slots_left === 0
                                   ? "text-red-300 bg-red-500/30 border border-red-400/50"
-                                  : prof.slots_left <= 3
+                                  : prof.slots_left <= 2
                                   ? "text-yellow-300 bg-yellow-500/30 border border-yellow-400/50"
                                   : "text-blue-300 bg-blue-500/30 border border-blue-400/50"}`}>
-                                {prof.slots_left === 0 ? "Full" : `${prof.slots_left} left`}
+                                {prof.slots_left === 0 ? "Full" : `${prof.slots_left}/${prof.day_limit} left`}
                               </span>
                             )}
                           </div>

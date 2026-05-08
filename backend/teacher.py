@@ -152,16 +152,16 @@ def get_teacher_logs():
     ) or []
     photo_map = {(r["professor_name"], r["department"]): r.get("photo") for r in photo_rows}
 
-    # Batch-fetch today's pending request counts per professor
+    # Batch-fetch today's consumed slots (pending + done) per professor
     today_ph = datetime.now(PH).strftime("%Y-%m-%d")
-    pending_rows = query(
+    consumed_rows = query(
         """SELECT professor_name, COUNT(*) as cnt
            FROM consultation_requests
-           WHERE status='pending' AND DATE(request_time)=%s
+           WHERE status IN ('pending','done') AND DATE(request_time)=%s
            GROUP BY professor_name""",
         (today_ph,), fetchall=True
     ) or []
-    pending_map = {r["professor_name"]: r["cnt"] for r in pending_rows}
+    pending_map = {r["professor_name"]: r["cnt"] for r in consumed_rows}
 
     result = []
     for dept, profs in merged.items():
@@ -185,8 +185,12 @@ def get_teacher_logs():
             day_limit = 0
             if weekly and isinstance(weekly, dict) and today_key in weekly:
                 day_limit = weekly[today_key].get("limit", 0) if isinstance(weekly[today_key], dict) else 0
-            pending_today = pending_map.get(name, 0)
-            slots_left = max(0, day_limit - pending_today) if day_limit > 0 else None
+            consumed_today = pending_map.get(name, 0)
+            slots_left = max(0, day_limit - consumed_today) if day_limit > 0 else None
+
+            # Auto-override status to Unavailable if quota is reached
+            if day_limit > 0 and slots_left == 0 and status == "Available":
+                status = "Unavailable"
 
             dept_list.append({
                 "name": name, "department": dept, "status": status,
@@ -194,7 +198,7 @@ def get_teacher_logs():
                 "manual": combined["manual"],
                 "weekly_schedule": weekly,
                 "photo": photo_map.get(key),
-                "pending_today": pending_today,
+                "consumed_today": consumed_today,
                 "slots_left": slots_left,
                 "day_limit": day_limit,
             })
@@ -290,7 +294,7 @@ def get_teacher_requests(employee_id):
 @teacher_bp.route("/teacher/requests/<int:req_id>/done", methods=["POST"])
 def mark_done(req_id):
     global _logs_cache
-    _logs_cache["ts"] = 0  # invalidate cache so slots_left updates
+    _logs_cache["ts"] = 0  # invalidate immediately so student sees updated slots
     execute("UPDATE consultation_requests SET `status`='done' WHERE id=%s", (req_id,))
     return jsonify({"message": "Marked as done"})
 
