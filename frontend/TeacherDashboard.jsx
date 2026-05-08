@@ -255,7 +255,7 @@ export default function StudentDashboard() {
     fetchProfessors();
     const iv = setInterval(fetchProfessors, 15000);
     try {
-      socket = io(SOCKET_URL || window.location.origin, { transports: ["websocket"], reconnectionAttempts: 3 });
+      socket = io(SOCKET_URL || window.location.origin, { transports: ["polling"], reconnectionAttempts: 3 });
       socket.on("status_update", fetchProfessors);
     } catch (e) { console.warn("Socket unavailable:", e); }
     return () => { clearInterval(iv); socket?.disconnect(); };

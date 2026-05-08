@@ -19,7 +19,7 @@ app.secret_key = os.getenv("SECRET_KEY", "urs-secret-2024")
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
 CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}})
-socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="gevent")
+socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="gevent", allow_upgrades=False)
 
 PH = pytz.timezone("Asia/Manila")
 
@@ -76,4 +76,4 @@ init_db()
 if __name__ == "__main__":
     PORT = int(os.getenv("PORT", 5000))
     print(f"[URS] Starting server on http://0.0.0.0:{PORT}")
-    socketio.run(app, host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
+    socketio.run(app, host="0.0.0.0", port=PORT, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
 import {
-  ScanFace, Send, RefreshCw, Search, GraduationCap, BookOpen, X,
+  Send, RefreshCw, Search, GraduationCap, BookOpen, X,
   ChevronLeft, Users, Inbox, User, Camera, Download,
   CalendarCheck, Pencil, Delete
 } from "lucide-react";
@@ -255,7 +255,7 @@ export default function StudentDashboard() {
     fetchProfessors();
     const iv = setInterval(fetchProfessors, 15000);
     try {
-      socket = io(SOCKET_URL || window.location.origin, { transports: ["websocket"], reconnectionAttempts: 3 });
+      socket = io(SOCKET_URL || window.location.origin, { transports: ["polling"], reconnectionAttempts: 3 });
       socket.on("status_update", fetchProfessors);
     } catch (e) { console.warn("Socket unavailable:", e); }
     return () => { clearInterval(iv); socket?.disconnect(); };
@@ -322,8 +322,7 @@ export default function StudentDashboard() {
       sessionStorage.setItem("student", JSON.stringify({ ...cur, ...saved }));
       addToast("Profile updated!", "success");
       setEditingProfile(false);
-      setProfileKbField(null);
-    } catch (e) { addToast("Failed to save profile.", "error"); }
+      } catch (e) { addToast("Failed to save profile.", "error"); }
     finally { setSavingProfile(false); }
   };
 
@@ -779,7 +778,7 @@ export default function StudentDashboard() {
                 <div className="bg-white/95 rounded-3xl p-5 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display font-bold text-[#003366]">Edit Information</h3>
-                    <button onClick={() => { setEditingProfile(v => !v); setProfileKbField(null); }}
+                    <button onClick={() => { setEditingProfile(v => !v); }}
                       className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#003366] transition-colors">
                       <Pencil size={12} /> {editingProfile ? "Cancel" : "Edit"}
                     </button>
