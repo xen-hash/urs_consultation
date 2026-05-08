@@ -18,35 +18,19 @@ let _ttsAudio = null;
 const _seenRequestIds = new Set(); // tracks already-announced consultation IDs
 let _ttsPaused = false; // module-level pause flag readable by piperSpeak
 
-async function _ttsPlayNext() {
-  if (_ttsBusy || _ttsQueue.length === 0) return;
+function _ttsPlayNext() {
+  if (_ttsBusy || _ttsQueue.length === 0 || !window.speechSynthesis) return;
   _ttsBusy = true;
   const text = _ttsQueue.shift();
-  try {
-    if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio.src = ""; _ttsAudio = null; }
-    const res = await fetch("/api/tts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    if (res.ok) {
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      _ttsAudio = new Audio(url);
-      await new Promise(resolve => {
-        _ttsAudio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-        _ttsAudio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-        _ttsAudio.play().catch(resolve);
-      });
-    }
-  } catch (_) {}
-  _ttsBusy = false;
-  // Gap between announcements so they don't overlap
-  setTimeout(_ttsPlayNext, 800);
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "en-US"; utter.rate = 0.95; utter.pitch = 1.0;
+  utter.onend = () => { _ttsBusy = false; setTimeout(_ttsPlayNext, 500); };
+  utter.onerror = () => { _ttsBusy = false; setTimeout(_ttsPlayNext, 500); };
+  window.speechSynthesis.speak(utter);
 }
 
 function piperSpeak(text) {
-  if (_ttsPaused) return;
+  if (_ttsPaused || !window.speechSynthesis) return;
   _ttsQueue.push(text);
   _ttsPlayNext();
 }
@@ -243,6 +227,9 @@ export default function DeanDashboard() {
     const iv = setInterval(() => fetchAll(true), 10000);
     return () => clearInterval(iv);
   }, []);
+
+  // Re-fetch when page changes
+  useEffect(() => { fetchAll(true); }, [studentPage, requestPage]);
 
   // Keep module-level flag in sync with React state
   useEffect(() => {
@@ -839,6 +826,29 @@ export default function DeanDashboard() {
                 )}
 
                 {/* ──────────────── REQUESTS TAB ──────────────────────── */}
+
+                        {/* Student Pagination */}
+                        {studentTotal > PAGE_SIZE && (
+                          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+                            <p className="text-xs text-gray-400">
+                              Showing {((studentPage-1)*PAGE_SIZE)+1}–{Math.min(studentPage*PAGE_SIZE, studentTotal)} of {studentTotal}
+                            </p>
+                            <div className="flex gap-2">
+                              <button onClick={() => setStudentPage(p => Math.max(1, p-1))} disabled={studentPage === 1}
+                                className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-all">
+                                ← Prev
+                              </button>
+                              <span className="px-3 py-1.5 text-xs text-gray-500">
+                                {studentPage} / {Math.ceil(studentTotal/PAGE_SIZE) || 1}
+                              </span>
+                              <button onClick={() => setStudentPage(p => p+1)} disabled={studentPage >= Math.ceil(studentTotal/PAGE_SIZE)}
+                                className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-all">
+                                Next →
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                 {activeTab === "requests" && (
                   <div className="anim-slide-up">
                     <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
@@ -950,6 +960,29 @@ export default function DeanDashboard() {
                 )}
 
                 {/* ──────────────── ADD TEACHER TAB ───────────────────── */}
+
+                        {/* Request Pagination */}
+                        {requestTotal > PAGE_SIZE && (
+                          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+                            <p className="text-xs text-gray-400">
+                              Showing {((requestPage-1)*PAGE_SIZE)+1}–{Math.min(requestPage*PAGE_SIZE, requestTotal)} of {requestTotal}
+                            </p>
+                            <div className="flex gap-2">
+                              <button onClick={() => setRequestPage(p => Math.max(1, p-1))} disabled={requestPage === 1}
+                                className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-all">
+                                ← Prev
+                              </button>
+                              <span className="px-3 py-1.5 text-xs text-gray-500">
+                                {requestPage} / {Math.ceil(requestTotal/PAGE_SIZE) || 1}
+                              </span>
+                              <button onClick={() => setRequestPage(p => p+1)} disabled={requestPage >= Math.ceil(requestTotal/PAGE_SIZE)}
+                                className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-all">
+                                Next →
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                 {activeTab === "add-teacher" && (
                   <div className="anim-slide-up max-w-2xl mx-auto space-y-5">
                     <div>

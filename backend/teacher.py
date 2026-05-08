@@ -104,76 +104,82 @@ def _compute_status(log):
 
 # ─── GET ALL PROFESSORS WITH STATUS ──────────────────────────────────────────
 
+# ── In-memory cache for teacher-logs (prevents 60+ DB queries per call) ──────
+import time as _time
+_logs_cache = {"data": None, "ts": 0}
+_LOGS_TTL   = 8  # seconds
+
 @teacher_bp.route("/teacher-logs", methods=["GET"])
 def get_teacher_logs():
-    # Keep PROFESSOR_LIST as the base, only append DB-added teachers not already in it
+    global _logs_cache
+    now = _time.time()
+    if _logs_cache["data"] is not None and now - _logs_cache["ts"] < _LOGS_TTL:
+        return jsonify(_logs_cache["data"])
+
     merged = {dept: list(profs) for dept, profs in PROFESSOR_LIST.items()}
     db_accounts = query(
         "SELECT professor_name, department FROM teacher_accounts ORDER BY department, professor_name",
         fetchall=True
     ) or []
     for row in db_accounts:
-        dept = row["department"]
-        name = row["professor_name"]
-        if dept not in merged:
-            merged[dept] = []
-        if name not in merged[dept]:
-            merged[dept].append(name)
+        dept, name = row["department"], row["professor_name"]
+        if dept not in merged: merged[dept] = []
+        if name not in merged[dept]: merged[dept].append(name)
 
-    # ── Pre-fetch all profile photos in one query (avoids N+1) ───────────────
+    # Batch fetch all status logs in ONE query
+    status_rows = query(
+        """SELECT professor_name, department, `manual`, manual_status
+           FROM teacher_logs WHERE action_type='manual_status'
+           AND id IN (SELECT MAX(id) FROM teacher_logs WHERE action_type='manual_status'
+                      GROUP BY professor_name, department)""",
+        fetchall=True
+    ) or []
+    status_map = {(r["professor_name"], r["department"]): r for r in status_rows}
+
+    # Batch fetch all schedule logs in ONE query
+    sched_rows = query(
+        """SELECT professor_name, department, weekly_schedule
+           FROM teacher_logs WHERE action_type='schedule_update'
+           AND id IN (SELECT MAX(id) FROM teacher_logs WHERE action_type='schedule_update'
+                      GROUP BY professor_name, department)""",
+        fetchall=True
+    ) or []
+    sched_map = {(r["professor_name"], r["department"]): r for r in sched_rows}
+
     photo_rows = query(
         "SELECT professor_name, department, photo FROM teacher_accounts",
         fetchall=True
     ) or []
-    photo_map = {
-        (r["professor_name"], r["department"]): r.get("photo")
-        for r in photo_rows
-    }
+    photo_map = {(r["professor_name"], r["department"]): r.get("photo") for r in photo_rows}
 
     result = []
     for dept, profs in merged.items():
         dept_list = []
         for name in profs:
-            status_log = query(
-                """SELECT `manual`, manual_status FROM teacher_logs
-                   WHERE professor_name=%s AND department=%s
-                   AND action_type='manual_status'
-                   ORDER BY id DESC LIMIT 1""",
-                (name, dept), fetchone=True
-            )
-            schedule_log = query(
-                """SELECT weekly_schedule FROM teacher_logs
-                   WHERE professor_name=%s AND department=%s
-                   AND action_type='schedule_update'
-                   ORDER BY id DESC LIMIT 1""",
-                (name, dept), fetchone=True
-            )
-            combined = {
+            key        = (name, dept)
+            status_log = status_map.get(key)
+            sched_log  = sched_map.get(key)
+            combined   = {
                 "manual":          _to_bool(status_log.get("manual")) if status_log else False,
                 "manual_status":   status_log.get("manual_status") if status_log else None,
-                "weekly_schedule": schedule_log.get("weekly_schedule") if schedule_log else None
+                "weekly_schedule": sched_log.get("weekly_schedule") if sched_log else None,
             }
             status = _compute_status(combined)
             weekly = combined["weekly_schedule"]
             if weekly:
-                try:
-                    weekly = json.loads(weekly) if isinstance(weekly, str) else weekly
-                except Exception:
-                    weekly = None
+                try: weekly = json.loads(weekly) if isinstance(weekly, str) else weekly
+                except: weekly = None
             dept_list.append({
-                "name":          name,
-                "department":    dept,
-                "status":        status,
+                "name": name, "department": dept, "status": status,
                 "manual_status": combined["manual_status"],
-                "manual":        combined["manual"],
+                "manual": combined["manual"],
                 "weekly_schedule": weekly,
-                "photo":         photo_map.get((name, dept)),   # ← profile photo
+                "photo": photo_map.get(key),
             })
         result.append({"department": dept, "professors": dept_list})
+
+    _logs_cache = {"data": result, "ts": now}
     return jsonify(result)
-
-
-# ─── SAVE WEEKLY SCHEDULE ─────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/save-schedule", methods=["POST"])
 def save_schedule():
