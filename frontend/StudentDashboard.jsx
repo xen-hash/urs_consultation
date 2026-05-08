@@ -8,7 +8,6 @@ import {
   CalendarCheck, Pencil, Delete
 } from "lucide-react";
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Spinner } from "./SharedUI.jsx";
-import FaceEnrollModal from "./FaceEnrollModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import { API_BASE, SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
@@ -225,7 +224,6 @@ export default function StudentDashboard() {
   const [showCamera, setShowCamera]         = useState(false);
   const [savingProfile, setSavingProfile]   = useState(false);
   const [studentQR, setStudentQR]           = useState(null);
-  const [enrollModal, setEnrollModal]       = useState(false);
 
   const prevAvail = useRef({});
 
@@ -514,15 +512,34 @@ export default function StudentDashboard() {
 
                         {/* Corner highlights for available professors */}
                         {isAvail && (<>
-                          {/* Top-left corner */}
                           <span className="absolute top-0 left-0 w-5 h-5 border-t-[3px] border-l-[3px] border-emerald-400 rounded-tl-2xl pointer-events-none" />
-                          {/* Top-right corner */}
                           <span className="absolute top-0 right-0 w-5 h-5 border-t-[3px] border-r-[3px] border-emerald-400 rounded-tr-2xl pointer-events-none" />
-                          {/* Bottom-left corner */}
                           <span className="absolute bottom-0 left-0 w-5 h-5 border-b-[3px] border-l-[3px] border-emerald-400 rounded-bl-2xl pointer-events-none" />
-                          {/* Bottom-right corner */}
                           <span className="absolute bottom-0 right-0 w-5 h-5 border-b-[3px] border-r-[3px] border-emerald-400 rounded-br-2xl pointer-events-none" />
                         </>)}
+
+                      {/* Schedule slots */}
+                      {(() => {
+                        const today = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date().getDay()];
+                        const sched = prof.weekly_schedule;
+                        if (!sched || !sched[today] || sched[today].unavailable) return (
+                          <div className="w-full px-2 py-1.5 bg-black/30">
+                            <p className="text-[9px] text-white/40 text-center">No class today</p>
+                          </div>
+                        );
+                        const day = sched[today];
+                        const slots = day.slots || (day.start ? [{ start: day.start, end: day.end }] : []);
+                        return (
+                          <div className="w-full px-2 py-1.5 bg-black/40 space-y-0.5">
+                            {slots.slice(0,2).map((sl, i) => (
+                              <p key={i} className="text-[8px] text-white/70 text-center font-mono">
+                                🕐 {sl.start} – {sl.end}
+                              </p>
+                            ))}
+                            {day.limit && <p className="text-[8px] text-[#ffa000] text-center font-bold">{day.limit} slots</p>}
+                          </div>
+                        );
+                      })()}
                       </button>
                     );
                   })}
@@ -825,59 +842,12 @@ export default function StudentDashboard() {
 
                 </div>
 
-                {/* ── Biometric Enrollment Card ── */}
-                <div className="bg-white/95 rounded-3xl border border-white/30 shadow-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-[#003366] to-[#0055aa] px-5 py-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                      <ScanFace size={20} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="font-display font-bold text-white">Face + Eye Biometric Enrollment</p>
-                      <p className="text-white/60 text-xs">Register your face and eyes for biometric login</p>
-                    </div>
-                  </div>
-                  <div className="p-5 space-y-4">
-                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                      <p className="text-blue-800 text-xs font-bold uppercase tracking-wider mb-2">How It Works</p>
-                      <div className="space-y-1.5 text-blue-700 text-sm">
-                        {["Position your face in the camera — good lighting, eyes visible",
-                          "Capture 5 photos from slightly different angles",
-                          "Click Enroll — your face and eye data will be saved",
-                          "You can now log in using Face + Eye biometrics"].map((s, i) => (
-                          <div key={i} className="flex items-start gap-2">
-                            <span className="shrink-0 w-5 h-5 bg-blue-200 rounded-full flex items-center justify-center text-[10px] font-black mt-0.5">{i+1}</span>
-                            <p>{s}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setEnrollModal(true)}
-                      className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#003366] to-[#0055aa]
-                                 hover:from-[#004080] hover:to-[#0066bb] text-white font-bold py-4 rounded-2xl
-                                 transition-all shadow-lg hover:shadow-xl active:scale-[0.97] text-base">
-                      <ScanFace size={20} />
-                      Enroll My Biometrics
-                    </button>
-                    <p className="text-center text-xs text-gray-400">
-                      Once enrolled, you can log in using Face + Eye biometrics from the Student Portal
-                    </p>
-                  </div>
-                </div>
 
               </div>
             )}
           </div>
         )}
       </div>
-
-      {/* ── Face Enroll Modal ── */}
-      <FaceEnrollModal
-        open={enrollModal}
-        onClose={() => setEnrollModal(false)}
-        students={[{ student_id: student.student_id, full_name: profile.full_name }]}
-      />
-
       {/* ══════════════════════════════════════════════════════════════════════
           REQUEST CONSULTATION — FULL SCREEN
           Layout: fixed column → header (shrink-0) | scroll body (flex-1 min-h-0)

@@ -92,6 +92,8 @@ export default function TeacherDashboard() {
   if (!teacher) { navigate("/teacher"); return null; }
 
   const [tab, setTab]               = useState("requests");
+  const [consultLimit, setConsultLimit] = useState(10);
+  const [accepted, setAccepted]         = useState(new Set());
   const [requests, setRequests]     = useState([]);
   const [ticker, setTicker]         = useState([]);
   const [schedModal, setSchedModal] = useState(false);
@@ -309,13 +311,38 @@ export default function TeacherDashboard() {
               </button>
             </div>
 
+            {/* Consultation Limit Banner */}
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-white/70 text-sm font-semibold">Daily Limit:</span>
+                <input type="number" min={1} max={100} value={consultLimit}
+                  onChange={e => setConsultLimit(Math.max(1, parseInt(e.target.value)||1))}
+                  className="w-16 text-center bg-white/20 border border-white/30 text-white font-bold text-sm rounded-xl px-2 py-1 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                <span className="text-white/50 text-xs">consultations max</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${accepted.size >= consultLimit ? "bg-red-500/20 text-red-300 border border-red-400/30" : "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"}`}>
+                  {accepted.size}/{consultLimit} accepted
+                </span>
+                {accepted.size > 0 && (
+                  <button onClick={() => setAccepted(new Set())}
+                    className="text-xs text-white/40 hover:text-white bg-white/10 px-2 py-1 rounded-lg transition-all">
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+
             {requests.length===0 ? (
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-10 text-center">
                 <ClipboardList size={40} className="text-white/20 mx-auto mb-3"/>
                 <p className="text-white/50 font-semibold">No pending requests</p>
                 <p className="text-white/30 text-sm mt-1">Student requests will appear here automatically</p>
               </div>
-            ) : requests.map(req => (
+            ) : requests.map(req => {
+              const isAccepted = accepted.has(req.id);
+              const isFull = accepted.size >= consultLimit && !isAccepted;
+              return (
               <div key={req.id} className="bg-white/95 rounded-3xl border border-white/30 shadow-xl p-6 hover:shadow-2xl transition-all">
                 <div className="flex items-start gap-5">
                   <div className="w-16 h-16 bg-[#003366] rounded-2xl overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
@@ -350,13 +377,29 @@ export default function TeacherDashboard() {
                       </div>
                     )}
 
+                    {/* Limit warning */}
+                    {isFull && !isAccepted && (
+                      <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-center">
+                        <p className="text-red-600 text-xs font-semibold">⚠️ Daily limit reached ({consultLimit} consultations). Decline or increase the limit to accept more.</p>
+                      </div>
+                    )}
                     <div className="flex gap-3 mt-4 flex-wrap">
+                      {/* Accept toggle */}
+                      <button
+                        onClick={() => setAccepted(prev => { const n = new Set(prev); n.has(req.id) ? n.delete(req.id) : n.add(req.id); return n; })}
+                        disabled={isFull}
+                        className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 disabled:opacity-40
+                          ${isAccepted ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200 hover:border-emerald-300 hover:text-emerald-700"}`}>
+                        <CheckCircle2 size={15}/> {isAccepted ? "✓ Accepted" : "Accept"}
+                      </button>
                       <button onClick={() => { setApptModal(req); setApptForm({date:"",time:"",notes:""}); }}
-                        className="flex items-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
+                        disabled={!isAccepted}
+                        className="flex items-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-40">
                         <CalendarCheck size={15}/> {req.appointment_date?"Edit Appointment":"Set Appointment"}
                       </button>
                       <button onClick={()=>handleDone(req.id)}
-                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
+                        disabled={!isAccepted}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 disabled:opacity-40">
                         <CheckCircle2 size={15}/> Mark Done
                       </button>
                       <button onClick={()=>handleDecline(req.id)}
@@ -367,7 +410,7 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         )}
 
