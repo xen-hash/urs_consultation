@@ -2,13 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { BookOpen, QrCode, ScanLine, ChevronLeft, Search, Users, ArrowRight, Shield, Camera, CreditCard, Pencil, X, Check } from "lucide-react";
-import QRScanner from "./QRScanner.jsx";
-import { FacultyIDCard, WebcamCapture } from "./FacultyIDCard.jsx";
-import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
-import URSBackground from "./URSBackground.jsx";
-import FaceLoginPanel from "./FaceLoginPanel.jsx";
-import { API_BASE, PROFESSOR_LIST, DEPARTMENTS } from "./constants.js";
-import ursLogo from "./URS_LOGO.png";
+import QRScanner from "../components/QRScanner.jsx";
+import { FacultyIDCard, WebcamCapture } from "../components/FacultyIDCard.jsx";
+import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
+import URSBackground from "../components/URSBackground.jsx";
+import { API_BASE, PROFESSOR_LIST, DEPARTMENTS } from "../constants.js";
+import ursLogo from "../URS_LOGO.png";
 
 const DEPT_ICONS = {
   "Civil Engineering Department":       "🏗️",
@@ -81,7 +80,6 @@ export default function TeacherPortal() {
     else if (view === "getid_step1") { setSelectedDept(null); setSearch(""); setView("dept"); }
     else if (view === "dept")    { setView("home"); }
     else if (view === "scanqr")  { setView("home"); }
-    else if (view === "face")     { setView("home"); }
     else if (view === "dean")    { setView("home"); }
     else goHome();
   };
@@ -235,21 +233,6 @@ export default function TeacherPortal() {
               <p className="text-white/60 text-base leading-relaxed">
                 Already have your Faculty ID? Scan your QR code to log in directly to your dashboard
               </p>
-            </button>
-          </div>
-
-          {/* Face + Eye biometric login */}
-          <div className="mt-4 w-full max-w-2xl">
-            <button onClick={() => setView("face")}
-              className="w-full glass border border-white/20 rounded-3xl p-8 flex items-center gap-6
-                         hover:bg-white/20 transition-all active:scale-[0.97] group">
-              <div className="w-20 h-20 bg-[#1e293b] rounded-3xl flex items-center justify-center shrink-0
-                             group-hover:scale-110 transition-transform shadow-lg text-4xl">👁</div>
-              <div className="text-left">
-                <p className="text-white font-display font-bold text-2xl">Face + Eye Login</p>
-                <p className="text-white/60 text-base mt-1">Biometric authentication — face AND eyes must match</p>
-              </div>
-              <ArrowRight size={24} className="text-white/30 group-hover:text-white ml-auto transition-colors shrink-0" />
             </button>
           </div>
 
@@ -536,4 +519,3 @@ export default function TeacherPortal() {
     </URSBackground>
   );
 }
-

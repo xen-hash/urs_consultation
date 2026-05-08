@@ -11,7 +11,6 @@ from teacher import teacher_bp
 from student import student_bp
 from export import export_bp
 from tts import tts_bp
-from biometric import biometric_bp
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder=None)
@@ -19,7 +18,7 @@ app.secret_key = os.getenv("SECRET_KEY", "urs-secret-2024")
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
 CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}})
-socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="gevent")
+socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS, async_mode="eventlet")
 
 PH = pytz.timezone("Asia/Manila")
 
@@ -29,7 +28,6 @@ app.register_blueprint(teacher_bp,   url_prefix="/api")
 app.register_blueprint(student_bp,   url_prefix="/api")
 app.register_blueprint(export_bp,    url_prefix="/api")
 app.register_blueprint(tts_bp,       url_prefix="/api")
-app.register_blueprint(biometric_bp, url_prefix="/api")
 
 # ─── Static QR Codes ──────────────────────────────────────────────────────────
 QR_FOLDER = os.path.join(os.path.dirname(__file__), "static", "qrcodes")

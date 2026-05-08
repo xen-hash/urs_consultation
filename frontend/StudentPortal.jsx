@@ -2,12 +2,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { GraduationCap, QrCode, Hash, ArrowRight, UserPlus, Delete, ChevronLeft, Lock, ShieldCheck } from "lucide-react";
-import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
-import URSBackground from "./URSBackground.jsx";
-import FaceLoginPanel from "./FaceLoginPanel.jsx";
-import { API_BASE } from "./constants.js";
-import ursLogo from "./URS_LOGO.png";
+import QRScanner from "../components/QRScanner.jsx";
+import { Toast, useToastState, Spinner } from "../components/SharedUI.jsx";
+import URSBackground from "../components/URSBackground.jsx";
+import { API_BASE } from "../constants.js";
+import ursLogo from "../URS_LOGO.png";
 
 /* ── Shared styles ─────────────────────────────────────────────────── */
 const PIN_STYLES = `
@@ -334,10 +333,12 @@ export default function StudentPortal() {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError]     = useState(null);
   const [pendingStudent, setPendingStudent] = useState(null);
+  const [kbOpen, setKbOpen]         = useState(false);
 
   const findStudent = async (id) => {
     const sid = (id || studentId).trim();
     if (!sid) return addToast("Please enter your Student ID.", "warning");
+    setKbOpen(false);
     setLoading(true);
     try {
       const res = await axios.post(`${API_BASE}/auth/student/find`, { student_id: sid });
@@ -372,7 +373,7 @@ export default function StudentPortal() {
 
   const resetToHome = () => {
     setMode(null); setStudentId(""); setPendingStudent(null);
-    setPinError(null); setLoading(false); setPinLoading(false);
+    setPinError(null); setLoading(false); setPinLoading(false); setKbOpen(false);
   };
 
   return (
@@ -396,43 +397,11 @@ export default function StudentPortal() {
         </div>
       </nav>
 
-      {/* Page body */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8 overflow-y-auto">
+      {/* Page body — shifts up when keyboard open */}
+      <div
+        className="flex-1 flex items-center justify-center px-4 transition-all duration-300"
+        style={{ paddingTop: "40px", paddingBottom: kbOpen ? "300px" : "40px" }}>
         <div className="w-full max-w-sm">
-
-          {/* Face + Eye Biometric Login */}
-          {mode === "face" && (
-            <div className="animate-slide-up">
-              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-2xl">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 bg-[#1e293b] rounded-xl flex items-center justify-center text-xl shrink-0">👁</div>
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-white">Face + Eye Login</h2>
-                    <p className="text-white/50 text-xs">Both face AND eyes must match to access</p>
-                  </div>
-                </div>
-                <FaceLoginPanel
-                  onSuccess={(data) => {
-                    if (data.type === "student" && data.student) {
-                      sessionStorage.setItem("student", JSON.stringify(data.student));
-                      addToast("Welcome, " + data.student.full_name + "!", "success");
-                      setTimeout(() => navigate("/student/dashboard"), 600);
-                    } else {
-                      addToast("Biometric matched but no student account linked.", "error");
-                    }
-                  }}
-                  onError={(msg) => addToast(msg, "error")}
-                />
-                <button onClick={resetToHome}
-                  className="w-full mt-4 text-white/40 hover:text-white text-sm py-2 transition-colors">
-                  ← Back
-                </button>
-                <p className="text-center text-xs text-white/30 mt-1">
-                  Not enrolled yet? Register first, then enroll from your profile.
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* QR Scan */}
           {mode === "qr" && (
@@ -473,19 +442,30 @@ export default function StudentPortal() {
                 </div>
 
                 <div className="space-y-3">
-                  <input
-                    type="text"
-                    inputMode="text"
-                    autoFocus
-                    value={studentId}
-                    onChange={e => setStudentId(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && findStudent()}
-                    placeholder="e.g. M2022-0247"
-                    maxLength={40}
-                    className="w-full rounded-2xl px-4 py-3.5 bg-white/15 border border-white/25
-                               text-white placeholder:text-white/30 font-mono tracking-wider text-sm
-                               focus:outline-none focus:border-white focus:bg-white/25 transition-all"
-                  />
+                  {/* Tap-to-type field */}
+                  <div
+                    onClick={() => setKbOpen(true)}
+                    className={`w-full rounded-2xl px-4 py-3.5 cursor-pointer transition-all
+                      flex items-center gap-2 min-h-[52px]
+                      ${kbOpen
+                        ? "bg-white/25 border-2 border-white ring-2 ring-white/20"
+                        : "bg-white/15 border border-white/25 hover:bg-white/20 hover:border-white/40"}`}>
+                    <Hash size={15} className="text-white/50 shrink-0" />
+                    <span className={`flex-1 font-mono tracking-wider text-sm
+                      ${studentId ? "text-white" : "text-white/40"}`}>
+                      {studentId || "M2022-0247"}
+                      {kbOpen && (
+                        <span className="inline-block w-0.5 h-4 bg-[#ffa000] ml-0.5 align-middle animate-pulse" />
+                      )}
+                    </span>
+                    {studentId.length > 0 && (
+                      <button
+                        onPointerDown={e => { e.preventDefault(); setStudentId(""); }}
+                        className="text-white/40 hover:text-white transition-colors shrink-0 text-xs">
+                        ✕
+                      </button>
+                    )}
+                  </div>
 
                   <button onClick={() => findStudent()} disabled={loading || !studentId.trim()}
                     className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
@@ -567,20 +547,6 @@ export default function StudentPortal() {
                   <ArrowRight size={16} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
                 </button>
 
-                <button onClick={() => setMode("face")}
-                  className="w-full flex items-center gap-4 p-5 bg-white/10 hover:bg-white/20
-                             border border-white/20 hover:border-white/40 text-white rounded-2xl
-                             transition-all active:scale-[0.98] group">
-                  <div className="w-11 h-11 bg-[#1e293b] rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <span className="text-xl">👁</span>
-                  </div>
-                  <div className="text-left flex-1">
-                    <p className="font-semibold">Face + Eye Login</p>
-                    <p className="text-white/50 text-xs mt-0.5">Biometric authentication</p>
-                  </div>
-                  <ArrowRight size={16} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                </button>
-
                 <Link to="/student/register"
                   className="w-full flex items-center justify-between p-4 bg-white/8 hover:bg-white/15
                              border border-white/15 hover:border-white/30 rounded-2xl transition-all group">
@@ -599,6 +565,20 @@ export default function StudentPortal() {
         </div>
       </div>
 
+      {/* Dim backdrop — tap to close keyboard */}
+      {kbOpen && (
+        <div className="fixed inset-0 z-[99] bg-black/10" onClick={() => setKbOpen(false)} />
+      )}
+
+      {/* Floating keyboard — only shown during manual ID entry */}
+      {mode === "manual" && kbOpen && (
+        <FloatingKeyboard
+          value={studentId}
+          onChange={v => setStudentId(v.slice(0, 40))}
+          onDone={() => setKbOpen(false)}
+          maxLength={40}
+        />
+      )}
     </URSBackground>
   );
 }

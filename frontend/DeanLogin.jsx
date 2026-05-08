@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, Lock, ArrowRight } from "lucide-react";
 import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
-import FaceLoginPanel from "./FaceLoginPanel.jsx";
 
 const DEAN_USER = "dean";
 const DEAN_PASS = "dean2024";
@@ -14,7 +13,6 @@ export default function DeanLogin() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [faceMode, setFaceMode] = useState(false);
 
   const handleLogin = () => {
     if (!username || !password) return addToast("Please fill in all fields.", "warning");
@@ -111,30 +109,7 @@ export default function DeanLogin() {
               {!loading && <ArrowRight size={15} />}
             </button>
 
-            <div className="border-t border-gray-100 pt-3">
-              <button onClick={() => setFaceMode(v => !v)}
-                className="w-full flex items-center justify-center gap-2 text-sm text-gray-500
-                           hover:text-gray-800 transition-colors py-1">
-                <span>👁</span>
-                {faceMode ? "Use username + password instead" : "Or login with Face + Eye biometrics"}
-              </button>
-            </div>
 
-            {faceMode && (
-              <div className="border-t border-gray-100 pt-4">
-                <FaceLoginPanel
-                  onSuccess={(data) => {
-                    if (data.type === "teacher" || data.recognized) {
-                      sessionStorage.setItem("dean", JSON.stringify({ username: "dean", name: "Administrator" }));
-                      navigate("/dean/dashboard");
-                    } else {
-                      addToast("Biometric matched but admin account not linked.", "error");
-                    }
-                  }}
-                  onError={(msg) => addToast(msg, "error")}
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
