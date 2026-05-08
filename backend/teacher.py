@@ -1,5 +1,6 @@
 import json
 import pytz
+import time as _time
 from datetime import datetime, date, timedelta
 from flask import Blueprint, request, jsonify
 from db import query, execute
@@ -8,9 +9,18 @@ from config import PROFESSOR_LIST
 teacher_bp = Blueprint("teacher", __name__)
 PH = pytz.timezone("Asia/Manila")
 
+# ── In-memory caches ──────────────────────────────────────────────────────────
+_logs_cache     = {"data": None, "ts": 0}
+_LOGS_TTL       = 30  # seconds
+
+_students_cache = {"data": None, "ts": 0, "key": ""}
+_STUDENTS_TTL   = 30
+
+_requests_cache = {"data": None, "ts": 0, "key": ""}
+_REQUESTS_TTL   = 15
+
 
 def _serialize_row(row):
-    """Convert date/datetime/timedelta values to JSON-safe strings."""
     if not row:
         return row
     result = {}
@@ -20,7 +30,6 @@ def _serialize_row(row):
         elif isinstance(v, date):
             result[k] = v.isoformat()
         elif isinstance(v, timedelta):
-            # MySQL TIME columns come back as timedelta
             total = int(v.total_seconds())
             h, rem = divmod(total, 3600)
             m, s   = divmod(rem, 60)
@@ -36,12 +45,6 @@ WORKING_END   = "19:30"
 
 
 def _to_bool(val):
-    """
-    Safely convert MySQL manual flag to Python bool.
-    MySQL BIT(1) returns bytes — b'\x00' is truthy in Python,
-    so we must convert properly: b'\x00' → False, b'\x01' → True.
-    Also handles int, bool, and None.
-    """
     if val is None:
         return False
     if isinstance(val, (bytes, bytearray)):
@@ -65,11 +68,9 @@ def _compute_status(log):
     if log is None:
         return "Unavailable"
 
-    # 1. Manual override is HIGHEST priority — beats working hours
     if log.get("manual"):
         return log.get("manual_status", "Unavailable")
 
-    # 2. Working hours gate (only for schedule-based status)
     now_ph       = datetime.now(PH)
     current_time = now_ph.time()
     day_name     = now_ph.strftime("%A").lower()
@@ -80,7 +81,6 @@ def _compute_status(log):
         if not (work_start <= current_time <= work_end):
             return "Unavailable"
 
-    # Weekly schedule
     weekly = log.get("weekly_schedule")
     if isinstance(weekly, str):
         try:
@@ -92,22 +92,26 @@ def _compute_status(log):
         day_sched = weekly[day_name]
         if not day_sched or day_sched.get("unavailable"):
             return "Unavailable"
+        # Support multiple slots
+        slots = day_sched.get("slots") if isinstance(day_sched, dict) else None
+        if slots:
+            for slot in slots:
+                start = _parse_time(slot.get("start"))
+                end   = _parse_time(slot.get("end"))
+                if start and end and start <= current_time <= end:
+                    return "Available"
+            return "Unavailable"
+        # Legacy single slot
         start = _parse_time(day_sched.get("start"))
         end   = _parse_time(day_sched.get("end"))
         if start and end and start <= current_time <= end:
             return "Available"
         return "Unavailable"
 
-    # Fallback
     return "Unavailable"
 
 
-# ─── GET ALL PROFESSORS WITH STATUS ──────────────────────────────────────────
-
-# ── In-memory cache for teacher-logs (prevents 60+ DB queries per call) ──────
-import time as _time
-_logs_cache = {"data": None, "ts": 0}
-_LOGS_TTL   = 30  # seconds — Railway US latency optimization
+# ─── TEACHER LOGS WITH CACHE ──────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher-logs", methods=["GET"])
 def get_teacher_logs():
@@ -126,7 +130,6 @@ def get_teacher_logs():
         if dept not in merged: merged[dept] = []
         if name not in merged[dept]: merged[dept].append(name)
 
-    # Batch fetch all status logs in ONE query
     status_rows = query(
         """SELECT professor_name, department, `manual`, manual_status
            FROM teacher_logs WHERE action_type='manual_status'
@@ -136,7 +139,6 @@ def get_teacher_logs():
     ) or []
     status_map = {(r["professor_name"], r["department"]): r for r in status_rows}
 
-    # Batch fetch all schedule logs in ONE query
     sched_rows = query(
         """SELECT professor_name, department, weekly_schedule
            FROM teacher_logs WHERE action_type='schedule_update'
@@ -152,7 +154,6 @@ def get_teacher_logs():
     ) or []
     photo_map = {(r["professor_name"], r["department"]): r.get("photo") for r in photo_rows}
 
-    # Batch-fetch today's consumed slots (pending + done) per professor
     today_ph = datetime.now(PH).strftime("%Y-%m-%d")
     consumed_rows = query(
         """SELECT professor_name, COUNT(*) as cnt
@@ -180,15 +181,17 @@ def get_teacher_logs():
             if weekly:
                 try: weekly = json.loads(weekly) if isinstance(weekly, str) else weekly
                 except: weekly = None
-            # Calculate slots remaining for today
-            today_key = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"][datetime.now(PH).weekday()]
+
+            today_key = DAYS[datetime.now(PH).weekday()]
             day_limit = 0
             if weekly and isinstance(weekly, dict) and today_key in weekly:
-                day_limit = weekly[today_key].get("limit", 0) if isinstance(weekly[today_key], dict) else 0
+                day_sched = weekly[today_key]
+                if isinstance(day_sched, dict):
+                    day_limit = day_sched.get("limit", 0) or 0
+
             consumed_today = pending_map.get(name, 0)
             slots_left = max(0, day_limit - consumed_today) if day_limit > 0 else None
 
-            # Auto-override status to Unavailable if quota is reached
             if day_limit > 0 and slots_left == 0 and status == "Available":
                 status = "Unavailable"
 
@@ -209,11 +212,10 @@ def get_teacher_logs():
 
 
 # ─── RESET DAILY CONSULTATION COUNT ──────────────────────────────────────────
+
 @teacher_bp.route("/teacher/reset-daily-count", methods=["POST"])
 def reset_daily_count():
     global _logs_cache, _requests_cache, _students_cache
-    _requests_cache["ts"] = 0
-    _students_cache["ts"] = 0
     data = request.json or {}
     employee_id = (data.get("employee_id") or "").strip()
     if not employee_id:
@@ -233,10 +235,16 @@ def reset_daily_count():
         (teacher["professor_name"], today_ph)
     )
     _logs_cache["ts"] = 0
+    _requests_cache["ts"] = 0
+    _students_cache["ts"] = 0
     return jsonify({"message": "Daily count reset. New session started."})
+
+
+# ─── SAVE WEEKLY SCHEDULE ─────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/save-schedule", methods=["POST"])
 def save_schedule():
+    global _logs_cache
     data = request.json or {}
     employee_id     = data.get("employee_id")
     weekly_schedule = data.get("weekly_schedule")
@@ -259,6 +267,7 @@ def save_schedule():
         (teacher["professor_name"], teacher["department"],
          json.dumps(weekly_schedule), now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
+    _logs_cache["ts"] = 0
     return jsonify({"message": "Schedule saved successfully"})
 
 
@@ -266,6 +275,7 @@ def save_schedule():
 
 @teacher_bp.route("/teacher/save-manual-status", methods=["POST"])
 def save_manual_status():
+    global _logs_cache
     data = request.json or {}
     employee_id   = data.get("employee_id")
     manual_status = data.get("manual_status")
@@ -292,10 +302,11 @@ def save_manual_status():
          manual_status if is_manual else None,
          now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
+    _logs_cache["ts"] = 0
     return jsonify({"message": "Status updated"})
 
 
-# ─── GET REQUESTS FOR TEACHER ────────────────────────────────────────────────
+# ─── GET REQUESTS FOR TEACHER ─────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/requests/<employee_id>", methods=["GET"])
 def get_teacher_requests(employee_id):
@@ -343,53 +354,51 @@ def decline_request(req_id):
 
 @teacher_bp.route("/teacher/clear-logs", methods=["POST"])
 def clear_logs():
+    global _logs_cache, _requests_cache, _students_cache
     execute("DELETE FROM teacher_logs")
     execute("DELETE FROM consultation_requests")
+    _logs_cache["ts"] = 0
+    _requests_cache["ts"] = 0
+    _students_cache["ts"] = 0
     return jsonify({"message": "All logs cleared"})
 
 
-# ─── DEAN ENDPOINTS ───────────────────────────────────────────────────────────
-
-_students_cache = {"data": None, "ts": 0, "key": ""}
-_STUDENTS_TTL = 30
+# ─── DEAN: STUDENTS ───────────────────────────────────────────────────────────
 
 @teacher_bp.route("/dean/students", methods=["GET"])
 def dean_get_students():
     global _students_cache
-    page   = max(1, int(request.args.get("page", 1)))
-    limit  = min(50, int(request.args.get("limit", 20)))
+    page      = max(1, int(request.args.get("page", 1)))
+    limit     = min(50, int(request.args.get("limit", 20)))
     cache_key = f"{page}:{limit}"
-    now = _time.time()
+    now       = _time.time()
     if _students_cache["data"] is not None and now - _students_cache["ts"] < _STUDENTS_TTL and _students_cache["key"] == cache_key:
         return jsonify(_students_cache["data"])
-    page   = max(1, int(request.args.get("page", 1)))
-    limit  = min(50, int(request.args.get("limit", 20)))
     offset = (page - 1) * limit
     rows   = query(
         "SELECT * FROM students ORDER BY created_at DESC LIMIT %s OFFSET %s",
         (limit, offset), fetchall=True
     )
     total  = query("SELECT COUNT(*) as c FROM students", fetchone=True)["c"]
-    resp = {
+    resp   = {
         "data":  [_serialize_row(r) for r in (rows or [])],
         "page":  page, "limit": limit, "total": total,
         "pages": -(-total // limit)
     }
-    _students_cache = {"data": resp, "ts": _time.time(), "key": cache_key}
+    _students_cache = {"data": resp, "ts": now, "key": cache_key}
     return jsonify(resp)
 
 
-_requests_cache = {"data": None, "ts": 0, "key": ""}
-_REQUESTS_TTL = 15
+# ─── DEAN: REQUESTS ───────────────────────────────────────────────────────────
 
 @teacher_bp.route("/dean/requests", methods=["GET"])
 def dean_get_requests():
     global _requests_cache
-    page   = max(1, int(request.args.get("page", 1)))
-    limit  = min(50, int(request.args.get("limit", 20)))
-    status = request.args.get("status", "")
+    page      = max(1, int(request.args.get("page", 1)))
+    limit     = min(50, int(request.args.get("limit", 20)))
+    status    = request.args.get("status", "")
     cache_key = f"{page}:{limit}:{status}"
-    now = _time.time()
+    now       = _time.time()
     if _requests_cache["data"] is not None and now - _requests_cache["ts"] < _REQUESTS_TTL and _requests_cache["key"] == cache_key:
         return jsonify(_requests_cache["data"])
     offset = (page - 1) * limit
@@ -410,20 +419,26 @@ def dean_get_requests():
         "page":  page, "limit": limit, "total": total,
         "pages": -(-total // limit)
     }
-    _requests_cache = {"data": resp, "ts": _time.time(), "key": cache_key}
+    _requests_cache = {"data": resp, "ts": now, "key": cache_key}
     return jsonify(resp)
 
+
+# ─── DEAN: GET TEACHERS ───────────────────────────────────────────────────────
 
 @teacher_bp.route("/dean/teachers", methods=["GET"])
 def dean_get_teachers():
     rows = query("SELECT * FROM teacher_accounts ORDER BY created_at DESC", fetchall=True)
     for r in (rows or []):
         r.pop("password_hash", None)
+        r.pop("pin_hash", None)
     return jsonify([_serialize_row(r) for r in (rows or [])])
 
 
+# ─── DEAN: ADD TEACHER ────────────────────────────────────────────────────────
+
 @teacher_bp.route("/dean/add-teacher", methods=["POST"])
 def dean_add_teacher():
+    global _students_cache
     data           = request.json or {}
     professor_name = (data.get("professor_name") or "").strip()
     department     = (data.get("department") or "").strip()
@@ -449,6 +464,7 @@ def dean_add_teacher():
            VALUES (%s, %s, %s, %s)""",
         (employee_id, professor_name, department, pw_hash)
     )
+    _logs_cache["ts"] = 0
     return jsonify({
         "message": "Teacher added successfully",
         "employee_id": employee_id,
@@ -461,6 +477,7 @@ def dean_add_teacher():
 
 @teacher_bp.route("/teacher/update-name", methods=["POST"])
 def update_teacher_name():
+    global _logs_cache
     data = request.json or {}
     employee_id = data.get("employee_id")
     new_name    = (data.get("new_name") or "").strip()
@@ -475,18 +492,12 @@ def update_teacher_name():
     if not teacher:
         return jsonify({"error": "Teacher not found"}), 404
 
-    execute(
-        "UPDATE teacher_accounts SET professor_name=%s WHERE employee_id=%s",
-        (new_name, employee_id)
-    )
-    execute(
-        "UPDATE teacher_logs SET professor_name=%s WHERE professor_name=%s AND department=%s",
-        (new_name, teacher["professor_name"], teacher["department"])
-    )
-    execute(
-        "UPDATE consultation_requests SET professor_name=%s WHERE professor_name=%s",
-        (new_name, teacher["professor_name"])
-    )
+    execute("UPDATE teacher_accounts SET professor_name=%s WHERE employee_id=%s", (new_name, employee_id))
+    execute("UPDATE teacher_logs SET professor_name=%s WHERE professor_name=%s AND department=%s",
+            (new_name, teacher["professor_name"], teacher["department"]))
+    execute("UPDATE consultation_requests SET professor_name=%s WHERE professor_name=%s",
+            (new_name, teacher["professor_name"]))
+    _logs_cache["ts"] = 0
     return jsonify({
         "message": "Name updated successfully",
         "new_name": new_name,
@@ -528,6 +539,7 @@ def get_teacher_profile(employee_id):
 
 @teacher_bp.route("/teacher/requests/<int:req_id>/appoint", methods=["POST"])
 def set_appointment(req_id):
+    global _requests_cache
     data = request.json or {}
     appt_date  = data.get("appointment_date")
     appt_time  = data.get("appointment_time")
@@ -545,4 +557,24 @@ def set_appointment(req_id):
         (appt_date, appt_time, appt_notes,
          now_ph.strftime("%Y-%m-%d %H:%M:%S"), req_id)
     )
+    _requests_cache["ts"] = 0
     return jsonify({"message": "Appointment set successfully"})
+
+
+# ─── TEACHER PIN LOGIN & SET PIN ─────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/set-pin", methods=["POST"])
+def teacher_set_pin():
+    import bcrypt as _bcrypt
+    data        = request.json or {}
+    employee_id = (data.get("employee_id") or "").strip()
+    pin         = str(data.get("pin") or "").strip()
+
+    if not employee_id or not pin:
+        return jsonify({"error": "Employee ID and PIN required"}), 400
+    if len(pin) != 4 or not pin.isdigit():
+        return jsonify({"error": "PIN must be exactly 4 digits"}), 400
+
+    pin_hash = _bcrypt.hashpw(pin.encode(), _bcrypt.gensalt()).decode()
+    execute("UPDATE teacher_accounts SET pin_hash=%s WHERE employee_id=%s", (pin_hash, employee_id))
+    return jsonify({"message": "PIN set successfully"})
