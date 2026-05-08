@@ -85,6 +85,8 @@ export default function TeacherDashboard() {
   const [savingAppt, setSavingAppt] = useState(false);
   const [consultLimit, setConsultLimit] = useState(10);
   const [accepted, setAccepted]         = useState(new Set());
+  const [reqPage, setReqPage]           = useState(1);
+  const REQ_PAGE_SIZE = 10;
 
   // Profile state
   const [profilePhoto, setProfilePhoto] = useState(teacher.photo || null);
@@ -322,7 +324,11 @@ export default function TeacherDashboard() {
                 <p className="text-white/50 font-semibold">No pending requests</p>
                 <p className="text-white/30 text-sm mt-1">Student requests will appear here automatically</p>
               </div>
-            ) : requests.map(req => {
+            ) : (() => {
+              const pagedReqs = requests.slice((reqPage-1)*REQ_PAGE_SIZE, reqPage*REQ_PAGE_SIZE);
+              const reqTotalPages = Math.ceil(requests.length / REQ_PAGE_SIZE);
+              return (<>
+                {pagedReqs.map(req => {
               const isAccepted = accepted.has(req.id);
               const isFull = accepted.size >= consultLimit && !isAccepted;
               return (
@@ -363,19 +369,30 @@ export default function TeacherDashboard() {
                       </div>
                     )}
                     <div className="flex gap-3 mt-4 flex-wrap">
-                      <button onClick={() => setAccepted(prev => { const n = new Set(prev); n.has(req.id) ? n.delete(req.id) : n.add(req.id); return n; })}
-                        disabled={isFull}
-                        className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 disabled:opacity-40
-                          ${isAccepted ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200"}`}>
+                      <button
+                        onClick={() => {
+                          if (isAccepted) {
+                            setAccepted(prev => { const n = new Set(prev); n.delete(req.id); return n; });
+                          } else if (!isFull) {
+                            setAccepted(prev => { const n = new Set(prev); n.add(req.id); return n; });
+                          } else {
+                            addToast(`Daily limit of ${consultLimit} reached. Increase limit or decline a request first.`, "warning");
+                          }
+                        }}
+                        className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95
+                          ${isAccepted
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            : isFull
+                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                            : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200"}`}>
                         <CheckCircle2 size={15}/> {isAccepted ? "✓ Accepted" : "Accept"}
                       </button>
-                      <button onClick={() => { setApptModal(req); setApptForm({date:"",time:"",notes:""}); }}
-                        disabled={!isAccepted}
-                        className="flex items-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-40">
+                      <button onClick={() => { setApptModal(req); setApptForm({date: req.appointment_date||"", time: req.appointment_time||"", notes: req.appointment_notes||""}); }}
+                        className="flex items-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
                         <CalendarCheck size={15}/> {req.appointment_date?"Edit Appointment":"Set Appointment"}
                       </button>
-                      <button onClick={()=>handleDone(req.id)} disabled={!isAccepted}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 disabled:opacity-40">
+                      <button onClick={()=>handleDone(req.id)}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
                         <CheckCircle2 size={15}/> Mark Done
                       </button>
                       <button onClick={()=>handleDecline(req.id)}
@@ -388,6 +405,21 @@ export default function TeacherDashboard() {
               </div>
               );
             })}
+                {/* Requests Pagination */}
+                {reqTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
+                    <p className="text-white/40 text-xs">{((reqPage-1)*REQ_PAGE_SIZE)+1}–{Math.min(reqPage*REQ_PAGE_SIZE,requests.length)} of {requests.length}</p>
+                    <div className="flex gap-2">
+                      <button onClick={()=>setReqPage(p=>Math.max(1,p-1))} disabled={reqPage===1}
+                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
+                      <span className="px-2 py-1.5 text-xs text-white/40">{reqPage}/{reqTotalPages}</span>
+                      <button onClick={()=>setReqPage(p=>Math.min(reqTotalPages,p+1))} disabled={reqPage===reqTotalPages}
+                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">Next →</button>
+                    </div>
+                  </div>
+                )}
+              </>);
+            })()}
           </div>
         )}
 

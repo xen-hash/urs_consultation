@@ -289,6 +289,8 @@ def get_teacher_requests(employee_id):
 
 @teacher_bp.route("/teacher/requests/<int:req_id>/done", methods=["POST"])
 def mark_done(req_id):
+    global _logs_cache
+    _logs_cache["ts"] = 0  # invalidate cache so slots_left updates
     execute("UPDATE consultation_requests SET `status`='done' WHERE id=%s", (req_id,))
     return jsonify({"message": "Marked as done"})
 
@@ -297,6 +299,8 @@ def mark_done(req_id):
 
 @teacher_bp.route("/teacher/requests/<int:req_id>/decline", methods=["POST"])
 def decline_request(req_id):
+    global _logs_cache
+    _logs_cache["ts"] = 0  # invalidate cache so slots_left updates
     execute("UPDATE consultation_requests SET `status`='declined' WHERE id=%s", (req_id,))
     return jsonify({"message": "Request declined"})
 
