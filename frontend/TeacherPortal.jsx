@@ -80,6 +80,7 @@ export default function TeacherPortal() {
     else if (view === "getid_step1") { setSelectedDept(null); setSearch(""); setView("dept"); }
     else if (view === "dept")    { setView("home"); }
     else if (view === "scanqr")  { setView("home"); }
+    else if (view === "face")     { setView("home"); }
     else if (view === "dean")    { setView("home"); }
     else goHome();
   };
@@ -131,6 +132,7 @@ export default function TeacherPortal() {
   const handleTeacherQRScan = async (value) => {
     try {
       const res = await axios.post(`${API_BASE}/auth/teacher/qr-login`, { employee_id: value });
+      sessionStorage.removeItem("student"); // clear any student session
       sessionStorage.setItem("teacher", JSON.stringify(res.data.teacher));
       addToast("Welcome back, " + res.data.teacher.professor_name + "!", "success");
       setTimeout(() => navigate("/teacher/dashboard"), 600);

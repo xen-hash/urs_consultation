@@ -278,6 +278,7 @@ export default function StudentPortal() {
   };
 
   const doLogin = (student) => {
+    sessionStorage.removeItem("teacher"); // clear any teacher session
     sessionStorage.setItem("student", JSON.stringify(student));
     addToast("Welcome, " + student.full_name + "!", "success");
     setTimeout(() => navigate("/student/dashboard"), 500);
