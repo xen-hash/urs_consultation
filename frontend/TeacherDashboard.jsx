@@ -372,25 +372,31 @@ export default function TeacherDashboard() {
                       <button
                         onClick={() => {
                           if (isAccepted) {
-                            setAccepted(prev => { const n = new Set(prev); n.delete(req.id); return n; });
+                            addToast("This request has already been accepted.", "info");
                           } else if (!isFull) {
                             setAccepted(prev => { const n = new Set(prev); n.add(req.id); return n; });
                           } else {
                             addToast(`Daily limit of ${consultLimit} reached. Increase limit or decline a request first.`, "warning");
                           }
                         }}
-                        className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95
+                        className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all
                           ${isAccepted
-                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            ? "bg-emerald-600 text-white cursor-default"
                             : isFull
                             ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                            : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200"}`}>
+                            : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200 active:scale-95"}`}>
                         <CheckCircle2 size={15}/> {isAccepted ? "✓ Accepted" : "Accept"}
                       </button>
-                      <button onClick={() => { setApptModal(req); setApptForm({date: req.appointment_date||"", time: req.appointment_time||"", notes: req.appointment_notes||""}); }}
-                        className="flex items-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
-                        <CalendarCheck size={15}/> {req.appointment_date?"Edit Appointment":"Set Appointment"}
-                      </button>
+                      {req.appointment_date ? (
+                        <div className="flex items-center gap-2 bg-[#ffa000]/20 border border-[#ffa000]/40 text-[#cc7a00] text-sm font-semibold px-5 py-2.5 rounded-xl">
+                          <CalendarCheck size={15}/> Appointment Set ✓
+                        </div>
+                      ) : (
+                        <button onClick={() => { setApptModal(req); setApptForm({date:"",time:"",notes:""}); }}
+                          className="flex items-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
+                          <CalendarCheck size={15}/> Set Appointment
+                        </button>
+                      )}
                       <button onClick={()=>handleDone(req.id)}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
                         <CheckCircle2 size={15}/> Mark Done
