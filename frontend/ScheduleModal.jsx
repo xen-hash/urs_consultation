@@ -7,7 +7,7 @@ const DEFAULT_SLOT = () => ({ start: "08:00 AM", end: "09:00 AM" });
 
 const DEFAULT_SCHEDULE = () =>
   Object.fromEntries(
-    DAYS.map(d => [d, { unavailable: false, slots: [DEFAULT_SLOT()], limit: 10 }])
+    DAYS.map(d => [d, { unavailable: false, slots: [DEFAULT_SLOT()], limit: 0 }])
   );
 
 function normalizeSchedule(raw) {
@@ -22,13 +22,13 @@ function normalizeSchedule(raw) {
       result[day] = {
         unavailable: !!d.unavailable,
         slots: [{ start: d.start, end: d.end || "05:00 PM" }],
-        limit: d.limit || 10,
+        limit: typeof d.limit === "number" ? d.limit : 0,
       };
     } else {
       result[day] = {
         unavailable: !!d.unavailable,
         slots: Array.isArray(d.slots) && d.slots.length > 0 ? d.slots : [DEFAULT_SLOT()],
-        limit: d.limit || 10,
+        limit: typeof d.limit === "number" ? d.limit : 0,
       };
     }
   }
@@ -94,9 +94,10 @@ export default function ScheduleModal({ open, onClose, onSave, initial }) {
                       <span className="text-xs text-gray-500 font-medium">Limit:</span>
                       <input
                         type="number" min={1} max={50}
-                        value={s.limit}
-                        onChange={e => updateField(day, "limit", Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-14 text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-[#003366]/30 text-center font-bold"
+                        value={s.limit === 0 ? "" : s.limit}
+                        onChange={e => updateField(day, "limit", e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value) || 0))}
+                        placeholder="0"
+                        className="w-16 text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-[#003366]/30 text-center font-bold"
                       />
                       <span className="text-xs text-gray-400">slots</span>
                     </div>
@@ -115,9 +116,7 @@ export default function ScheduleModal({ open, onClose, onSave, initial }) {
                 <div className="px-4 pb-3 space-y-2">
                   {s.slots.map((slot, idx) => (
                     <div key={idx} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-blue-100">
-                      <span className="text-xs text-gray-400 font-medium w-16">
-                        {idx === 0 ? "Morning" : idx === 1 ? "Noon" : idx === 2 ? "Afternoon" : "Evening"}
-                      </span>
+                      <span className="text-xs text-gray-400 font-bold w-5">{idx+1}.</span>
                       <Clock size={13} className="text-[#003366]" />
                       <select value={slot.start}
                         onChange={e => updateSlot(day, idx, "start", e.target.value)}
