@@ -206,6 +206,8 @@ export default function StudentDashboard() {
   const [selectedDept, setSelectedDept] = useState(null);
   const [search, setSearch]             = useState("");
   const [filter, setFilter]             = useState("all");
+  const [profPage, setProfPage]           = useState(1);
+  const PROF_PAGE_SIZE = 9;
   const [reqModal, setReqModal]         = useState(null);
   const [reqForm, setReqForm]           = useState({ purpose: "", category: "Academic" });
   const [submitting, setSubmitting]     = useState(false);
@@ -272,6 +274,9 @@ export default function StudentDashboard() {
 
   const submitRequest = async () => {
     if (!reqForm.purpose.trim()) return addToast("Please describe your purpose.", "warning");
+    // Check locally if student already has a pending request to this professor
+    const hasPending = myRequests.some(r => r.professor_name === reqModal.name && r.status === "pending");
+    if (hasPending) return addToast(`You already have a pending request with ${reqModal.name}. Wait for it to be resolved first.`, "warning");
     setSubmitting(true);
     try {
       await axios.post(`${API_BASE}/consultation/request`, {
@@ -334,13 +339,15 @@ export default function StudentDashboard() {
 
   const totalAvail    = departments.reduce((a, d) => a + d.professors.filter(p => p.status === "Available").length, 0);
   const currentDept   = selectedDept ? departments.find(d => d.department === selectedDept) : null;
-  const filteredProfs = currentDept
+  const allFilteredProfs = currentDept
     ? currentDept.professors.filter(p => {
         const ms = p.name.toLowerCase().includes(search.toLowerCase());
         const mf = filter === "all" || p.status === "Available";
         return ms && mf;
       })
     : [];
+  const filteredProfs = allFilteredProfs.slice((profPage-1)*PROF_PAGE_SIZE, profPage*PROF_PAGE_SIZE);
+  const profTotalPages = Math.ceil(allFilteredProfs.length / PROF_PAGE_SIZE);
 
   const TABS = [
     { id: "home",    icon: <GraduationCap size={16} />, label: "Faculty" },
@@ -543,6 +550,20 @@ export default function StudentDashboard() {
                     );
                   })}
                 </div>
+
+                {/* Prof Pagination */}
+                {profTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
+                    <p className="text-white/40 text-xs">{((profPage-1)*PROF_PAGE_SIZE)+1}–{Math.min(profPage*PROF_PAGE_SIZE,allFilteredProfs.length)} of {allFilteredProfs.length}</p>
+                    <div className="flex gap-2">
+                      <button onClick={()=>setProfPage(p=>Math.max(1,p-1))} disabled={profPage===1}
+                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
+                      <span className="px-2 py-1.5 text-xs text-white/40">{profPage}/{profTotalPages}</span>
+                      <button onClick={()=>setProfPage(p=>Math.min(profTotalPages,p+1))} disabled={profPage===profTotalPages}
+                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">Next →</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="animate-slide-up">
@@ -557,7 +578,7 @@ export default function StudentDashboard() {
                     const pct   = total > 0 ? Math.round((avail / total) * 100) : 0;
                     return (
                       <button key={dept.department}
-                        onClick={() => { setSelectedDept(dept.department); setSearch(""); setFilter("all"); }}
+                        onClick={() => { setSelectedDept(dept.department); setSearch(""); setFilter("all"); setProfPage(1); }}
                         className="group flex flex-col gap-3 p-5 text-left bg-white/10 hover:bg-white/18
                                    backdrop-blur-xl border border-white/20 hover:border-white/35 rounded-3xl
                                    transition-all active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-2xl

@@ -37,15 +37,24 @@ def submit_request():
 
     now_ph = datetime.now(PH)
 
-    # Duplicate prevention — 5-second window
-    five_sec_ago = (now_ph - timedelta(seconds=5)).strftime("%Y-%m-%d %H:%M:%S")
+    # Check if student already has a pending/active request to this professor
+    existing = query(
+        """SELECT id FROM consultation_requests
+           WHERE student_id=%s AND professor_name=%s AND status='pending'""",
+        (data["student_id"], data["professor_name"]), fetchone=True
+    )
+    if existing:
+        return jsonify({"error": "You already have a pending consultation request with this professor. Please wait for it to be resolved first."}), 429
+
+    # Spam prevention — 3-second window
+    three_sec_ago = (now_ph - timedelta(seconds=3)).strftime("%Y-%m-%d %H:%M:%S")
     dup = query(
         """SELECT id FROM consultation_requests
-           WHERE student_id=%s AND professor_name=%s AND created_at > %s""",
-        (data["student_id"], data["professor_name"], five_sec_ago), fetchone=True
+           WHERE student_id=%s AND created_at > %s""",
+        (data["student_id"], three_sec_ago), fetchone=True
     )
     if dup:
-        return jsonify({"error": "Duplicate request — please wait a moment."}), 429
+        return jsonify({"error": "Please wait a moment before submitting another request."}), 429
 
     prof = query(
         "SELECT id FROM professors WHERE name=%s AND department=%s",
