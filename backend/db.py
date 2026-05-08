@@ -1,18 +1,15 @@
 import pymysql
 import pymysql.cursors
-from pymysql.connections import Connection
 from config import DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT
-import threading
 
-# ── Simple connection pool ────────────────────────────────────────────────────
-_pool = []
-_pool_lock = threading.Lock()
-_POOL_SIZE = 5
 
-def _new_conn() -> Connection:
+def get_connection():
     return pymysql.connect(
-        host=DB_HOST, user=DB_USER, password=DB_PASS,
-        database=DB_NAME, port=DB_PORT,
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASS,
+        database=DB_NAME,
+        port=DB_PORT,
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=True,
@@ -21,29 +18,6 @@ def _new_conn() -> Connection:
         write_timeout=30,
     )
 
-def get_connection() -> Connection:
-    with _pool_lock:
-        while _pool:
-            conn = _pool.pop()
-            try:
-                conn.ping(reconnect=True)
-                return conn
-            except Exception:
-                pass
-    return _new_conn()
-
-def release_connection(conn):
-    try:
-        with _pool_lock:
-            if len(_pool) < _POOL_SIZE:
-                _pool.append(conn)
-                return
-    except Exception:
-        pass
-    try:
-        conn.close()
-    except Exception:
-        pass
 
 def query(sql, args=None, fetchone=False, fetchall=False, commit=False):
     conn = get_connection()
@@ -60,7 +34,8 @@ def query(sql, args=None, fetchone=False, fetchall=False, commit=False):
             conn.commit()
             return cur.lastrowid
     finally:
-        release_connection(conn)
+        conn.close()
+
 
 def execute(sql, args=None):
     conn = get_connection()
@@ -70,4 +45,4 @@ def execute(sql, args=None):
             conn.commit()
             return cur.lastrowid
     finally:
-        release_connection(conn)
+        conn.close()
