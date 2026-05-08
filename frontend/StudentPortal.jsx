@@ -235,92 +235,6 @@ function KbKey({ label, icon, onPress, accent, danger, dark, narrow, cls = "" })
   );
 }
 
-function FloatingKeyboard({ value = "", onChange, onDone, maxLength = 40 }) {
-  const [caps, setCaps]       = useState(false);
-  const [shift, setShift]     = useState(false);
-  const [numMode, setNumMode] = useState(false); // default letters — numbers via 123 toggle
-  const bspRef = useRef(null);
-
-  const lr1 = (caps || shift) ? L_ROW1.map(k => k.toUpperCase()) : L_ROW1;
-  const lr2 = (caps || shift) ? L_ROW2.map(k => k.toUpperCase()) : L_ROW2;
-  const lr3 = (caps || shift) ? L_ROW3.map(k => k.toUpperCase()) : L_ROW3;
-
-  const tap = useCallback((char) => {
-    if (value.length >= maxLength) return;
-    onChange(value + char);
-    if (shift) setShift(false);
-  }, [value, onChange, shift, maxLength]);
-
-  const backspace = useCallback(() => { onChange(value.slice(0, -1)); }, [value, onChange]);
-  useEffect(() => () => clearInterval(bspRef.current), []);
-
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-[100] select-none"
-      style={{
-        background: "linear-gradient(160deg,#10192a 0%,#0d1520 100%)",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-        animation: "kbUp 0.2s cubic-bezier(0.22,1,0.36,1) both",
-      }}>
-      <style>{`@keyframes kbUp{from{transform:translateY(100%);opacity:0}to{transform:none;opacity:1}}`}</style>
-      <div className="px-3 pt-3 pb-3 flex flex-col gap-[8px]">
-        {numMode ? (
-          <>
-            <div className="flex gap-[6px]">
-              {N_ROW1.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-            <div className="flex gap-[6px]">
-              {N_ROW2.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-            <div className="flex gap-[6px]">
-              <KbKey label="#+=" dark narrow onPress={() => {}} />
-              <div className="flex flex-1 gap-[6px]">
-                {N_ROW3.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-              </div>
-              <KbKey icon={<Delete size={17} />} danger narrow onPress={backspace} />
-            </div>
-            <div className="flex gap-[6px]">
-              <KbKey label="ABC" dark narrow onPress={() => setNumMode(false)} />
-              <KbKey label="space" dark onPress={() => tap(" ")} />
-              <KbKey label="." dark narrow onPress={() => tap(".")} />
-              <KbKey label="Done ✓" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex gap-[6px]">
-              {lr1.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-            <div className="flex gap-[6px] px-[3.8%]">
-              {lr2.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-            <div className="flex gap-[6px]">
-              <KbKey
-                label={caps ? "⇪" : "⇧"}
-                dark={!caps && !shift} accent={caps || shift}
-                narrow
-                onPress={() => {
-                  if (caps)       { setCaps(false); setShift(false); }
-                  else if (shift) { setCaps(true);  setShift(false); }
-                  else            { setShift(true); }
-                }}
-              />
-              <div className="flex flex-1 gap-[6px]">
-                {lr3.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-              </div>
-              <KbKey icon={<Delete size={17} />} danger narrow onPress={backspace} />
-            </div>
-            <div className="flex gap-[6px]">
-              <KbKey label="123" dark narrow onPress={() => setNumMode(true)} />
-              <KbKey label="space" dark onPress={() => tap(" ")} />
-              <KbKey label="." dark narrow onPress={() => tap(".")} />
-              <KbKey label="Done ✓" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ── Main Portal ───────────────────────────────────────────────────── */
 export default function StudentPortal() {
@@ -333,12 +247,10 @@ export default function StudentPortal() {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError]     = useState(null);
   const [pendingStudent, setPendingStudent] = useState(null);
-  const [kbOpen, setKbOpen]         = useState(false);
 
   const findStudent = async (id) => {
     const sid = (id || studentId).trim();
     if (!sid) return addToast("Please enter your Student ID.", "warning");
-    setKbOpen(false);
     setLoading(true);
     try {
       const res = await axios.post(`${API_BASE}/auth/student/find`, { student_id: sid });
@@ -373,7 +285,6 @@ export default function StudentPortal() {
 
   const resetToHome = () => {
     setMode(null); setStudentId(""); setPendingStudent(null);
-    setPinError(null); setLoading(false); setPinLoading(false); setKbOpen(false);
   };
 
   return (
@@ -400,7 +311,7 @@ export default function StudentPortal() {
       {/* Page body — shifts up when keyboard open */}
       <div
         className="flex-1 flex items-center justify-center px-4 transition-all duration-300"
-        style={{ paddingTop: "40px", paddingBottom: kbOpen ? "300px" : "40px" }}>
+        style={{ paddingTop: "40px", paddingBottom: "40px" }}>
         <div className="w-full max-w-sm">
 
 
@@ -428,7 +339,6 @@ export default function StudentPortal() {
             </div>
           )}
 
-          {/* Manual ID — tap-target + floating keyboard */}
           {mode === "manual" && (
             <div className="animate-slide-up">
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-2xl">
@@ -443,28 +353,21 @@ export default function StudentPortal() {
                 </div>
 
                 <div className="space-y-3">
-                  {/* Tap-to-type field */}
-                  <div
-                    onClick={() => setKbOpen(true)}
-                    className={`w-full rounded-2xl px-4 py-3.5 cursor-pointer transition-all
-                      flex items-center gap-2 min-h-[52px]
-                      ${kbOpen
-                        ? "bg-white/25 border-2 border-white ring-2 ring-white/20"
-                        : "bg-white/15 border border-white/25 hover:bg-white/20 hover:border-white/40"}`}>
+                  <div className="flex items-center gap-2 bg-white/15 border border-white/25 rounded-2xl px-4 py-3.5 focus-within:bg-white/25 focus-within:border-white transition-all">
                     <Hash size={15} className="text-white/50 shrink-0" />
-                    <span className={`flex-1 font-mono tracking-wider text-sm
-                      ${studentId ? "text-white" : "text-white/40"}`}>
-                      {studentId || "M2022-0247"}
-                      {kbOpen && (
-                        <span className="inline-block w-0.5 h-4 bg-[#ffa000] ml-0.5 align-middle animate-pulse" />
-                      )}
-                    </span>
+                    <input
+                      type="text"
+                      autoFocus
+                      value={studentId}
+                      onChange={e => setStudentId(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && findStudent()}
+                      placeholder="M2022-0247"
+                      maxLength={40}
+                      className="flex-1 bg-transparent text-white placeholder:text-white/30 font-mono tracking-wider text-sm focus:outline-none"
+                    />
                     {studentId.length > 0 && (
-                      <button
-                        onPointerDown={e => { e.preventDefault(); setStudentId(""); }}
-                        className="text-white/40 hover:text-white transition-colors shrink-0 text-xs">
-                        ✕
-                      </button>
+                      <button onPointerDown={e => { e.preventDefault(); setStudentId(""); }}
+                        className="text-white/40 hover:text-white transition-colors shrink-0 text-xs">✕</button>
                     )}
                   </div>
 
@@ -567,20 +470,6 @@ export default function StudentPortal() {
         </div>
       </div>
 
-      {/* Dim backdrop — tap to close keyboard */}
-      {kbOpen && (
-        <div className="fixed inset-0 z-[99] bg-black/10" onClick={() => setKbOpen(false)} />
-      )}
-
-      {/* Floating keyboard — only shown during manual ID entry */}
-      {mode === "manual" && kbOpen && (
-        <FloatingKeyboard
-          value={studentId}
-          onChange={v => setStudentId(v.slice(0, 40))}
-          onDone={() => setKbOpen(false)}
-          maxLength={40}
-        />
-      )}
     </URSBackground>
   );
 }
