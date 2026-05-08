@@ -255,7 +255,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchProfessors();
-    const iv = setInterval(fetchProfessors, 15000);
+    const iv = setInterval(fetchProfessors, 30000);
     try {
       socket = io(SOCKET_URL || window.location.origin, { transports: ["polling"], reconnectionAttempts: 3 });
       socket.on("status_update", fetchProfessors);

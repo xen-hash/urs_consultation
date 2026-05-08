@@ -141,7 +141,7 @@ export default function TeacherDashboard() {
       _teacherSeenIds.clear();
       piperSpeak(`Welcome, ${getFirstName(teacher.professor_name)}!`);
     }
-    const iv = setInterval(fetchRequests, 8000);
+    const iv = setInterval(fetchRequests, 15000);
     try {
       socket = io(SOCKET_URL || window.location.origin, { transports:["polling"], reconnectionAttempts:3 });
       socket.on("consultation_update", fetchRequests);

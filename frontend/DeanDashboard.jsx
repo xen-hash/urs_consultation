@@ -224,7 +224,7 @@ export default function DeanDashboard() {
     _seenRequestIds.clear();
     fetchAll();
     piperSpeak("Welcome, Administrator!");
-    const iv = setInterval(() => fetchAll(true), 10000);
+    const iv = setInterval(() => fetchAll(true), 30000);
     return () => clearInterval(iv);
   }, []);
 

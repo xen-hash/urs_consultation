@@ -107,7 +107,7 @@ def _compute_status(log):
 # ── In-memory cache for teacher-logs (prevents 60+ DB queries per call) ──────
 import time as _time
 _logs_cache = {"data": None, "ts": 0}
-_LOGS_TTL   = 8  # seconds
+_LOGS_TTL   = 30  # seconds — Railway US latency optimization
 
 @teacher_bp.route("/teacher-logs", methods=["GET"])
 def get_teacher_logs():
@@ -211,7 +211,9 @@ def get_teacher_logs():
 # ─── RESET DAILY CONSULTATION COUNT ──────────────────────────────────────────
 @teacher_bp.route("/teacher/reset-daily-count", methods=["POST"])
 def reset_daily_count():
-    global _logs_cache
+    global _logs_cache, _requests_cache, _students_cache
+    _requests_cache["ts"] = 0
+    _students_cache["ts"] = 0
     data = request.json or {}
     employee_id = (data.get("employee_id") or "").strip()
     if not employee_id:
@@ -319,8 +321,9 @@ def get_teacher_requests(employee_id):
 
 @teacher_bp.route("/teacher/requests/<int:req_id>/done", methods=["POST"])
 def mark_done(req_id):
-    global _logs_cache
-    _logs_cache["ts"] = 0  # invalidate immediately so student sees updated slots
+    global _logs_cache, _requests_cache
+    _logs_cache["ts"] = 0
+    _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET `status`='done' WHERE id=%s", (req_id,))
     return jsonify({"message": "Marked as done"})
 
@@ -329,8 +332,9 @@ def mark_done(req_id):
 
 @teacher_bp.route("/teacher/requests/<int:req_id>/decline", methods=["POST"])
 def decline_request(req_id):
-    global _logs_cache
-    _logs_cache["ts"] = 0  # invalidate cache so slots_left updates
+    global _logs_cache, _requests_cache
+    _logs_cache["ts"] = 0
+    _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET `status`='declined' WHERE id=%s", (req_id,))
     return jsonify({"message": "Request declined"})
 
@@ -346,8 +350,18 @@ def clear_logs():
 
 # ─── DEAN ENDPOINTS ───────────────────────────────────────────────────────────
 
+_students_cache = {"data": None, "ts": 0, "key": ""}
+_STUDENTS_TTL = 30
+
 @teacher_bp.route("/dean/students", methods=["GET"])
 def dean_get_students():
+    global _students_cache
+    page   = max(1, int(request.args.get("page", 1)))
+    limit  = min(50, int(request.args.get("limit", 20)))
+    cache_key = f"{page}:{limit}"
+    now = _time.time()
+    if _students_cache["data"] is not None and now - _students_cache["ts"] < _STUDENTS_TTL and _students_cache["key"] == cache_key:
+        return jsonify(_students_cache["data"])
     page   = max(1, int(request.args.get("page", 1)))
     limit  = min(50, int(request.args.get("limit", 20)))
     offset = (page - 1) * limit
@@ -356,19 +370,29 @@ def dean_get_students():
         (limit, offset), fetchall=True
     )
     total  = query("SELECT COUNT(*) as c FROM students", fetchone=True)["c"]
-    return jsonify({
+    resp = {
         "data":  [_serialize_row(r) for r in (rows or [])],
         "page":  page, "limit": limit, "total": total,
         "pages": -(-total // limit)
-    })
+    }
+    _students_cache = {"data": resp, "ts": _time.time(), "key": cache_key}
+    return jsonify(resp)
 
+
+_requests_cache = {"data": None, "ts": 0, "key": ""}
+_REQUESTS_TTL = 15
 
 @teacher_bp.route("/dean/requests", methods=["GET"])
 def dean_get_requests():
+    global _requests_cache
     page   = max(1, int(request.args.get("page", 1)))
     limit  = min(50, int(request.args.get("limit", 20)))
-    offset = (page - 1) * limit
     status = request.args.get("status", "")
+    cache_key = f"{page}:{limit}:{status}"
+    now = _time.time()
+    if _requests_cache["data"] is not None and now - _requests_cache["ts"] < _REQUESTS_TTL and _requests_cache["key"] == cache_key:
+        return jsonify(_requests_cache["data"])
+    offset = (page - 1) * limit
     if status:
         rows  = query(
             "SELECT * FROM consultation_requests WHERE status=%s ORDER BY created_at DESC LIMIT %s OFFSET %s",
@@ -381,11 +405,13 @@ def dean_get_requests():
             (limit, offset), fetchall=True
         )
         total = query("SELECT COUNT(*) as c FROM consultation_requests", fetchone=True)["c"]
-    return jsonify({
+    resp = {
         "data":  [_serialize_row(r) for r in (rows or [])],
         "page":  page, "limit": limit, "total": total,
         "pages": -(-total // limit)
-    })
+    }
+    _requests_cache = {"data": resp, "ts": _time.time(), "key": cache_key}
+    return jsonify(resp)
 
 
 @teacher_bp.route("/dean/teachers", methods=["GET"])
