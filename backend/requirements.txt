@@ -2,8 +2,10 @@ flask
 flask-socketio
 flask-cors
 pg8000
-# pymysql is only needed by migrate_mysql_to_postgres.py, the one-off
-# script that copies the old MySQL data across. Safe to drop afterwards.
+# pymysql is only needed by migrate_mysql_to_postgres.py, the one-off script
+# that copies old MySQL data across. Not used by the app itself. If you migrate
+# from a MySQL 8 server using caching_sha2_password, also `pip install
+# cryptography` — it is not needed otherwise, and not needed for Postgres.
 pymysql
 pytz
 openpyxl
@@ -12,7 +14,10 @@ Pillow
 bcrypt
 python-dotenv
 requests
-cryptography
 gevent
 gevent-websocket
 gunicorn
+# gunicorn's gevent worker imports packaging.version, but gunicorn does not
+# declare packaging as a dependency. Without this the worker class fails to
+# load and the app won't boot on a clean install.
+packaging

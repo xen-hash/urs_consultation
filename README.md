@@ -27,7 +27,8 @@ https://supabase.com works too: Settings → Database → Connection string → 
 You do **not** need to run any schema SQL — the app creates its own tables and
 seeds the professor list the first time it starts.
 
-> Migrating from the old MySQL database? See **MIGRATION_POSTGRES.md**.
+> Full setup and troubleshooting: **MIGRATION_POSTGRES.md**.
+> Starting fresh is fine — migrating old MySQL data is an optional extra step there.
 
 ---
 
