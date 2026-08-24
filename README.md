@@ -13,12 +13,21 @@ urs-consultation-deploy/
 
 ---
 
-## STEP 1: Deploy MySQL on Railway
+## STEP 1: Create a free PostgreSQL database
 
-1. Go to https://railway.app → New Project → Add MySQL
-2. Click the MySQL service → **Variables** tab
-3. Copy: `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_PORT`
-4. Open **Query** tab and run your DB schema SQL to create tables
+The backend runs on PostgreSQL. Use a provider whose free tier doesn't expire:
+
+1. Go to https://neon.tech → sign up → **Create project**
+2. Pick the region closest to you (Singapore is nearest the Philippines)
+3. Copy the **Connection string** from the dashboard — it looks like
+   `postgresql://user:pass@ep-xyz.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`
+
+https://supabase.com works too: Settings → Database → Connection string → URI.
+
+You do **not** need to run any schema SQL — the app creates its own tables and
+seeds the professor list the first time it starts.
+
+> Migrating from the old MySQL database? See **MIGRATION_POSTGRES.md**.
 
 ---
 
@@ -29,14 +38,13 @@ urs-consultation-deploy/
 3. Set these **Environment Variables** in Railway:
 
 ```
-DB_HOST       = (from MySQL service MYSQL_HOST)
-DB_USER       = (from MySQL service MYSQL_USER)
-DB_PASS       = (from MySQL service MYSQL_PASSWORD)
-DB_NAME       = consultation_system
-DB_PORT       = (from MySQL service MYSQL_PORT)
+DATABASE_URL  = (the Postgres connection string from STEP 1)
 SECRET_KEY    = (generate a random string, e.g. openssl rand -hex 32)
 FRONTEND_URL  = https://your-app.vercel.app   ← fill in after Vercel deploy
 ```
+
+If you previously set `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` / `DB_PORT`,
+delete them — `DATABASE_URL` replaces all five.
 
 4. Railway will auto-detect the `Procfile` and run `python app.py`
 5. Once deployed, copy your Railway URL: `https://xxx.up.railway.app`

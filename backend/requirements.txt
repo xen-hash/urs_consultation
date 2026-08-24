@@ -1,6 +1,9 @@
 flask
 flask-socketio
 flask-cors
+pg8000
+# pymysql is only needed by migrate_mysql_to_postgres.py, the one-off
+# script that copies the old MySQL data across. Safe to drop afterwards.
 pymysql
 pytz
 openpyxl
