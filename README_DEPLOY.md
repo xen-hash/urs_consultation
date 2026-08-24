@@ -28,7 +28,8 @@ Copy the **connection string** it gives you — one value, used in Step 2:
 postgresql://user:password@ep-xyz.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
 ```
 
-> Migrating from the old MySQL database? See **MIGRATION_POSTGRES.md**.
+> Full setup and troubleshooting: **MIGRATION_POSTGRES.md**.
+> Starting fresh is fine — migrating old MySQL data is an optional extra step there.
 
 ---
 
