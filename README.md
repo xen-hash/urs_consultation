@@ -75,6 +75,36 @@ Go back to Railway → your backend service → Environment Variables:
 
 ---
 
+## INSTALLING IT AS AN APP (PWA)
+
+The frontend is a Progressive Web App, so students and faculty can install it
+instead of visiting a URL — it gets its own icon, opens without browser tabs or
+an address bar, and keeps working when the campus WiFi drops.
+
+**Android / Chrome / Edge** — open the site and tap the **Install App** button in
+the top bar (or the browser's "Install" prompt).
+**iPhone / iPad (Safari)** — tap **Install App**, then Share → Add to Home Screen.
+**Desktop Chrome / Edge** — click the install icon in the address bar.
+
+Once installed:
+
+- Long-pressing the icon opens shortcuts straight to **Student**, **Teacher**,
+  **Dean's Office**, and **Kiosk**.
+- The app shell (pages, styles, logo) is cached, so it still opens with no
+  connection — an amber bar says *"You're offline"* and live data resumes on
+  reconnect.
+- Consultation data is never served from cache. Faculty status, requests, and
+  schedules always come from the backend so nothing shows stale availability.
+- After a redeploy, open tabs show *"A new version is available — Reload"*
+  rather than swapping out mid-consultation.
+
+Requirements: the site must be served over **HTTPS** (Vercel already is) — the
+service worker, camera-based face login, and install prompt all need it.
+Nothing extra to configure: `npm run build` generates the service worker and
+manifest.
+
+---
+
 ## NOTES
 
 - **Biometric (Face Recognition)**: Requires the C++ biometric server running locally.

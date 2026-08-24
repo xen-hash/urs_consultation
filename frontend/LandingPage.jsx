@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import URSBackground from "./URSBackground.jsx";
-import { GraduationCap, BookOpen, ArrowRight, Wifi, Shield, Monitor } from "lucide-react";
+import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Monitor } from "lucide-react";
+import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
 
 export default function LandingPage() {
+  const online = useOnlineStatus();
+
   return (
     <URSBackground>
 
@@ -20,9 +23,19 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 text-white/50 text-xs">
-            <Wifi size={12} className="text-emerald-400" />
-            <span className="text-emerald-400 font-semibold">Live</span>
+            {online ? (
+              <>
+                <Wifi size={12} className="text-emerald-400" />
+                <span className="text-emerald-400 font-semibold">Live</span>
+              </>
+            ) : (
+              <>
+                <WifiOff size={12} className="text-amber-400" />
+                <span className="text-amber-400 font-semibold">Offline</span>
+              </>
+            )}
           </span>
+          <InstallAppButton />
           <Link to="/kiosk"
             className="flex items-center gap-1.5 text-white/60 hover:text-white text-sm
                        bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-xl transition-all">
