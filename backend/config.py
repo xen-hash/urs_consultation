@@ -25,11 +25,11 @@ def _clean_url(raw: str) -> str:
     return url
 
 
+# Variable names we accept a connection string under, in priority order.
+_URL_VARIABLES = ("DATABASE_URL", "POSTGRES_URL", "POSTGRESQL_URL")
+
 DATABASE_URL = _clean_url(
-    os.getenv("DATABASE_URL")
-    or os.getenv("POSTGRES_URL")
-    or os.getenv("POSTGRESQL_URL")
-    or ""
+    next((os.environ[n] for n in _URL_VARIABLES if os.environ.get(n)), "")
 )
 
 
@@ -108,13 +108,46 @@ print(
     f"sslmode={DB_SSLMODE} (from {_CONFIG_SOURCE})"
 )
 
+def _looks_like_a_connection_string(value: str) -> bool:
+    return _clean_url(value).lower().startswith(("postgresql://", "postgres://"))
+
+
+def _misnamed_candidates():
+    """Env vars holding a Postgres URL under a name we don't read.
+
+    A variable called DATA_URL instead of DATABASE_URL is invisible to this
+    app and shows up only as a failed connection to 127.0.0.1. Name the
+    variable rather than making the user guess; values are never printed.
+    """
+    return sorted(
+        name
+        for name, value in os.environ.items()
+        if name not in _URL_VARIABLES and value and _looks_like_a_connection_string(value)
+    )
+
+
 if _CONFIG_SOURCE == "built-in defaults":
     print(
         "[DB] WARNING: neither DATABASE_URL nor DB_HOST is set, so that target "
-        "is a local database that almost certainly does not exist here. Set "
-        "DATABASE_URL to your Postgres connection string — check the variable "
-        "is spelled exactly DATABASE_URL."
+        "is a local database that almost certainly does not exist here."
     )
+    print(f"[DB] Looked for: {', '.join(_URL_VARIABLES)}")
+    _candidates = _misnamed_candidates()
+    if _candidates:
+        print(
+            f"[DB] But these variables DO hold a Postgres connection string: "
+            f"{', '.join(_candidates)}"
+        )
+        print(
+            f"[DB] -> Rename {_candidates[0]} to DATABASE_URL and redeploy. "
+            f"The value looks right; only the name is wrong."
+        )
+    else:
+        print(
+            "[DB] No variable anywhere in the environment holds a Postgres "
+            "connection string. Add DATABASE_URL with the connection string "
+            "from your Neon or Supabase dashboard."
+        )
 
 # How many pooled connections to keep open. Reconnecting to a managed Postgres
 # costs a full TLS handshake on every query, which is why we hold a few open.
