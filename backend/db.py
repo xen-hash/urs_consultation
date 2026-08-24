@@ -35,14 +35,23 @@ def _is_connection_error(exc):
 
 
 def connect():
-    """Open a brand-new connection to Postgres."""
+    """Open a brand-new connection to Postgres.
+
+    Follows libpq's sslmode semantics: under 'prefer' (the default) a server
+    that refuses TLS is retried in plaintext by pg8000 itself. Under 'require'
+    or the verify-* modes a refusal is fatal, so TLS never silently downgrades.
+    """
+    return _open(build_ssl_context())
+
+
+def _open(ssl_context):
     conn = pg8000.dbapi.connect(
         host=DB_HOST,
         user=DB_USER,
         password=DB_PASS or None,
         database=DB_NAME,
         port=DB_PORT,
-        ssl_context=build_ssl_context(),
+        ssl_context=ssl_context,
         timeout=10,
         tcp_keepalive=True,
         application_name="urs-consultation",

@@ -58,10 +58,14 @@ else:
 DB_SSLMODE = (os.getenv("DB_SSLMODE") or _SSLMODE or "").strip().lower()
 
 if not DB_SSLMODE:
-    # Managed Postgres (Neon, Supabase, Render, Aiven) requires TLS; a local
-    # server normally has none configured, so don't force it there.
+    # Mirror libpq's own default of 'prefer': try TLS, but fall back to a
+    # plaintext connection if the server declines it. Managed Postgres (Neon,
+    # Supabase, Aiven) always accepts TLS; a database reached over a provider's
+    # private network — Render's internal database URL, for one — refuses it,
+    # and demanding TLS there fails with "Server refuses SSL".
     local = DB_HOST in ("127.0.0.1", "localhost", "::1", "")
-    DB_SSLMODE = "disable" if local else "require"
+    DB_SSLMODE = "disable" if local else "prefer"
+
 
 # How many pooled connections to keep open. Reconnecting to a managed Postgres
 # costs a full TLS handshake on every query, which is why we hold a few open.
@@ -70,8 +74,22 @@ DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", 3))
 
 
 def build_ssl_context():
-    """Return an SSLContext for DB_SSLMODE, or None when TLS is off."""
-    if DB_SSLMODE in ("", "disable", "allow", "prefer_off", "off", "false"):
+    """Map DB_SSLMODE onto pg8000's tri-state ssl_context argument.
+
+    pg8000 reads this parameter as three distinct cases, and the difference
+    between False and None is easy to get wrong:
+
+        False       -> never negotiate TLS
+        None        -> try TLS, fall back to plaintext if the server refuses
+                       (exactly libpq's sslmode=prefer)
+        SSLContext  -> try TLS, raise "Server refuses SSL" if refused
+
+    Returning None for 'disable' would therefore still connect over TLS.
+    """
+    if DB_SSLMODE in ("", "disable", "off", "false"):
+        return False
+    if DB_SSLMODE in ("prefer", "allow"):
+        # Let pg8000 do the try-then-fall-back dance itself.
         return None
     ctx = ssl.create_default_context()
     if DB_SSLMODE in ("verify-ca", "verify-full"):
@@ -79,9 +97,9 @@ def build_ssl_context():
         ctx.check_hostname = DB_SSLMODE == "verify-full"
         ctx.verify_mode = ssl.CERT_REQUIRED
     else:
-        # 'require' / 'prefer': encrypt, but don't validate the certificate.
-        # This is what libpq does for sslmode=require, and it is what makes
-        # Supabase's pooler certificates work out of the box.
+        # 'require': encrypt, but don't validate the certificate. This is what
+        # libpq does for sslmode=require, and it is what makes Supabase's
+        # pooler certificates work out of the box.
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
     return ctx
