@@ -1,6 +1,6 @@
 import io
 import pytz
-from datetime import datetime
+from datetime import datetime, time as dtime, timedelta
 from flask import Blueprint, request, send_file, jsonify
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -37,6 +37,19 @@ def _style_row(ws, row_num, num_cols, alt=False):
         cell.alignment = Alignment(vertical="center")
 
 
+def _manila_day_utc_bounds(now_ph):
+    """The UTC half-open range [start, end) covering the Manila calendar day.
+
+    created_at is stored in UTC, so filtering it by a Manila date string used
+    to drop everything logged between 00:00 and 08:00 Manila — including the
+    06:00-08:00 slice of the working day.
+    """
+    start_ph = PH.localize(datetime.combine(now_ph.date(), dtime.min))
+    end_ph   = start_ph + timedelta(days=1)
+    return (start_ph.astimezone(pytz.utc).replace(tzinfo=None),
+            end_ph.astimezone(pytz.utc).replace(tzinfo=None))
+
+
 def _auto_width(ws):
     for col in ws.columns:
         max_len = max((len(str(c.value or "")) for c in col), default=10)
@@ -68,10 +81,11 @@ def export_data():
     sum_row = 6
     for dept in PROFESSOR_LIST:
         if export_type == "today":
-            today_str = now_ph.strftime("%Y-%m-%d")
+            day_start, day_end = _manila_day_utc_bounds(now_ph)
             rows = query(
-                "SELECT status FROM consultation_requests WHERE department=%s AND created_at::date = %s::date",
-                (dept, today_str), fetchall=True
+                "SELECT status FROM consultation_requests "
+                "WHERE department=%s AND created_at >= %s AND created_at < %s",
+                (dept, day_start, day_end), fetchall=True
             )
         else:
             rows = query(
@@ -98,12 +112,12 @@ def export_data():
         ws.row_dimensions[1].height = 20
 
         if export_type == "today":
-            today_str = now_ph.strftime("%Y-%m-%d")
+            day_start, day_end = _manila_day_utc_bounds(now_ph)
             rows = query(
                 """SELECT * FROM consultation_requests
-                   WHERE department=%s AND created_at::date = %s::date
+                   WHERE department=%s AND created_at >= %s AND created_at < %s
                    ORDER BY created_at DESC""",
-                (dept, today_str), fetchall=True
+                (dept, day_start, day_end), fetchall=True
             )
         else:
             rows = query(
@@ -129,10 +143,11 @@ def export_data():
                   "Manual Override", "Log Time"]
     _style_header(ws_tl, tl_headers)
     if export_type == "today":
-        today_str = now_ph.strftime("%Y-%m-%d")
+        day_start, day_end = _manila_day_utc_bounds(now_ph)
         tl_rows = query(
-            "SELECT * FROM teacher_logs WHERE created_at::date = %s::date ORDER BY created_at DESC",
-            (today_str,), fetchall=True
+            "SELECT * FROM teacher_logs "
+            "WHERE created_at >= %s AND created_at < %s ORDER BY created_at DESC",
+            (day_start, day_end), fetchall=True
         )
     else:
         tl_rows = query("SELECT * FROM teacher_logs ORDER BY created_at DESC", fetchall=True)

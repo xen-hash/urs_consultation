@@ -48,6 +48,25 @@ def connect():
         application_name="urs-consultation",
     )
     conn.autocommit = True
+
+    # created_at columns default to CURRENT_TIMESTAMP, which resolves against
+    # the *session's* timezone. Pin it to UTC so those timestamps mean the same
+    # thing on every host — Neon, Supabase and the old Railway MySQL all ran
+    # UTC, so migrated rows line up with new ones.
+    #
+    # Timezone convention for this database:
+    #   created_at, enrolled_at  -> UTC   (written by the database clock)
+    #   request_time, log_time,
+    #   appointment_set_at       -> Manila (written by the app clock)
+    # Anything comparing against created_at must convert to UTC first.
+    cur = conn.cursor()
+    try:
+        cur.execute("SET TIME ZONE 'UTC'")
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
     return conn
 
 

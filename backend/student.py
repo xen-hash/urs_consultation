@@ -1,5 +1,5 @@
 import pytz
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from db import query, execute
 
@@ -46,8 +46,11 @@ def submit_request():
     if existing:
         return jsonify({"error": "You already have a pending consultation request with this professor. Please wait for it to be resolved first."}), 429
 
-    # Spam prevention — 3-second window
-    three_sec_ago = (now_ph - timedelta(seconds=3)).strftime("%Y-%m-%d %H:%M:%S")
+    # Spam prevention — 3-second window.
+    # created_at is written by the database clock in UTC, so the cutoff has to
+    # be UTC too. Deriving it from Manila time put it 8 hours in the future,
+    # which meant this guard never matched anything.
+    three_sec_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=3)
     dup = query(
         """SELECT id FROM consultation_requests
            WHERE student_id=%s AND created_at > %s::timestamp""",

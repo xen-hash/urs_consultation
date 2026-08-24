@@ -149,6 +149,32 @@ Two fixes came along with the move:
   `eventlet` isn't in `requirements.txt` and `app.py` configures Socket.IO with
   `async_mode="gevent"`. Both now say `gevent`, matching `nixpacks.toml`.
 
+---
+
+## Timezone convention
+
+Two clocks write to these tables, and mixing them up caused two live bugs
+(both fixed):
+
+| Column | Clock | Written by |
+|---|---|---|
+| `created_at`, `enrolled_at` | **UTC** | the database (`DEFAULT CURRENT_TIMESTAMP`) |
+| `request_time`, `log_time`, `appointment_set_at` | **Manila** | the app |
+
+`db.py` pins every connection to `SET TIME ZONE 'UTC'`, so `created_at` means
+the same thing on Neon, on Supabase and on a laptop. Anything comparing
+against `created_at` must convert to UTC first — see
+`_manila_day_utc_bounds()` in `export.py`.
+
+> If your old MySQL server was **not** running in UTC, the `created_at` values
+> copied across will be offset by however far its clock was from UTC.
+> `request_time` is unaffected (the app always wrote Manila time into it), and
+> the professor dashboard's daily counts use `request_time`, so they stay
+> correct either way. Railway's MySQL ran UTC, so normally there is nothing
+> to do here.
+
+---
+
 ### Rolling back
 
 The MySQL code is one commit back in git, and this migration only ever reads
