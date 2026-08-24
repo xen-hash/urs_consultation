@@ -13,12 +13,24 @@ load_dotenv()
 # The individual DB_* variables are still honoured so older deployments keep
 # working; they just default to Postgres' port instead of MySQL's.
 
-DATABASE_URL = (
+def _clean_url(raw: str) -> str:
+    """Tidy up the two ways a connection string usually arrives mangled."""
+    url = (raw or "").strip()
+    # Pasted straight from a "psql 'postgresql://...'" snippet.
+    if url.lower().startswith("psql "):
+        url = url[5:].strip()
+    # Pasted with the surrounding quotes included.
+    if len(url) >= 2 and url[0] == url[-1] and url[0] in ("'", '"'):
+        url = url[1:-1].strip()
+    return url
+
+
+DATABASE_URL = _clean_url(
     os.getenv("DATABASE_URL")
     or os.getenv("POSTGRES_URL")
     or os.getenv("POSTGRESQL_URL")
     or ""
-).strip()
+)
 
 
 def _parse_database_url(url: str):
@@ -39,6 +51,19 @@ def _parse_database_url(url: str):
 
 _url_parts = _parse_database_url(DATABASE_URL) if DATABASE_URL else None
 
+if DATABASE_URL and not _url_parts:
+    # Set, but not something we can use. Falling back to localhost here would
+    # surface later as "Can't create a connection to host 127.0.0.1", which
+    # says nothing about the real problem — so fail with the real problem.
+    _shown = DATABASE_URL[:40] + ("..." if len(DATABASE_URL) > 40 else "")
+    raise RuntimeError(
+        f"DATABASE_URL is set but is not a PostgreSQL connection string.\n"
+        f"  got      : {_shown}\n"
+        f"  expected : postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require\n"
+        f"A mysql:// URL will not work — this app runs on PostgreSQL. Copy the\n"
+        f"'Connection string' from your Neon or Supabase dashboard."
+    )
+
 if _url_parts:
     DB_HOST = _url_parts["host"]
     DB_PORT = _url_parts["port"]
@@ -53,6 +78,13 @@ else:
     DB_PASS = os.getenv("DB_PASSWORD", os.getenv("DB_PASS", ""))  # supports both
     DB_NAME = os.getenv("DB_NAME", "consultation_system")
     _SSLMODE = ""
+
+if not _url_parts and not os.getenv("DB_HOST"):
+    print(
+        "[DB] WARNING: neither DATABASE_URL nor DB_HOST is set — falling back "
+        f"to {DB_HOST}:{DB_PORT}, which is almost certainly not what you want. "
+        "Set DATABASE_URL to your Postgres connection string."
+    )
 
 # An explicit DB_SSLMODE always wins over whatever the URL carried.
 DB_SSLMODE = (os.getenv("DB_SSLMODE") or _SSLMODE or "").strip().lower()
