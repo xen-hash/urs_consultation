@@ -79,12 +79,12 @@ else:
     DB_NAME = os.getenv("DB_NAME", "consultation_system")
     _SSLMODE = ""
 
-if not _url_parts and not os.getenv("DB_HOST"):
-    print(
-        "[DB] WARNING: neither DATABASE_URL nor DB_HOST is set — falling back "
-        f"to {DB_HOST}:{DB_PORT}, which is almost certainly not what you want. "
-        "Set DATABASE_URL to your Postgres connection string."
-    )
+if _url_parts:
+    _CONFIG_SOURCE = "DATABASE_URL"
+elif os.getenv("DB_HOST"):
+    _CONFIG_SOURCE = "DB_HOST and friends"
+else:
+    _CONFIG_SOURCE = "built-in defaults"
 
 # An explicit DB_SSLMODE always wins over whatever the URL carried.
 DB_SSLMODE = (os.getenv("DB_SSLMODE") or _SSLMODE or "").strip().lower()
@@ -98,6 +98,23 @@ if not DB_SSLMODE:
     local = DB_HOST in ("127.0.0.1", "localhost", "::1", "")
     DB_SSLMODE = "disable" if local else "prefer"
 
+
+# Say out loud what we are about to connect to. Without this, a misconfigured
+# deploy just reports "Can't create a connection to host 127.0.0.1", which
+# looks like a database outage rather than a missing environment variable.
+# The password is deliberately never included.
+print(
+    f"[DB] Target: {DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME} "
+    f"sslmode={DB_SSLMODE} (from {_CONFIG_SOURCE})"
+)
+
+if _CONFIG_SOURCE == "built-in defaults":
+    print(
+        "[DB] WARNING: neither DATABASE_URL nor DB_HOST is set, so that target "
+        "is a local database that almost certainly does not exist here. Set "
+        "DATABASE_URL to your Postgres connection string — check the variable "
+        "is spelled exactly DATABASE_URL."
+    )
 
 # How many pooled connections to keep open. Reconnecting to a managed Postgres
 # costs a full TLS handshake on every query, which is why we hold a few open.
