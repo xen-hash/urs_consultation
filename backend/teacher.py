@@ -131,7 +131,7 @@ def get_teacher_logs():
         if name not in merged[dept]: merged[dept].append(name)
 
     status_rows = query(
-        """SELECT professor_name, department, `manual`, manual_status
+        """SELECT professor_name, department, manual, manual_status
            FROM teacher_logs WHERE action_type='manual_status'
            AND id IN (SELECT MAX(id) FROM teacher_logs WHERE action_type='manual_status'
                       GROUP BY professor_name, department)""",
@@ -158,7 +158,7 @@ def get_teacher_logs():
     consumed_rows = query(
         """SELECT professor_name, COUNT(*) as cnt
            FROM consultation_requests
-           WHERE status IN ('pending','done') AND DATE(request_time)=%s
+           WHERE status IN ('pending','done') AND request_time::date = %s::date
            GROUP BY professor_name""",
         (today_ph,), fetchall=True
     ) or []
@@ -231,7 +231,7 @@ def reset_daily_count():
         """UPDATE consultation_requests
            SET status='archived'
            WHERE professor_name=%s AND status IN ('pending','done')
-           AND DATE(request_time)=%s""",
+           AND request_time::date = %s::date""",
         (teacher["professor_name"], today_ph)
     )
     _logs_cache["ts"] = 0
@@ -262,8 +262,8 @@ def save_schedule():
     now_ph = datetime.now(PH)
     execute(
         """INSERT INTO teacher_logs
-           (professor_name, department, action_type, `manual`, weekly_schedule, log_time)
-           VALUES (%s, %s, 'schedule_update', 0, %s, %s)""",
+           (professor_name, department, action_type, manual, weekly_schedule, log_time)
+           VALUES (%s, %s, 'schedule_update', FALSE, %s::jsonb, %s::timestamp)""",
         (teacher["professor_name"], teacher["department"],
          json.dumps(weekly_schedule), now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
@@ -295,10 +295,10 @@ def save_manual_status():
 
     execute(
         """INSERT INTO teacher_logs
-           (professor_name, department, action_type, `manual`, manual_status, log_time)
-           VALUES (%s, %s, 'manual_status', %s, %s, %s)""",
+           (professor_name, department, action_type, manual, manual_status, log_time)
+           VALUES (%s, %s, 'manual_status', %s, %s, %s::timestamp)""",
         (teacher["professor_name"], teacher["department"],
-         1 if is_manual else 0,
+         is_manual,
          manual_status if is_manual else None,
          now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
@@ -321,7 +321,7 @@ def get_teacher_requests(employee_id):
         """SELECT cr.*, s.photo AS student_photo
            FROM consultation_requests cr
            LEFT JOIN students s ON cr.student_id = s.student_id
-           WHERE cr.professor_name=%s AND cr.`status`='pending'
+           WHERE cr.professor_name=%s AND cr.status='pending'
            ORDER BY cr.created_at DESC""",
         (teacher["professor_name"],), fetchall=True
     )
@@ -335,7 +335,7 @@ def mark_done(req_id):
     global _logs_cache, _requests_cache
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
-    execute("UPDATE consultation_requests SET `status`='done' WHERE id=%s", (req_id,))
+    execute("UPDATE consultation_requests SET status='done' WHERE id=%s", (req_id,))
     return jsonify({"message": "Marked as done"})
 
 
@@ -346,7 +346,7 @@ def decline_request(req_id):
     global _logs_cache, _requests_cache
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
-    execute("UPDATE consultation_requests SET `status`='declined' WHERE id=%s", (req_id,))
+    execute("UPDATE consultation_requests SET status='declined' WHERE id=%s", (req_id,))
     return jsonify({"message": "Request declined"})
 
 
@@ -551,8 +551,8 @@ def set_appointment(req_id):
     now_ph = datetime.now(PH)
     execute(
         """UPDATE consultation_requests
-           SET appointment_date=%s, appointment_time=%s, appointment_notes=%s,
-               appointment_set_at=%s, `status`='pending'
+           SET appointment_date=%s::date, appointment_time=%s, appointment_notes=%s,
+               appointment_set_at=%s::timestamp, status='pending'
            WHERE id=%s""",
         (appt_date, appt_time, appt_notes,
          now_ph.strftime("%Y-%m-%d %H:%M:%S"), req_id)

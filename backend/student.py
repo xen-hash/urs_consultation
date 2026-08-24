@@ -50,7 +50,7 @@ def submit_request():
     three_sec_ago = (now_ph - timedelta(seconds=3)).strftime("%Y-%m-%d %H:%M:%S")
     dup = query(
         """SELECT id FROM consultation_requests
-           WHERE student_id=%s AND created_at > %s""",
+           WHERE student_id=%s AND created_at > %s::timestamp""",
         (data["student_id"], three_sec_ago), fetchone=True
     )
     if dup:
@@ -66,7 +66,7 @@ def submit_request():
         """INSERT INTO consultation_requests
            (student_id, student_name, course, professor_name, professor_id,
             purpose, category, status, request_time, department)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s)""",
+           VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s::timestamp,%s)""",
         (data["student_id"], data["student_name"], data["course"],
          data["professor_name"], prof_id,
          data["purpose"], data["category"],

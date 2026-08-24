@@ -70,7 +70,7 @@ def export_data():
         if export_type == "today":
             today_str = now_ph.strftime("%Y-%m-%d")
             rows = query(
-                "SELECT status FROM consultation_requests WHERE department=%s AND DATE(created_at)=%s",
+                "SELECT status FROM consultation_requests WHERE department=%s AND created_at::date = %s::date",
                 (dept, today_str), fetchall=True
             )
         else:
@@ -101,7 +101,7 @@ def export_data():
             today_str = now_ph.strftime("%Y-%m-%d")
             rows = query(
                 """SELECT * FROM consultation_requests
-                   WHERE department=%s AND DATE(created_at)=%s
+                   WHERE department=%s AND created_at::date = %s::date
                    ORDER BY created_at DESC""",
                 (dept, today_str), fetchall=True
             )
@@ -131,7 +131,7 @@ def export_data():
     if export_type == "today":
         today_str = now_ph.strftime("%Y-%m-%d")
         tl_rows = query(
-            "SELECT * FROM teacher_logs WHERE DATE(created_at)=%s ORDER BY created_at DESC",
+            "SELECT * FROM teacher_logs WHERE created_at::date = %s::date ORDER BY created_at DESC",
             (today_str,), fetchall=True
         )
     else:

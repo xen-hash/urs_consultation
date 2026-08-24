@@ -130,9 +130,11 @@ def face_enroll():
             execute(
                 """INSERT INTO biometrics (student_id, face_file, eye_file)
                    VALUES ((SELECT id FROM students WHERE student_id=%s LIMIT 1), %s, %s)
-                   ON DUPLICATE KEY UPDATE face_file=%s, eye_file=%s, enrolled_at=NOW()""",
-                (student_id, f"{label}_face.npy", f"{label}_eye.npy",
-                 f"{label}_face.npy", f"{label}_eye.npy")
+                   ON CONFLICT (student_id) DO UPDATE
+                   SET face_file   = EXCLUDED.face_file,
+                       eye_file    = EXCLUDED.eye_file,
+                       enrolled_at = NOW()""",
+                (student_id, f"{label}_face.npy", f"{label}_eye.npy")
             )
 
     return jsonify(result), code

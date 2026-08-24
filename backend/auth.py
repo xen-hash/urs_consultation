@@ -151,7 +151,8 @@ def teacher_quick_login():
                     (employee_id, professor_name, department, pw, None)
                 )
                 execute(
-                    "INSERT IGNORE INTO professors (name, department) VALUES (%s,%s)",
+                    "INSERT INTO professors (name, department) VALUES (%s,%s) "
+                    "ON CONFLICT (name, department) DO NOTHING",
                     (professor_name, department)
                 )
 
