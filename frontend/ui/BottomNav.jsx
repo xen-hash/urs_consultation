@@ -14,9 +14,14 @@ import { MoreHorizontal } from "lucide-react";
  * "More" action, which is expected to open the full navigation.
  */
 export default function BottomNav({ items, active, onSelect, onMore, className = "" }) {
-  const fits = items.length <= 5;
-  const shown = fits ? items : items.slice(0, 4);
-  const overflowActive = !fits && items.slice(4).some(i => i.id === active);
+  // Six slots is the ceiling: at 320px that is ~53px each, which still clears
+  // a comfortable touch target once the labels are kept short. Five sections
+  // show and the sixth slot becomes More; below that everything fits.
+  const MAX_SLOTS = 6;
+  const fits = items.length <= MAX_SLOTS;
+  const visible = fits ? items.length : MAX_SLOTS - 1;
+  const shown = items.slice(0, visible);
+  const overflowActive = !fits && items.slice(visible).some(i => i.id === active);
 
   return (
     <nav
@@ -31,8 +36,8 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
               <button
                 onClick={() => onSelect(item.id)}
                 aria-current={selected ? "page" : undefined}
-                className={`w-full h-full min-h-[56px] flex flex-col items-center justify-center gap-1
-                  px-1 pt-2 pb-1.5 transition-colors duration-150 relative
+                className={`w-full h-full min-h-[64px] flex flex-col items-center justify-center gap-1.5
+                  px-0.5 pt-2.5 pb-2 transition-colors duration-150 relative
                   ${selected ? "text-brand" : "text-muted-fg"}`}
               >
                 {/* The active marker sits on the top edge so it reads as a tab
@@ -43,7 +48,8 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
                     ${selected ? "bg-brand opacity-100" : "opacity-0"}`}
                 />
                 <span className="relative shrink-0">
-                  <item.icon size={21} aria-hidden="true" />
+                  <item.icon size={22} className="xs:hidden" aria-hidden="true" />
+                  <item.icon size={24} className="hidden xs:block" aria-hidden="true" />
                   {item.badge > 0 && (
                     <span
                       className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 rounded-full
@@ -54,7 +60,8 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
                     </span>
                   )}
                 </span>
-                <span className="text-[11px] font-medium leading-none truncate max-w-full">
+                <span className={`text-[10px] xs:text-xs leading-none truncate max-w-full
+                  ${selected ? "font-semibold" : "font-medium"}`}>
                   {item.label}
                 </span>
               </button>
@@ -66,8 +73,8 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
           <li className="flex-1 min-w-0">
             <button
               onClick={onMore}
-              className={`w-full h-full min-h-[56px] flex flex-col items-center justify-center gap-1
-                px-1 pt-2 pb-1.5 transition-colors duration-150 relative
+              className={`w-full h-full min-h-[64px] flex flex-col items-center justify-center gap-1.5
+                px-0.5 pt-2.5 pb-2 transition-colors duration-150 relative
                 ${overflowActive ? "text-brand" : "text-muted-fg"}`}
             >
               <span
@@ -75,8 +82,11 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
                 className={`absolute top-0 inset-x-3 h-0.5 rounded-full
                   ${overflowActive ? "bg-brand" : "opacity-0"}`}
               />
-              <MoreHorizontal size={21} aria-hidden="true" />
-              <span className="text-[11px] font-medium leading-none">More</span>
+              <MoreHorizontal size={24} aria-hidden="true" />
+              <span className={`text-[10px] xs:text-xs leading-none
+                ${overflowActive ? "font-semibold" : "font-medium"}`}>
+                More
+              </span>
             </button>
           </li>
         )}
@@ -92,5 +102,5 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
  * and on a phone the last row is often the one being reached for.
  */
 export function BottomNavSpacer() {
-  return <div aria-hidden="true" className="lg:hidden h-[calc(64px+env(safe-area-inset-bottom,0px))]" />;
+  return <div aria-hidden="true" className="lg:hidden h-[calc(72px+env(safe-area-inset-bottom,0px))]" />;
 }

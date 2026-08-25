@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
 import MoreSheet from "./ui/MoreSheet.jsx";
+import ConfirmSplash from "./ui/ConfirmSplash.jsx";
 import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
@@ -22,18 +23,19 @@ import AuditTab from "./admin/AuditTab.jsx";
 import AddTeacherTab from "./admin/AddTeacherTab.jsx";
 
 const TABS = [
-  { id: "overview",    label: "Dashboard",   icon: LayoutDashboard },
-  { id: "credentials", label: "Credentials", icon: QrCode },
-  { id: "faculty",     label: "Faculty",     icon: BookOpen },
-  { id: "students",    label: "Students",    icon: GraduationCap },
-  { id: "requests",    label: "Requests",    icon: ClipboardList },
-  { id: "audit",       label: "Audit log",   icon: ScrollText },
-  { id: "add",         label: "Add faculty", icon: UserPlus },
+  { id: "overview",    label: "Dashboard",   short: "Home",     icon: LayoutDashboard },
+  { id: "credentials", label: "Credentials", short: "Cards",    icon: QrCode },
+  { id: "faculty",     label: "Faculty",     short: "Faculty",  icon: BookOpen },
+  { id: "students",    label: "Students",    short: "Students", icon: GraduationCap },
+  { id: "requests",    label: "Requests",    short: "Requests", icon: ClipboardList },
+  { id: "audit",       label: "Audit log",   short: "Audit",    icon: ScrollText },
+  { id: "add",         label: "Add faculty", short: "Add",      icon: UserPlus },
 ];
 
 // Bar order is by frequency of use, not the order of the sidebar: issuing and
-// revoking cards and triaging requests are the daily jobs.
-const BAR_ORDER = ["overview", "credentials", "requests", "faculty"];
+// revoking cards and triaging requests are the daily jobs. Five sections show;
+// only the audit log and adding faculty, both occasional, sit behind More.
+const BAR_ORDER = ["overview", "credentials", "requests", "students", "faculty"];
 
 export default function DeanDashboard() {
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ export default function DeanDashboard() {
 
   const [tab, setTab] = useState("overview");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [muted, setMutedState] = useState(true);
 
   const { stats, loading: statsLoading, reload: reloadStats } = useStats();
@@ -64,7 +67,7 @@ export default function DeanDashboard() {
     reloadStats(); reloadDepts(); recent.reload();
   }, [reloadStats, reloadDepts, recent]);
 
-  const signOut = () => { clearSession(); navigate("/dean", { replace: true }); };
+  const signOut = () => { setSheetOpen(false); setSigningOut(true); };
 
   const exportData = async (type) => {
     try {
@@ -88,7 +91,11 @@ export default function DeanDashboard() {
   const NAV_TABS = [
     ...BAR_ORDER.map(id => TABS.find(t => t.id === id)).filter(Boolean),
     ...TABS.filter(t => !BAR_ORDER.includes(t.id)),
-  ].map(t => (t.id === "requests" ? { ...t, badge: stats?.pending } : t));
+  ].map(t => ({
+    ...t,
+    label: t.short || t.label,
+    ...(t.id === "requests" ? { badge: stats?.pending } : {}),
+  }));
 
   const nav = (
     <NavContents
@@ -105,6 +112,13 @@ export default function DeanDashboard() {
   return (
     <div className="min-h-dvh bg-canvas lg:flex">
       <Toast toasts={toasts} removeToast={removeToast} />
+      <ConfirmSplash
+        open={signingOut}
+        title="Signed out"
+        subtitle="Administration"
+        tone="brand"
+        onDone={() => { clearSession(); navigate("/dean", { replace: true }); }}
+      />
 
       {/* Desktop rail. Always expanded: the old sidebar revealed its labels on
           hover only, which is invisible on a touch screen. */}
@@ -167,7 +181,7 @@ export default function DeanDashboard() {
         <MoreSheet
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
-          items={NAV_TABS.slice(4)}
+          items={NAV_TABS.slice(5)}
           active={tab}
           onSelect={setTab}
           footer={
