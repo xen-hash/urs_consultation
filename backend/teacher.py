@@ -466,8 +466,17 @@ def dean_get_students():
             (limit, offset), fetchall=True
         )
         total = query("SELECT COUNT(*) as c FROM students", fetchone=True)["c"]
+    # SELECT * was handing every student's bcrypt hash to the dashboard. It is
+    # a hash, not a password, but it has no business leaving the database — an
+    # admin session that leaks should not also leak an offline cracking target.
+    # The dashboard only needs to know whether a PIN exists.
+    def _public(row):
+        out = _serialize_row(row)
+        out["has_pin"] = bool(out.pop("pin_hash", None))
+        return out
+
     resp   = {
-        "data":  [_serialize_row(r) for r in (rows or [])],
+        "data":  [_public(r) for r in (rows or [])],
         "page":  page, "limit": limit, "total": total,
         "pages": -(-total // limit)
     }
