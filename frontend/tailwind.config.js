@@ -23,6 +23,7 @@ export default {
         "subtle-fg":     rgb("subtle-fg"),
         border:          rgb("border"),
         "border-strong": rgb("border-strong"),
+        "on-backdrop":   rgb("on-backdrop"),
         brand:   { DEFAULT: rgb("brand-600"),
                    ...ramp("brand", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]) },
         accent:  { DEFAULT: rgb("accent"), fg: rgb("accent-fg"), 50: rgb("accent-50") },

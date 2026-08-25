@@ -11,6 +11,7 @@ import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.js
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession } from "./auth.js";
 import DepartmentIcon from "./ui/DepartmentIcon.jsx";
+import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
 
@@ -344,10 +345,16 @@ export default function StudentDashboard() {
   const filteredProfs = allFilteredProfs.slice((profPage-1)*PROF_PAGE_SIZE, profPage*PROF_PAGE_SIZE);
   const profTotalPages = Math.ceil(allFilteredProfs.length / PROF_PAGE_SIZE);
 
+  const inboxBadge = myRequests.filter(
+    r => r.appointment_date && r.status === "pending"
+  ).length;
+
+  // Icons are passed as components, not elements, so BottomNav can size them
+  // for a touch target while the desktop strip keeps its smaller inline size.
   const TABS = [
-    { id: "home",    icon: <GraduationCap size={16} />, label: "Faculty" },
-    { id: "inbox",   icon: <Inbox size={16} />,          label: "Inbox" },
-    { id: "profile", icon: <User size={16} />,            label: "My Profile" },
+    { id: "home",    icon: GraduationCap, label: "Faculty" },
+    { id: "inbox",   icon: Inbox,         label: "Inbox", badge: inboxBadge },
+    { id: "profile", icon: User,          label: "Profile" },
   ];
 
   return (
@@ -359,17 +366,21 @@ export default function StudentDashboard() {
         onLogout={() => { clearSession(); navigate("/student"); }}
       />
 
-      {/* Tab bar */}
-      <div className="bg-surface-2 border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 flex gap-1 pt-2">
+      {/* Desktop tab strip. On phones this is replaced by the bottom bar. */}
+      <div className="hidden lg:block bg-surface border-b border-border">
+        <div className="max-w-5xl mx-auto px-4 flex gap-1">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-semibold transition-all
- ${tab === t.id ? "bg-surface-2 text-fg border-b-2 border-accent" : "text-muted-fg hover:text-muted-fg"}`}>
-              {t.icon}{t.label}
-              {t.id === "inbox" && myRequests.filter(r => r.appointment_date && r.status === "pending").length > 0 && (
-                <span className="bg-accent text-fg text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {myRequests.filter(r => r.appointment_date && r.status === "pending").length}
+              aria-current={tab === t.id ? "page" : undefined}
+              className={`flex items-center gap-2 px-4 min-h-[44px] text-sm font-semibold
+                border-b-2 -mb-px transition-colors duration-200
+                ${tab === t.id
+                  ? "text-brand border-brand"
+                  : "text-muted-fg border-transparent hover:text-fg"}`}>
+              <t.icon size={16} aria-hidden="true" />{t.label}
+              {t.badge > 0 && (
+                <span className="bg-accent text-brand-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {t.badge}
                 </span>
               )}
             </button>
@@ -404,24 +415,24 @@ export default function StudentDashboard() {
                 ))}
               </div>
             )}
-            <div className="bg-gradient-to-r from-brand to-brand-500 rounded-xl p-5 text-fg shadow-xl mb-5">
+            <div className="bg-gradient-to-r from-brand to-brand-500 rounded-xl p-5 text-white shadow-xl mb-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-surface-2 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="w-12 h-12 bg-white/15 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
                     {profilePhoto ? <img src={profilePhoto} alt="" className="w-full h-full object-cover" /> : <GraduationCap size={24} />}
                   </div>
                   <div>
                     <p className="font-semibold text-lg leading-tight">{student.full_name}</p>
-                    <p className="text-muted-fg text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
+                    <p className="text-white/70 text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-accent-fg">{totalAvail}</p>
-                    <p className="text-muted-fg text-xs">available now</p>
+                    <p className="text-3xl font-bold text-accent">{totalAvail}</p>
+                    <p className="text-white/70 text-xs">available now</p>
                   </div>
                   <button onClick={() => { setLoading(true); fetchProfessors(); }}
-                    className="w-10 h-10 bg-surface-2 hover:bg-surface-2 border border-border rounded-xl flex items-center justify-center transition-all">
+                    className="w-10 h-10 bg-white/15 hover:bg-white/25 border border-white/20 text-white rounded-xl flex items-center justify-center transition-all">
                     <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
                   </button>
                 </div>
@@ -696,7 +707,7 @@ export default function StudentDashboard() {
 
                       {/* Top row */}
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-brand-500 flex items-center justify-center text-fg text-xs font-bold shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-brand-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                           {req.professor_name?.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i,"")
                             .split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase() || "?"}
                         </div>
@@ -780,7 +791,7 @@ export default function StudentDashboard() {
                     photo={profilePhoto} qrBase64={studentQR} type="student"
                   />
                   <button onClick={downloadID}
-                    className="w-full flex items-center justify-center gap-2 mt-4 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm">
+                    className="w-full flex items-center justify-center gap-2 mt-4 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm">
                     <Download size={15} /> Download Student ID
                   </button>
                 </div>
@@ -836,7 +847,7 @@ export default function StudentDashboard() {
                     </div>
                     {editingProfile && (
                       <button onClick={saveProfile} disabled={savingProfile}
-                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
+                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                         {savingProfile ? <Spinner size={4} light /> : <CheckIcon />}
                         {savingProfile ? "Saving..." : "Save Changes"}
                       </button>
@@ -919,7 +930,7 @@ export default function StudentDashboard() {
                     onClick={() => setReqForm(p => ({ ...p, category: c }))}
                     className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border
  ${reqForm.category === c
- ? "bg-brand text-fg border-brand shadow"
+ ? "bg-brand text-white border-brand shadow"
  : "bg-gray-50 text-gray-600 border-gray-200 hover:border-brand/40"}`}>
                     {c}
                   </button>
@@ -951,13 +962,13 @@ export default function StudentDashboard() {
           <div className="shrink-0 flex gap-3 px-5 py-4 bg-white">
             <button
               onPointerDown={e => { e.preventDefault(); setReqModal(null); }}
-              className="flex-1 border-2 border-brand text-brand hover:bg-brand hover:text-fg font-semibold py-3.5 rounded-lg transition-all text-sm">
+              className="flex-1 border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-3.5 rounded-lg transition-all text-sm">
               Cancel
             </button>
             <button
               onClick={submitRequest}
               disabled={submitting}
-              className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3.5 rounded-lg transition-all text-sm disabled:opacity-50">
+              className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3.5 rounded-lg transition-all text-sm disabled:opacity-50">
               {submitting ? <Spinner size={4} light /> : <Send size={14} />}
               {submitting ? "Sending…" : "Submit Request"}
             </button>
@@ -1074,7 +1085,7 @@ export default function StudentDashboard() {
               {/* Footer */}
               <div className="px-5 pb-5">
                 <button onClick={() => setSelectedReq(null)}
-                  className="w-full bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm">
+                  className="w-full bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm">
                   Close
                 </button>
               </div>
@@ -1082,6 +1093,9 @@ export default function StudentDashboard() {
           </div>
         );
       })()}
+      <BottomNavSpacer />
+      <BottomNav items={TABS} active={tab} onSelect={setTab} />
+
     </PageWrapper>
   );
 }

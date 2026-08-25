@@ -8,6 +8,7 @@ import {
 import { Toast, useToastState, Drawer, IconButton, Button } from "./SharedUI.jsx";
 import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
+import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import { useStats, useDepartments, usePagedResource } from "./admin/hooks.js";
 import { announceNew, resetAnnounced, setMuted } from "./admin/announcer.js";
 
@@ -28,6 +29,10 @@ const TABS = [
   { id: "audit",       label: "Audit log",   icon: ScrollText },
   { id: "add",         label: "Add faculty", icon: UserPlus },
 ];
+
+// Bar order is by frequency of use, not the order of the sidebar: issuing and
+// revoking cards and triaging requests are the daily jobs.
+const BAR_ORDER = ["overview", "credentials", "requests", "faculty"];
 
 export default function DeanDashboard() {
   const navigate = useNavigate();
@@ -78,6 +83,11 @@ export default function DeanDashboard() {
   };
 
   if (!admin) return null;
+
+  const NAV_TABS = [
+    ...BAR_ORDER.map(id => TABS.find(t => t.id === id)).filter(Boolean),
+    ...TABS.filter(t => !BAR_ORDER.includes(t.id)),
+  ].map(t => (t.id === "requests" ? { ...t, badge: stats?.pending } : t));
 
   const nav = (
     <NavContents
@@ -132,7 +142,7 @@ export default function DeanDashboard() {
           </div>
         </header>
 
-        <main className="flex-1 p-3 sm:p-5 pb-safe">
+        <main className="flex-1 p-3 sm:p-5">
           {tab === "overview" && (
             <OverviewTab
               stats={stats}
@@ -154,7 +164,17 @@ export default function DeanDashboard() {
             <AddTeacherTab addToast={addToast} onAdded={refreshAll}
               onGoToCredentials={() => setTab("credentials")} />
           )}
+          <BottomNavSpacer />
         </main>
+
+        {/* Seven sections is more than a phone bar can hold, so the four most
+            used sit in the bar and the rest stay one tap away in the drawer. */}
+        <BottomNav
+          items={NAV_TABS}
+          active={tab}
+          onSelect={setTab}
+          onMore={() => setDrawerOpen(true)}
+        />
       </div>
     </div>
   );

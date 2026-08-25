@@ -58,6 +58,12 @@
 
   --ring:          26 78 133;
 
+  /* Text sitting directly on the campus backdrop rather than on a card. The
+     tokens above are tuned for dark-on-light; over the backdrop that inverts,
+     and using --fg there paints navy on navy. Contrast against the backdrop
+     (brand-900 at 85% over the image): white ~16:1, white at 78% ~9:1. */
+  --on-backdrop:   255 255 255;
+
   --radius-sm: 0.5rem;
   --radius:    0.75rem;
   --radius-lg: 1rem;
@@ -184,6 +190,12 @@
 }
 
 @layer utilities {
+  /* Fine dot texture layered over the campus backdrop. */
+  .dot-pattern {
+    background-image: radial-gradient(circle, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
   /* iOS Safari reports 100vh as the *expanded* viewport, so a 100vh column has
      its last rows hidden behind the browser toolbar. dvh tracks the visible
      area; the vh line is the fallback for browsers without dvh. */

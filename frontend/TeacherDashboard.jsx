@@ -10,6 +10,7 @@ import {
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, useScrollLock } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
+import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import { SOCKET_URL } from "./constants.js";
@@ -271,11 +272,15 @@ export default function TeacherDashboard() {
     photo: profilePhoto, qrBase64: teacherQR, type: "teacher"
   });
 
+  // Components rather than elements, so the bottom bar can size them for touch.
+  // Short labels too: "Status & Schedule" does not fit a third of a 320px
+  // screen, so each tab carries the compact form the bar uses.
   const TABS = [
-    { id:"requests", icon:<ClipboardList size={15}/>, label:"Requests", badge: requests.length },
-    { id:"status",   icon:<Sliders size={15}/>,       label:"Status & Schedule" },
-    { id:"profile",  icon:<User size={15}/>,           label:"My Profile & ID" },
+    { id:"requests", icon: ClipboardList, label:"Requests", short:"Requests", badge: requests.length },
+    { id:"status",   icon: Sliders,       label:"Status & Schedule", short:"Schedule" },
+    { id:"profile",  icon: User,          label:"My Profile & ID",   short:"Profile" },
   ];
+  const NAV_ITEMS = TABS.map(t => ({ ...t, label: t.short }));
 
   return (
     <PageWrapper>
@@ -290,20 +295,29 @@ export default function TeacherDashboard() {
             <Bell size={16} className="text-fg animate-bounce" />
             <span className="text-fg text-xs font-black uppercase tracking-widest">New Request</span>
           </div>
-          <p className="whitespace-nowrap font-black text-accent-fg text-lg tracking-wide drop-shadow-lg">
+          <p className="whitespace-nowrap font-bold text-accent text-lg tracking-wide">
             {ticker.join("   ·   ")}
           </p>
         </div>
       )}
 
-      <div className="bg-surface-2 border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 flex gap-1 pt-2">
+      {/* Desktop tab strip. On phones this is replaced by the bottom bar. */}
+      <div className="hidden lg:block bg-surface border-b border-border">
+        <div className="max-w-5xl mx-auto px-4 flex gap-1">
           {TABS.map(t => (
             <button key={t.id} onClick={()=>setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-semibold transition-all
- ${tab===t.id?"bg-surface-2 text-fg border-b-2 border-accent":"text-muted-fg hover:text-muted-fg"}`}>
-              {t.icon}{t.label}
-              {t.badge>0 && <span className="bg-accent text-fg text-[10px] font-bold px-1.5 py-0.5 rounded-full">{t.badge}</span>}
+              aria-current={tab===t.id ? "page" : undefined}
+              className={`flex items-center gap-2 px-4 min-h-[44px] text-sm font-semibold
+                border-b-2 -mb-px transition-colors duration-200
+                ${tab===t.id
+                  ? "text-brand border-brand"
+                  : "text-muted-fg border-transparent hover:text-fg"}`}>
+              <t.icon size={16} aria-hidden="true" />{t.label}
+              {t.badge>0 && (
+                <span className="bg-accent text-brand-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {t.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -467,13 +481,13 @@ export default function TeacherDashboard() {
                 {MANUAL_OPTIONS.map(o=><option key={o}>{o}</option>)}
               </select>
               <button onClick={handleSaveStatus} disabled={savingStatus}
-                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                 {savingStatus?<Spinner size={4} light/>:<Sliders size={14}/>}
                 {savingStatus?"Saving...":"Update Status"}
               </button>
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <button onClick={()=>setSchedModal(true)}
-                  className="w-full flex items-center justify-center gap-2 border-2 border-brand text-brand hover:bg-brand hover:text-fg font-semibold py-2.5 px-5 rounded-lg transition-all text-sm">
+                  className="w-full flex items-center justify-center gap-2 border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-2.5 px-5 rounded-lg transition-all text-sm">
                   <Calendar size={14}/> Edit Weekly Schedule
                 </button>
               </div>
@@ -513,7 +527,7 @@ export default function TeacherDashboard() {
                     idNumber={teacher.employee_id} role="Faculty"
                     photo={profilePhoto} qrBase64={teacherQR} type="teacher" />
                   <button onClick={downloadID}
-                    className="w-full flex items-center justify-center gap-2 mt-4 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm">
+                    className="w-full flex items-center justify-center gap-2 mt-4 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm">
                     <Download size={15}/> Download Faculty ID
                   </button>
                 </div>
@@ -537,7 +551,7 @@ export default function TeacherDashboard() {
                         value={newName} onChange={e=>setNewName(e.target.value)}
                         onKeyDown={e=>e.key==="Enter"&&handleSaveName()} autoFocus />
                       <button onClick={handleSaveName} disabled={savingName||!newName.trim()}
-                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
+                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                         {savingName?<Spinner size={4} light/>:<Check size={15}/>}
                         {savingName?"Saving...":"Update Name"}
                       </button>
@@ -624,7 +638,7 @@ export default function TeacherDashboard() {
                         </button>
                       </div>
                       <button onClick={handleSetPin} disabled={savingPin || pinForm.pin.length < 4 || pinForm.confirm.length < 4}
-                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
+                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                         {savingPin ? <Spinner size={4} light/> : <Check size={15}/>}
                         {savingPin ? "Saving..." : "Save PIN"}
                       </button>
@@ -684,7 +698,7 @@ export default function TeacherDashboard() {
                   value={apptForm.notes} onChange={e=>setApptForm(p=>({...p,notes:e.target.value}))} />
               </div>
               <div className="flex gap-2 pt-1">
-                <button onClick={()=>setApptModal(null)} className="flex-1 border-2 border-brand text-brand hover:bg-brand hover:text-fg font-semibold py-3 px-5 rounded-lg transition-all text-sm">Cancel</button>
+                <button onClick={()=>setApptModal(null)} className="flex-1 border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-3 px-5 rounded-lg transition-all text-sm">Cancel</button>
                 <button onClick={handleSetAppointment} disabled={savingAppt}
                   className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                   {savingAppt?<Spinner size={4} light/>:<CalendarCheck size={14}/>}
@@ -697,6 +711,9 @@ export default function TeacherDashboard() {
       )}
 
       <ScheduleModal open={schedModal} onClose={()=>setSchedModal(false)} onSave={handleSaveSchedule} initial={mySchedule}/>
+
+      <BottomNavSpacer />
+      <BottomNav items={NAV_ITEMS} active={tab} onSelect={setTab} />
 
     </PageWrapper>
   );
