@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorModal, classifyAuthError } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -79,7 +79,7 @@ export default function StudentPortal() {
         subtitle={splash?.subtitle}
         onDone={() => navigate("/student/dashboard", { replace: true })}
       />
-      <ErrorModal
+      <ErrorSplash
         open={!!failure}
         kind={failure?.kind}
         detail={failure?.detail}

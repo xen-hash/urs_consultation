@@ -174,6 +174,38 @@ export function ConfirmMark({ size = 18, ring = true }) {
   );
 }
 
+/**
+ * The same stroke, drawn as a cross, for the moment an action fails.
+ *
+ * A failed sign-in used to arrive as a small card while a success took over the
+ * screen, so the two outcomes of the same tap looked like they came from
+ * different apps. Sharing the mark — same disc, same draw, same beat — makes
+ * the failure as legible as the success, and the shape carries which one it is
+ * before any of the words are read.
+ */
+export function AlertMark({ size = 18, ring = true }) {
+  return (
+    <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
+      {ring && (
+        <span
+          aria-hidden="true"
+          className="confirm-ring absolute inset-0 rounded-full border-2 border-current"
+        />
+      )}
+      <svg
+        className="confirm-mark mark-cross relative"
+        width={size} height={size} viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </svg>
+    </span>
+  );
+}
+
 /* ── Feedback ─────────────────────────────────────────────────────────────── */
 
 export function Spinner({ size = 5, light = false }) {

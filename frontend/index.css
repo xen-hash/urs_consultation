@@ -311,6 +311,10 @@
 .confirm-mark path   { stroke-dasharray: 24; animation: check-draw 0.34s ease-out 0.12s both; }
 .confirm-ring        { animation: confirm-ring 0.6s ease-out 0.08s both; }
 
+/* The failure mark is the same stroke crossed. Its second line follows the
+   first rather than racing it, so the cross draws as one gesture. */
+.confirm-mark.mark-cross path:last-child { animation-delay: 0.26s; }
+
 /* Reduced motion already flattens durations globally, but the check must not
    be left mid-draw with part of the tick missing. */
 @media (prefers-reduced-motion: reduce) {
