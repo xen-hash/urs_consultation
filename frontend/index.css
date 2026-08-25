@@ -64,6 +64,22 @@
      (brand-900 at 85% over the image): white ~16:1, white at 78% ~9:1. */
   --on-backdrop:   255 255 255;
 
+  /* ── Chart palette ──────────────────────────────────────────────────────────
+     Validated with the dataviz validator against a white surface: lightness
+     band, chroma floor, adjacent-pair CVD separation (worst 9.9 protan),
+     normal-vision floor (worst 22.6) and 3:1 contrast all pass.
+
+     The app's own status tokens FAIL that check as a set — danger #DC2626 and
+     warning #A16207 sit 3.2 apart under deuteranopia and 14.5 apart for normal
+     vision, which is below the floor. They are fine as isolated labels, where
+     an icon and words carry the meaning; they are not fine as neighbouring
+     slices where colour is doing the work. These are re-stepped for that job. */
+  --chart-done:     21 128 61;   /* #15803D */
+  --chart-pending:  202 138 4;   /* #CA8A04 */
+  --chart-declined: 185 28 28;   /* #B91C1C */
+  --chart-archived: 109 40 217;  /* #6D28D9 */
+  --chart-line:     var(--brand-600);
+
   --radius-sm: 0.5rem;
   --radius:    0.75rem;
   --radius-lg: 1rem;

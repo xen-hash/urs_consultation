@@ -20,10 +20,16 @@ api.interceptors.response.use(
   response => response,
   error => {
     const status = error.response?.status;
-    // 401: no usable token. 403: wrong role for this route. Either way the
-    // stored session cannot do what the page is asking, so drop it.
-    if (status === 401 || status === 403) {
-      const role = currentRole();
+    const role = currentRole();
+
+    // 401 and 403 mean the stored session cannot do what the page asked, so
+    // drop it and return to that role's sign-in.
+    //
+    // Only when there IS a session. A login endpoint answers a wrong password
+    // with 401 too, and treating that as an expiry redirected the browser away
+    // from the form mid-submit — to /teacher, since loginPathFor(null) has no
+    // role to key on. A failed sign-in belongs to the screen that asked for it.
+    if ((status === 401 || status === 403) && role) {
       clearSession();
       const target = loginPathFor(role);
       if (window.location.pathname !== target) window.location.replace(target);

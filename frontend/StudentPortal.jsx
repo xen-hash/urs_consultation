@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorModal, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -20,6 +20,7 @@ export default function StudentPortal() {
   const [pinError, setPinError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [splash, setSplash] = useState(null);
+  const [failure, setFailure] = useState(null);
 
   const home = () => { setMode(null); setStudentId(""); setPending(null); setPin(""); setPinError(null); };
 
@@ -33,7 +34,7 @@ export default function StudentPortal() {
       setPin(""); setPinError(null);
       setMode(data.has_pin ? "pin" : "setpin");
     } catch (e) {
-      addToast(apiError(e, "Student not found. Please register first."), "error");
+      setFailure({ kind: "credentials", detail: apiError(e, "Student not found. Please register first.") });
     } finally {
       setLoading(false);
     }
@@ -63,6 +64,13 @@ export default function StudentPortal() {
         title={splash?.title}
         subtitle={splash?.subtitle}
         onDone={() => navigate("/student/dashboard", { replace: true })}
+      />
+      <ErrorModal
+        open={!!failure}
+        kind={failure?.kind}
+        detail={failure?.detail}
+        onClose={() => setFailure(null)}
+        onRetry={() => setFailure(null)}
       />
 
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">

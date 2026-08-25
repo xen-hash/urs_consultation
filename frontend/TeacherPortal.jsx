@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { QrCode, ScanLine, ChevronLeft, Lock, Delete, ArrowRight, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner, ConfirmSplash } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, ConfirmSplash, ErrorModal, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -25,6 +25,7 @@ export default function TeacherPortal() {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [splash, setSplash] = useState(null);
+  const [failure, setFailure] = useState(null);
 
   // Set-PIN step, shown right after a QR login when no PIN exists yet. A printed
   // card on its own is a single factor that survives being photographed, so a
@@ -55,8 +56,7 @@ export default function TeacherPortal() {
         enterDashboard(data.teacher, `Welcome back, ${data.teacher.professor_name}`);
       }
     } catch (e) {
-      addToast(apiError(e, "QR code not recognised."), "error");
-      setView("home");
+      setFailure({ kind: classifyAuthError(e), detail: apiError(e, "") });
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function TeacherPortal() {
       setSession("teacher", data.token, data.teacher);
       enterDashboard(data.teacher, `Welcome, ${data.teacher.professor_name}`);
     } catch (e) {
-      addToast(apiError(e, "Login failed."), "error");
+      setFailure({ kind: classifyAuthError(e), detail: apiError(e, "") });
       setPin("");
     } finally {
       setLoading(false);
@@ -87,7 +87,7 @@ export default function TeacherPortal() {
       await api.post("/auth/teacher/set-pin", { pin: newPin });
       enterDashboard(pendingTeacher, "PIN set");
     } catch (e) {
-      addToast(apiError(e, "Could not set your PIN."), "error");
+      setFailure({ kind: "credentials", detail: apiError(e, "Could not set your PIN.") });
       setNewPin("");
     } finally {
       setLoading(false);
@@ -101,6 +101,13 @@ export default function TeacherPortal() {
         title={splash?.title}
         subtitle={splash?.subtitle}
         onDone={() => navigate("/teacher/dashboard", { replace: true })}
+      />
+      <ErrorModal
+        open={!!failure}
+        kind={failure?.kind}
+        detail={failure?.detail}
+        onClose={() => { setFailure(null); setView("home"); }}
+        onRetry={() => setFailure(null)}
       />
       <Toast toasts={toasts} removeToast={removeToast} />
 

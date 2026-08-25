@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
-import { Toast, useToastState, Spinner, ConfirmSplash } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, ConfirmSplash, ErrorModal, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
@@ -20,6 +20,7 @@ export default function DeanLogin() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [splash, setSplash] = useState(false);
+  const [failure, setFailure] = useState(null);
 
   const handleLogin = async () => {
     if (!username || !password) return addToast("Enter your username and password.", "warning");
@@ -29,7 +30,7 @@ export default function DeanLogin() {
       setSession("admin", data.token, data.admin);
       setSplash(true);
     } catch (e) {
-      addToast(apiError(e, "Sign in failed."), "error");
+      setFailure({ kind: classifyAuthError(e), detail: apiError(e, "") });
       setPassword("");
       setLoading(false);
     }
@@ -45,6 +46,12 @@ export default function DeanLogin() {
         title="Signed in"
         subtitle="Administration"
         onDone={() => navigate("/dean/dashboard", { replace: true })}
+      />
+      <ErrorModal
+        open={!!failure}
+        kind={failure?.kind}
+        detail={failure?.detail}
+        onClose={() => setFailure(null)}
       />
 
       {/* Context panel — desktop only; the form is the whole page on mobile. */}

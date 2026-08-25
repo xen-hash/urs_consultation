@@ -258,7 +258,24 @@ def stats():
         fetchall=True
     ) or []
 
+    # Daily counts for the trend chart. Generated from a date series rather than
+    # from the rows, so days with no requests come back as zero instead of being
+    # missing — a line that skips empty days misreports the shape of the week.
+    daily = query(
+        """SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
+                  COUNT(cr.id) AS c
+           FROM generate_series(
+                    (%s::date - INTERVAL '13 days'), %s::date, INTERVAL '1 day'
+                ) AS d(day)
+           LEFT JOIN consultation_requests cr
+                  ON cr.request_time::date = d.day::date
+           GROUP BY d.day
+           ORDER BY d.day""",
+        (today, today), fetchall=True
+    ) or []
+
     return jsonify({
+        "daily":     [{"day": r["day"], "count": r["c"]} for r in daily],
         "students":  one("SELECT COUNT(*) AS c FROM students"),
         "teachers":  one("SELECT COUNT(*) AS c FROM teacher_accounts"),
         "requests":  one("SELECT COUNT(*) AS c FROM consultation_requests"),

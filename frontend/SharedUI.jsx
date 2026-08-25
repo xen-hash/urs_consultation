@@ -10,6 +10,7 @@ import ursLogo from "./URS_LOGO.png";
 import { IconButton } from "./ui/index.jsx";
 
 export { default as ConfirmSplash } from "./ui/ConfirmSplash.jsx";
+export { default as ErrorModal, classifyAuthError } from "./ui/ErrorModal.jsx";
 export {
   Button, IconButton, Card, CardHeader, StatusBadge, RequestBadge, Badge,
   Spinner, Skeleton, SkeletonRows, EmptyState, Alert, Modal, ConfirmModal,
