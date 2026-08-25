@@ -17,7 +17,6 @@ export default function StudentPortal() {
   const [studentId, setStudentId] = useState("");
   const [pending, setPending] = useState(null);
   const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [splash, setSplash] = useState(null);
   const [failure, setFailure] = useState(null);
@@ -31,7 +30,7 @@ export default function StudentPortal() {
     try {
       const { data } = await api.post("/auth/student/find", { student_id: sid });
       setPending(data);
-      setPin(""); setPinError(null);
+      setPin("");
       setMode(data.has_pin ? "pin" : "setpin");
     } catch (e) {
       setFailure({ kind: "credentials", detail: apiError(e, "Student not found. Please register first.") });
@@ -41,16 +40,31 @@ export default function StudentPortal() {
   };
 
   const submitPin = async () => {
-    setLoading(true); setPinError(null);
+    setLoading(true);
     try {
       const { data } = await api.post("/auth/student/login", {
         student_id: pending.student_id, pin,
       });
       setSession("student", data.token, data.student);
+
+      // An account with no PIN — a new one, or one an administrator has just
+      // reset — signs in without a PIN being checked. Save the digits just
+      // entered as the new PIN, otherwise the account stays permanently
+      // PIN-less and anyone who knows the student ID can sign in as them.
+      if (!pending.has_pin) {
+        try {
+          await api.post("/auth/student/set-pin", { pin });
+        } catch {
+          // Signing in worked; only the PIN did not save. Say so rather than
+          // implying the account is protected when it is not.
+          addToast("Signed in, but your PIN didn't save. Set it in your profile.", "warning");
+        }
+      }
+
       setSplash({ title: `Welcome, ${data.student.full_name.split(" ")[0]}`,
                   subtitle: "Signing you in" });
     } catch (e) {
-      setPinError(apiError(e, "Incorrect PIN. Try again."));
+      setFailure({ kind: classifyAuthError(e), detail: apiError(e, "") });
       setPin("");
       setLoading(false);
     }
@@ -167,8 +181,7 @@ export default function StudentPortal() {
             student={pending}
             setting={mode === "setpin"}
             pin={pin}
-            onPin={v => { setPin(v); setPinError(null); }}
-            error={pinError}
+            onPin={setPin}
             loading={loading}
             onSubmit={submitPin}
           />
@@ -182,7 +195,7 @@ export default function StudentPortal() {
    in on ID alone this once — the server still allows it — and the wording says
    so plainly rather than pretending a PIN was checked. */
 
-function StudentPinStep({ student, setting, pin, onPin, error, loading, onSubmit }) {
+function StudentPinStep({ student, setting, pin, onPin, loading, onSubmit }) {
   const press = fn => e => { e.preventDefault(); fn(); };
   const digit = n => press(() => pin.length < 4 && onPin(pin + n));
 
@@ -202,8 +215,6 @@ function StudentPinStep({ student, setting, pin, onPin, error, loading, onSubmit
       </header>
 
       <div className="card space-y-5">
-        {error && <Alert tone="danger">{error}</Alert>}
-
         <div className="flex gap-3 justify-center" role="status" aria-live="polite"
           aria-label={`${pin.length} of 4 digits entered`}>
           {[0, 1, 2, 3].map(i => (

@@ -193,6 +193,71 @@ def set_active(employee_id):
     })
 
 
+# ─── STUDENT ACCOUNTS ─────────────────────────────────────────────────────────
+# Students self-register, so there is no card to issue — but a forgotten PIN
+# otherwise locks someone out permanently with nobody able to help. These give
+# the administrator the same recourse they have for faculty.
+
+def _student_or_404(student_id):
+    return query(
+        "SELECT * FROM students WHERE student_id=%s",
+        ((student_id or "").strip(),), fetchone=True
+    )
+
+
+@admin_bp.route("/students/<student_id>/reset-pin", methods=["POST"])
+@require_role("admin")
+def reset_student_pin(student_id):
+    """Clear a forgotten student PIN so they can set a new one on next sign-in."""
+    student = _student_or_404(student_id)
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    execute("UPDATE students SET pin_hash=NULL WHERE student_id=%s",
+            (student["student_id"],))
+    record_audit("admin.reset_student_pin", target=student["student_id"],
+                 detail=student["full_name"])
+
+    # The dashboard reads students through a short-lived cache; drop it so the
+    # change is visible rather than appearing not to have worked.
+    import teacher as teacher_module
+    teacher_module._students_cache["ts"] = 0
+
+    return jsonify({
+        "message": f"PIN cleared for {student['full_name']}. "
+                   f"They choose a new one the next time they sign in."
+    })
+
+
+@admin_bp.route("/students/<student_id>", methods=["DELETE"])
+@require_role("admin")
+def delete_student(student_id):
+    """Remove a student account and its consultation history.
+
+    Irreversible, and the history goes with it — the audit entry is the only
+    record that remains, which is why it names who did it.
+    """
+    student = _student_or_404(student_id)
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    requests_removed = query(
+        "SELECT COUNT(*) AS c FROM consultation_requests WHERE student_id=%s",
+        (student["student_id"],), fetchone=True
+    )["c"]
+
+    execute("DELETE FROM consultation_requests WHERE student_id=%s", (student["student_id"],))
+    execute("DELETE FROM students WHERE student_id=%s", (student["student_id"],))
+    record_audit("admin.delete_student", target=student["student_id"],
+                 detail=f"{student['full_name']} — {requests_removed} request(s) removed")
+
+    import teacher as teacher_module
+    teacher_module._students_cache["ts"] = 0
+    teacher_module._requests_cache["ts"] = 0
+
+    return jsonify({"message": f"{student['full_name']} removed."})
+
+
 # ─── AUDIT LOG ────────────────────────────────────────────────────────────────
 
 @admin_bp.route("/audit", methods=["GET"])

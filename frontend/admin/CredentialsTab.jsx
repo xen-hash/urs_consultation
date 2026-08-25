@@ -9,6 +9,7 @@ import {
 } from "../SharedUI.jsx";
 import DepartmentIcon, { shortDepartment, departmentColor } from "../ui/DepartmentIcon.jsx";
 import { useDebounced } from "./hooks.js";
+import { DEPARTMENTS } from "../constants.js";
 import api, { apiError } from "../httpClient.js";
 
 /**
@@ -45,6 +46,13 @@ export default function CredentialsTab({ addToast }) {
   }, [debounced, addToast]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Grouped by department, ordered by the roster in constants so the sections
+  // always appear in the same order regardless of what the search returns.
+  const groups = DEPARTMENTS
+    .map(dept => ({ dept, people: rows.filter(t => t.department === dept) }))
+    .concat([{ dept: null, people: rows.filter(t => !DEPARTMENTS.includes(t.department)) }])
+    .filter(g => g.people.length > 0);
 
   const issue = async (teacher) => {
     setBusy(true);
@@ -126,79 +134,69 @@ export default function CredentialsTab({ addToast }) {
             description={search ? `Nothing matches "${search}".` : "No faculty accounts yet."} />
         ) : (
           <>
-            {/* Cards on a phone, a table from `sm` up. A 6-column table is
-                unreadable at 375px even inside a horizontal scroller. */}
-            <ul className="sm:hidden divide-y divide-border">
-              {rows.map(t => (
-                <li key={t.employee_id} className="p-4 border-l-4"
-                  style={{ borderLeftColor: departmentColor(t.department).ink }}>
-                  <div className="flex items-start gap-3">
-                    <span className="w-9 h-9 rounded-lg grid place-items-center shrink-0"
-                      style={{ background: departmentColor(t.department).tint,
-                               color: departmentColor(t.department).ink }}>
-                      <DepartmentIcon department={t.department} size={17} />
+            {groups.map(({ dept, people }) => {
+              const color = departmentColor(dept);
+              const withCard = people.filter(p => p.has_qr).length;
+              return (
+                <section key={dept || "other"}>
+                  {/* The department band is the colour cue. A 4px edge stripe was
+                      too little to register while scrolling — this is the same
+                      hue doing a job you can actually see. */}
+                  <h3 className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-2.5 border-y border-border"
+                    style={{ background: color.tint, color: color.ink }}>
+                    <DepartmentIcon department={dept} size={17} />
+                    <span className="font-semibold text-sm truncate">
+                      {dept ? shortDepartment(dept) : "Other"}
                     </span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-fg">{t.professor_name}</p>
-                      <p className="text-xs text-muted-fg mt-0.5">
-                        <span className="font-mono">{t.employee_id}</span> · {shortDepartment(t.department)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2.5">
-                    <StateBadges teacher={t} />
-                  </div>
-                  {/* A rule between what the row says and what the row does, so
-                      the status line is not read as another control. */}
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <RowActions teacher={t} onPick={(action) => setConfirm({ action, teacher: t })} />
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    <span className="ml-auto text-xs font-medium tabular-nums opacity-80">
+                      {withCard}/{people.length} carded
+                    </span>
+                  </h3>
 
-            <div className="hidden sm:block table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th scope="col">Faculty</th>
-                    <th scope="col">Department</th>
-                    <th scope="col">Credentials</th>
-                    <th scope="col">Last sign-in</th>
-                    <th scope="col"><span className="sr-only">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(t => (
-                    <tr key={t.employee_id}>
-                      <td>
+                  <ul className="sm:hidden divide-y divide-border">
+                    {people.map(t => (
+                      <li key={t.employee_id} className="p-4">
                         <p className="font-semibold text-fg">{t.professor_name}</p>
-                        <p className="text-xs text-muted-fg font-mono mt-0.5">{t.employee_id}</p>
-                      </td>
-                      <td>
-                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
-                          style={{ background: departmentColor(t.department).tint,
-                                   color: departmentColor(t.department).ink }}>
-                          <DepartmentIcon department={t.department} size={13} />
-                          {shortDepartment(t.department)}
-                        </span>
-                      </td>
-                      <td><StateBadges teacher={t} /></td>
-                      <td className="text-muted-fg text-xs whitespace-nowrap">
-                        {t.last_login
-                          ? new Date(t.last_login.replace(" ", "T")).toLocaleDateString("en-PH",
-                              { month: "short", day: "numeric", year: "numeric" })
-                          : "Never"}
-                      </td>
-                      <td>
-                        <RowActions teacher={t} compact
-                          onPick={(action) => setConfirm({ action, teacher: t })} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <p className="text-xs text-muted-fg mt-0.5 font-mono">{t.employee_id}</p>
+                        <div className="mt-2.5">
+                          <StateBadges teacher={t} />
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <RowActions teacher={t} onPick={(action) => setConfirm({ action, teacher: t })} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="hidden sm:block table-wrap">
+                    <table className="table">
+                      <caption className="sr-only">{dept || "Other"} faculty credentials</caption>
+                      <tbody>
+                        {people.map(t => (
+                          <tr key={t.employee_id}>
+                            <td>
+                              <p className="font-semibold text-fg">{t.professor_name}</p>
+                              <p className="text-xs text-muted-fg font-mono mt-0.5">{t.employee_id}</p>
+                            </td>
+                            <td><StateBadges teacher={t} /></td>
+                            <td className="text-muted-fg text-xs whitespace-nowrap">
+                              {t.last_login
+                                ? new Date(t.last_login.replace(" ", "T")).toLocaleDateString("en-PH",
+                                    { month: "short", day: "numeric", year: "numeric" })
+                                : "Never signed in"}
+                            </td>
+                            <td>
+                              <RowActions teacher={t} compact
+                                onPick={(action) => setConfirm({ action, teacher: t })} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              );
+            })}
           </>
         )}
       </Card>

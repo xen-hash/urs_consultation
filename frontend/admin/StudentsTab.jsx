@@ -1,14 +1,56 @@
 import { useState } from "react";
-import { GraduationCap, Search } from "lucide-react";
-import { Card, Badge, EmptyState, SkeletonRows, Pagination } from "../SharedUI.jsx";
-import { shortDepartment } from "../ui/DepartmentIcon.jsx";
+import { GraduationCap, Search, KeyRound, Trash2, CheckCircle2, Clock } from "lucide-react";
+import {
+  Card, Badge, Button, ConfirmModal, EmptyState, SkeletonRows, Pagination,
+} from "../SharedUI.jsx";
+import DepartmentIcon, { shortDepartment, departmentColor } from "../ui/DepartmentIcon.jsx";
 import { usePagedResource, useDebounced } from "./hooks.js";
+import api, { apiError } from "../httpClient.js";
 
-export default function StudentsTab() {
+/**
+ * Student accounts.
+ *
+ * Students self-register, so there is no card to issue — but a forgotten PIN
+ * used to lock someone out with nobody able to help, since only the account
+ * holder could set one. These give the administrator the same recourse they
+ * have for faculty.
+ */
+export default function StudentsTab({ addToast }) {
   const [search, setSearch] = useState("");
+  const [confirm, setConfirm] = useState(null);
+  const [busy, setBusy] = useState(false);
   const debounced = useDebounced(search);
-  const { data, total, pages, page, setPage, loading, limit } =
+  const { data, total, pages, page, setPage, loading, limit, reload } =
     usePagedResource("/dean/students", { params: { search: debounced } });
+
+  const run = async (action, student) => {
+    setBusy(true);
+    try {
+      const path = `/admin/students/${encodeURIComponent(student.student_id)}`;
+      const { data: body } = action === "pin"
+        ? await api.post(`${path}/reset-pin`)
+        : await api.delete(path);
+      addToast(body.message, "success");
+      setConfirm(null);
+      reload();
+    } catch (e) {
+      addToast(apiError(e, "That didn't work."), "error");
+    } finally { setBusy(false); }
+  };
+
+  const CONFIRMS = {
+    pin: {
+      title: "Reset this PIN?",
+      body: s => `${s.full_name}'s PIN will be cleared. They choose a new one the next time they sign in — no one else can sign in as them in the meantime, because the account has no PIN to guess.`,
+      label: "Reset PIN", tone: "danger",
+    },
+    remove: {
+      title: "Remove this student?",
+      body: s => `${s.full_name} and their consultation history will be deleted permanently. This cannot be undone; only the audit entry will remain.`,
+      label: "Remove", tone: "danger",
+    },
+  };
+  const active = confirm ? CONFIRMS[confirm.action] : null;
 
   return (
     <div className="animate-rise">
@@ -42,6 +84,10 @@ export default function StudentsTab() {
                   <p className="text-xs text-muted-fg mt-1.5 truncate">
                     {s.course} · {shortDepartment(s.department)}
                   </p>
+                  <div className="mt-2"><PinState student={s} /></div>
+                  <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-1.5">
+                    <StudentActions student={s} onPick={a => setConfirm({ action: a, student: s })} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -55,7 +101,8 @@ export default function StudentsTab() {
                     <th scope="col">Course</th>
                     <th scope="col">Year</th>
                     <th scope="col">Department</th>
-                    <th scope="col">Registered</th>
+                    <th scope="col">PIN</th>
+                    <th scope="col"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -65,12 +112,20 @@ export default function StudentsTab() {
                       <td className="font-semibold">{s.full_name}</td>
                       <td className="text-muted-fg max-w-[180px] truncate">{s.course}</td>
                       <td><Badge tone="info">{s.year_level}</Badge></td>
-                      <td className="text-muted-fg">{shortDepartment(s.department)}</td>
-                      <td className="text-xs text-muted-fg whitespace-nowrap">
-                        {s.created_at
-                          ? new Date(s.created_at.replace(" ", "T"))
-                              .toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
-                          : "—"}
+                      <td>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
+                          style={{ background: departmentColor(s.department).tint,
+                                   color: departmentColor(s.department).ink }}>
+                          <DepartmentIcon department={s.department} size={13} />
+                          {shortDepartment(s.department)}
+                        </span>
+                      </td>
+                      <td><PinState student={s} /></td>
+                      <td>
+                        <div className="flex justify-end gap-1.5">
+                          <StudentActions student={s}
+                            onPick={a => setConfirm({ action: a, student: s })} />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -82,6 +137,42 @@ export default function StudentsTab() {
         <Pagination page={page} pages={pages} total={total} pageSize={limit}
           onPage={setPage} noun="students" />
       </Card>
+
+      {active && (
+        <ConfirmModal
+          open
+          onClose={() => setConfirm(null)}
+          onConfirm={() => run(confirm.action, confirm.student)}
+          title={active.title}
+          description={active.body(confirm.student)}
+          confirmLabel={active.label}
+          tone={active.tone}
+          loading={busy}
+        />
+      )}
     </div>
+  );
+}
+
+/** Whether the account has a PIN — the thing a reset actually changes. */
+function PinState({ student }) {
+  const set = student.has_pin;
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium
+      ${set ? "text-success" : "text-muted-fg"}`}>
+      {set ? <CheckCircle2 size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
+      {set ? "PIN set" : "No PIN yet"}
+    </span>
+  );
+}
+
+function StudentActions({ student, onPick }) {
+  return (
+    <>
+      {student.has_pin && (
+        <Button size="sm" icon={KeyRound} onClick={() => onPick("pin")}>Reset PIN</Button>
+      )}
+      <Button size="sm" icon={Trash2} onClick={() => onPick("remove")}>Remove</Button>
+    </>
   );
 }
