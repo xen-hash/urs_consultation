@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { QrCode, ScanLine, ChevronLeft, Lock, Delete, ArrowRight, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner, ConfirmSplash, ErrorModal, classifyAuthError } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -102,7 +102,7 @@ export default function TeacherPortal() {
         subtitle={splash?.subtitle}
         onDone={() => navigate("/teacher/dashboard", { replace: true })}
       />
-      <ErrorModal
+      <ErrorSplash
         open={!!failure}
         kind={failure?.kind}
         detail={failure?.detail}

@@ -19,7 +19,6 @@ import FacultyTab from "./admin/FacultyTab.jsx";
 import CredentialsTab from "./admin/CredentialsTab.jsx";
 import StudentsTab from "./admin/StudentsTab.jsx";
 import RequestsTab from "./admin/RequestsTab.jsx";
-import AddTeacherTab from "./admin/AddTeacherTab.jsx";
 
 const TABS = [
   { id: "overview",    label: "Dashboard",   short: "Home",     icon: LayoutDashboard },
@@ -42,7 +41,6 @@ export default function DeanDashboard() {
   const [tab, setTab] = useState("overview");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
   const [muted, setMutedState] = useState(true);
 
   const { stats, loading: statsLoading, reload: reloadStats } = useStats();
@@ -157,8 +155,13 @@ export default function DeanDashboard() {
           )}
           {tab === "credentials" && <CredentialsTab addToast={addToast} />}
           {tab === "faculty" && (
-            <FacultyTab departments={departments} loading={deptsLoading}
-              onAdd={() => setAddOpen(true)} />
+            <FacultyTab
+              departments={departments}
+              loading={deptsLoading}
+              addToast={addToast}
+              onAdded={refreshAll}
+              onGoToCredentials={() => setTab("credentials")}
+            />
           )}
           {tab === "students" && <StudentsTab addToast={addToast} />}
           {tab === "requests" && <RequestsTab addToast={addToast} onChanged={refreshAll} />}
@@ -173,14 +176,6 @@ export default function DeanDashboard() {
           active={tab}
           onSelect={setTab}
           onMore={() => setSheetOpen(true)}
-        />
-
-        <AddTeacherTab
-          open={addOpen}
-          onClose={() => setAddOpen(false)}
-          addToast={addToast}
-          onAdded={refreshAll}
-          onGoToCredentials={() => { setAddOpen(false); setTab("credentials"); }}
         />
 
         <MoreSheet

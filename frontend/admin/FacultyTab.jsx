@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BookOpen, UserPlus, Search, X } from "lucide-react";
 import { Card, StatusBadge, EmptyState, Skeleton, Button } from "../SharedUI.jsx";
 import DepartmentIcon, { shortDepartment, departmentColor } from "../ui/DepartmentIcon.jsx";
+import AddFacultyForm from "./AddFacultyForm.jsx";
 
 /**
  * Faculty availability.
@@ -12,9 +13,12 @@ import DepartmentIcon, { shortDepartment, departmentColor } from "../ui/Departme
  * for, so it is a row of chips: one tap, current state visible without opening
  * anything, and the counts readable before you choose.
  */
-export default function FacultyTab({ departments, loading, onAdd }) {
+export default function FacultyTab({
+  departments, loading, addToast, onAdded, onGoToCredentials,
+}) {
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState(null);   // null = all
+  const [adding, setAdding] = useState(false);
 
   const all = departments.flatMap(d =>
     d.professors.map(p => ({ ...p, department: d.department })));
@@ -45,10 +49,23 @@ export default function FacultyTab({ departments, loading, onAdd }) {
             </button>
           )}
         </div>
-        <Button variant="primary" icon={UserPlus} className="ml-auto" onClick={onAdd}>
+        <Button variant="primary" icon={UserPlus} className="ml-auto"
+          onClick={() => setAdding(a => !a)} aria-expanded={adding}
+          aria-controls="add-faculty-form">
           Add faculty
         </Button>
       </div>
+
+      {adding && (
+        <div id="add-faculty-form">
+          <AddFacultyForm
+            onClose={() => setAdding(false)}
+            addToast={addToast}
+            onAdded={onAdded}
+            onGoToCredentials={onGoToCredentials}
+          />
+        </div>
+      )}
 
       {/* Chips scroll rather than wrap: a wrapping row changes height as you
           filter, which shifts the list under your thumb mid-tap. */}

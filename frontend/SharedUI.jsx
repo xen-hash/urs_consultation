@@ -10,12 +10,12 @@ import ursLogo from "./URS_LOGO.png";
 import { IconButton } from "./ui/index.jsx";
 
 export { default as ConfirmSplash } from "./ui/ConfirmSplash.jsx";
-export { default as ErrorModal, classifyAuthError } from "./ui/ErrorModal.jsx";
+export { default as ErrorSplash, classifyAuthError } from "./ui/ErrorSplash.jsx";
 export {
   Button, IconButton, Card, CardHeader, StatusBadge, RequestBadge, Badge,
   Spinner, Skeleton, SkeletonRows, EmptyState, Alert, Modal, ConfirmModal,
   Drawer, Tabs, Pagination, Toast, useToastState, useScrollLock,
-  ConfirmMark, useConfirmed,
+  ConfirmMark, AlertMark, useConfirmed,
 } from "./ui/index.jsx";
 
 /** Top bar for a signed-in area. `pt-safe` keeps it clear of the iOS notch —
