@@ -560,16 +560,14 @@ def dean_add_teacher():
     if existing:
         return jsonify({"error": f"{professor_name} already exists in {department}"}), 409
 
-    import hashlib, bcrypt
-    raw = f"{professor_name.strip().lower()}|{department.strip().lower()}"
-    num = int(hashlib.md5(raw.encode()).hexdigest(), 16) % 90000 + 10000
-    employee_id = f"T-{num}"
-    pw_hash = bcrypt.hashpw(employee_id.encode(), bcrypt.gensalt()).decode()
+    # One definition of the ID, shared with the startup seeding.
+    from models import make_employee_id, _UNUSABLE_PASSWORD
+    employee_id = make_employee_id(professor_name, department)
 
     execute(
         """INSERT INTO teacher_accounts (employee_id, professor_name, department, password_hash)
            VALUES (%s, %s, %s, %s)""",
-        (employee_id, professor_name, department, pw_hash)
+        (employee_id, professor_name, department, _UNUSABLE_PASSWORD)
     )
     _logs_cache["ts"] = 0
     record_audit("admin.add_teacher", target=employee_id,
