@@ -2,6 +2,7 @@ import pytz
 from datetime import datetime, date, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from db import query, execute
+from security import require_role, subject, forbid_unless_owner, is_admin
 
 student_bp = Blueprint("student", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -28,20 +29,33 @@ def _serialize_row(row):
 
 
 @student_bp.route("/consultation/request", methods=["POST"])
+@require_role("student")
 def submit_request():
+    """File a consultation request as the signed-in student.
+
+    The requester's identity comes from the session token. Previously the
+    student_id and student_name were read from the request body, so anyone
+    could file requests in another student's name.
+    """
     data = request.json or {}
-    required = ["student_id", "student_name", "course", "professor_name", "purpose", "category", "department"]
-    for f in required:
+    for f in ("professor_name", "purpose", "category", "department"):
         if not data.get(f):
             return jsonify({"error": f"Missing: {f}"}), 400
 
+    me = query("SELECT * FROM students WHERE student_id=%s", (subject(),), fetchone=True)
+    if not me:
+        return jsonify({"error": "Student not found"}), 404
+
+    student_id   = me["student_id"]
+    student_name = me["full_name"]
+    course       = me["course"] or data.get("course") or ""
     now_ph = datetime.now(PH)
 
     # Check if student already has a pending/active request to this professor
     existing = query(
         """SELECT id FROM consultation_requests
            WHERE student_id=%s AND professor_name=%s AND status='pending'""",
-        (data["student_id"], data["professor_name"]), fetchone=True
+        (student_id, data["professor_name"]), fetchone=True
     )
     if existing:
         return jsonify({"error": "You already have a pending consultation request with this professor. Please wait for it to be resolved first."}), 429
@@ -54,7 +68,7 @@ def submit_request():
     dup = query(
         """SELECT id FROM consultation_requests
            WHERE student_id=%s AND created_at > %s::timestamp""",
-        (data["student_id"], three_sec_ago), fetchone=True
+        (student_id, three_sec_ago), fetchone=True
     )
     if dup:
         return jsonify({"error": "Please wait a moment before submitting another request."}), 429
@@ -70,7 +84,7 @@ def submit_request():
            (student_id, student_name, course, professor_name, professor_id,
             purpose, category, status, request_time, department)
            VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s::timestamp,%s)""",
-        (data["student_id"], data["student_name"], data["course"],
+        (student_id, student_name, course,
          data["professor_name"], prof_id,
          data["purpose"], data["category"],
          now_ph.strftime("%Y-%m-%d %H:%M:%S"), data["department"])
@@ -80,7 +94,11 @@ def submit_request():
 
 
 @student_bp.route("/consultation/history/<student_id>", methods=["GET"])
+@require_role("student", "admin")
 def get_history(student_id):
+    denied = forbid_unless_owner(student_id)
+    if denied:
+        return denied
     page   = max(1, int(request.args.get("page", 1)))
     limit  = min(50, int(request.args.get("limit", 10)))
     offset = (page - 1) * limit
@@ -100,12 +118,10 @@ def get_history(student_id):
 
 
 @student_bp.route("/student/update-profile", methods=["POST"])
+@require_role("student", "admin")
 def update_student_profile():
     data = request.json or {}
-    student_id = (data.get("student_id") or "").strip()
-    if not student_id:
-        return jsonify({"error": "Student ID required"}), 400
-
+    student_id = subject()
     student = query("SELECT * FROM students WHERE student_id=%s", (student_id,), fetchone=True)
     if not student:
         return jsonify({"error": "Student not found"}), 404
@@ -143,7 +159,11 @@ def update_student_profile():
 
 
 @student_bp.route("/student/profile/<student_id>", methods=["GET"])
+@require_role("student", "admin")
 def get_student_profile(student_id):
+    denied = forbid_unless_owner(student_id)
+    if denied:
+        return denied
     student = query("SELECT * FROM students WHERE student_id=%s", (student_id,), fetchone=True)
     if not student:
         return jsonify({"error": "Student not found"}), 404
@@ -156,24 +176,3 @@ def get_student_profile(student_id):
         "photo":      student.get("photo"),
         "has_pin":    bool(student.get("pin_hash"))
     })
-
-
-@student_bp.route("/student/set-pin", methods=["POST"])
-def set_student_pin():
-    import bcrypt
-    data       = request.json or {}
-    student_id = (data.get("student_id") or "").strip()
-    pin        = str(data.get("pin") or "").strip()
-
-    if not student_id:
-        return jsonify({"error": "Student ID required"}), 400
-    if len(pin) != 4 or not pin.isdigit():
-        return jsonify({"error": "PIN must be exactly 4 digits."}), 400
-
-    student = query("SELECT id FROM students WHERE student_id=%s", (student_id,), fetchone=True)
-    if not student:
-        return jsonify({"error": "Student not found"}), 404
-
-    pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
-    execute("UPDATE students SET pin_hash=%s WHERE student_id=%s", (pin_hash, student_id))
-    return jsonify({"message": "PIN set successfully"})

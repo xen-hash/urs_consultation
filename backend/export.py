@@ -6,6 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from db import query
 from config import PROFESSOR_LIST
+from security import require_role, record_audit
 
 export_bp = Blueprint("export", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -57,8 +58,12 @@ def _auto_width(ws):
 
 
 @export_bp.route("/export", methods=["GET"])
+@require_role("admin")
 def export_data():
+    """Full data export. Admin only — this dumps every consultation record and
+    every student who has ever registered, and used to need no credential."""
     export_type = request.args.get("type", "today")
+    record_audit("admin.export", detail=export_type)
     now_ph = datetime.now(PH)
     wb = Workbook()
     wb.remove(wb.active)  # remove default sheet

@@ -187,8 +187,25 @@ def build_ssl_context():
     return ctx
 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "urs-consultation-secret-2024")
-QR_FOLDER  = os.path.join(os.path.dirname(__file__), "static", "qrcodes")
+# ─── Secrets and sessions ─────────────────────────────────────────────────────
+# These defaults exist so `python app.py` runs out of the box for local work.
+# Shipping them is the same as having no authentication at all, so a deploy that
+# still carries one fails at startup unless it opts out explicitly — see
+# _assert_secrets_configured() at the bottom of this file.
+
+DEFAULT_SECRET_KEY     = "urs-consultation-secret-2024"
+DEFAULT_ADMIN_PASSWORD = "admin123"
+DEFAULT_KIOSK_PASSWORD = "admin123"
+
+SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
+
+# How long a session token stays valid. Tokens are stateless and cannot be
+# revoked individually, so this doubles as the blast radius of a leaked one.
+SESSION_TTL_HOURS = int(os.getenv("SESSION_TTL_HOURS", 12))
+
+ALLOW_INSECURE_DEFAULTS = os.getenv("ALLOW_INSECURE_DEFAULTS", "").strip().lower() in (
+    "1", "true", "yes", "on"
+)
 
 PROFESSOR_LIST = {
     "Civil Engineering Department": [
@@ -227,7 +244,73 @@ PROFESSOR_LIST = {
     ]
 }
 
-KIOSK_PASSWORD      = os.getenv("KIOSK_PASSWORD", "admin123")
-ADMIN_PASSWORD      = os.getenv("ADMIN_PASSWORD", "admin123")
 WORKING_HOURS_START = "06:00"
 WORKING_HOURS_END   = "19:30"
+
+
+# ─── Administrator credentials ────────────────────────────────────────────────
+# The admin login used to be a string compared inside the browser bundle. It is
+# now a bcrypt hash checked on the server. Set ADMIN_PASSWORD_HASH in the
+# environment; ADMIN_PASSWORD is accepted as a convenience and hashed at boot.
+
+ADMIN_USERNAME      = os.getenv("ADMIN_USERNAME", "admin").strip()
+ADMIN_PASSWORD      = os.getenv("ADMIN_PASSWORD", DEFAULT_ADMIN_PASSWORD)
+KIOSK_PASSWORD      = os.getenv("KIOSK_PASSWORD", DEFAULT_KIOSK_PASSWORD)
+
+_admin_hash_env = (os.getenv("ADMIN_PASSWORD_HASH") or "").strip()
+
+
+def _resolve_admin_hash():
+    """The bcrypt hash to check admin logins against.
+
+    Prefers ADMIN_PASSWORD_HASH so the plaintext never has to exist in the
+    environment. Falls back to hashing ADMIN_PASSWORD once at import time.
+    """
+    if _admin_hash_env:
+        return _admin_hash_env.encode()
+    import bcrypt
+    return bcrypt.hashpw(ADMIN_PASSWORD.encode(), bcrypt.gensalt())
+
+
+ADMIN_PASSWORD_HASH = _resolve_admin_hash()
+
+
+# ─── Startup guard ────────────────────────────────────────────────────────────
+
+def _assert_secrets_configured():
+    """Refuse to boot with the built-in development secrets still in place.
+
+    Serving traffic with a known SECRET_KEY means anyone can forge a session
+    token for any role, so this is a hard failure rather than a warning. Local
+    development sets ALLOW_INSECURE_DEFAULTS=1.
+    """
+    weak = []
+    if SECRET_KEY == DEFAULT_SECRET_KEY:
+        weak.append("SECRET_KEY")
+    if not _admin_hash_env and ADMIN_PASSWORD == DEFAULT_ADMIN_PASSWORD:
+        weak.append("ADMIN_PASSWORD (or ADMIN_PASSWORD_HASH)")
+    if KIOSK_PASSWORD == DEFAULT_KIOSK_PASSWORD:
+        weak.append("KIOSK_PASSWORD")
+
+    if not weak:
+        return
+    if ALLOW_INSECURE_DEFAULTS:
+        print(
+            "[SECURITY] WARNING: using built-in defaults for "
+            f"{', '.join(weak)}. Allowed only because ALLOW_INSECURE_DEFAULTS "
+            "is set. Never do this on a deployed instance."
+        )
+        return
+    raise RuntimeError(
+        "Refusing to start: these still hold their built-in development "
+        f"defaults -> {', '.join(weak)}.\n"
+        "Anyone who reads this source can forge an admin session against a\n"
+        "deployment configured this way. Set them in the environment:\n"
+        "  SECRET_KEY          a long random string\n"
+        "  ADMIN_PASSWORD_HASH a bcrypt hash (or ADMIN_PASSWORD)\n"
+        "  KIOSK_PASSWORD      the kiosk exit code\n"
+        "For local development only, set ALLOW_INSECURE_DEFAULTS=1."
+    )
+
+
+_assert_secrets_configured()
