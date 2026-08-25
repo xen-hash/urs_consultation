@@ -7,7 +7,7 @@ import {
   Card, Button, Badge, Modal, ConfirmModal, EmptyState, SkeletonRows, Alert, IconButton,
   ConfirmMark,
 } from "../SharedUI.jsx";
-import { shortDepartment } from "../ui/DepartmentIcon.jsx";
+import DepartmentIcon, { shortDepartment, departmentColor } from "../ui/DepartmentIcon.jsx";
 import { useDebounced } from "./hooks.js";
 import api, { apiError } from "../httpClient.js";
 
@@ -130,12 +130,22 @@ export default function CredentialsTab({ addToast }) {
                 unreadable at 375px even inside a horizontal scroller. */}
             <ul className="sm:hidden divide-y divide-border">
               {rows.map(t => (
-                <li key={t.employee_id} className="p-4">
-                  <p className="font-semibold text-fg">{t.professor_name}</p>
-                  <p className="text-xs text-muted-fg mt-0.5">
-                    <span className="font-mono">{t.employee_id}</span> · {shortDepartment(t.department)}
-                  </p>
-                  <div className="mt-2">
+                <li key={t.employee_id} className="p-4 border-l-4"
+                  style={{ borderLeftColor: departmentColor(t.department).ink }}>
+                  <div className="flex items-start gap-3">
+                    <span className="w-9 h-9 rounded-lg grid place-items-center shrink-0"
+                      style={{ background: departmentColor(t.department).tint,
+                               color: departmentColor(t.department).ink }}>
+                      <DepartmentIcon department={t.department} size={17} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-fg">{t.professor_name}</p>
+                      <p className="text-xs text-muted-fg mt-0.5">
+                        <span className="font-mono">{t.employee_id}</span> · {shortDepartment(t.department)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2.5">
                     <StateBadges teacher={t} />
                   </div>
                   {/* A rule between what the row says and what the row does, so
@@ -165,7 +175,14 @@ export default function CredentialsTab({ addToast }) {
                         <p className="font-semibold text-fg">{t.professor_name}</p>
                         <p className="text-xs text-muted-fg font-mono mt-0.5">{t.employee_id}</p>
                       </td>
-                      <td className="text-muted-fg">{shortDepartment(t.department)}</td>
+                      <td>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
+                          style={{ background: departmentColor(t.department).tint,
+                                   color: departmentColor(t.department).ink }}>
+                          <DepartmentIcon department={t.department} size={13} />
+                          {shortDepartment(t.department)}
+                        </span>
+                      </td>
                       <td><StateBadges teacher={t} /></td>
                       <td className="text-muted-fg text-xs whitespace-nowrap">
                         {t.last_login

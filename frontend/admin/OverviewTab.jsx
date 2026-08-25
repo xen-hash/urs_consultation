@@ -1,6 +1,11 @@
-import { BookOpen, GraduationCap, Activity, CheckCircle2, ChevronRight, ClipboardList } from "lucide-react";
+import {
+  BookOpen, GraduationCap, Activity, CheckCircle2, ChevronRight, ClipboardList,
+  TrendingUp, PieChart, Download, ScrollText,
+} from "lucide-react";
 import { Card, CardHeader, RequestBadge, EmptyState, Skeleton, Button } from "../SharedUI.jsx";
 import { shortDepartment } from "../ui/DepartmentIcon.jsx";
+import { TrendChart, StatusDonut } from "./Charts.jsx";
+import AuditFeed from "./AuditFeed.jsx";
 
 /** Headline numbers. These come from /admin/stats — SQL counts over the whole
  *  table. They used to be `students.length` on the current page, so every
@@ -40,9 +45,18 @@ function DepartmentBar({ dept }) {
   );
 }
 
-export default function OverviewTab({ stats, statsLoading, departments, requests, onSeeAll }) {
+export default function OverviewTab({
+  stats, statsLoading, departments, requests, onSeeAll, onExport,
+}) {
   const categories = stats?.categories || [];
   const maxCategory = Math.max(1, ...categories.map(c => c.count));
+
+  const statusSegments = [
+    { key: "pending",  label: "Pending",  value: stats?.pending  || 0 },
+    { key: "done",     label: "Done",     value: stats?.done     || 0 },
+    { key: "declined", label: "Declined", value: stats?.declined || 0 },
+    { key: "archived", label: "Archived", value: stats?.archived || 0 },
+  ];
 
   return (
     <div className="space-y-5 animate-rise">
@@ -55,6 +69,23 @@ export default function OverviewTab({ stats, statsLoading, departments, requests
           sub="consultation requests" loading={statsLoading} />
         <StatCard icon={CheckCircle2} label="Completed" value={stats?.done}
           sub={`${stats?.pending ?? 0} still pending`} loading={statsLoading} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader title="Requests over time"
+            subtitle="Last 14 days" icon={TrendingUp} />
+          {statsLoading
+            ? <Skeleton className="h-40 rounded-lg" />
+            : <TrendChart data={stats?.daily || []} />}
+        </Card>
+
+        <Card>
+          <CardHeader title="By status" subtitle="All requests" icon={PieChart} />
+          {statsLoading
+            ? <Skeleton className="h-40 rounded-lg" />
+            : <StatusDonut segments={statusSegments} />}
+        </Card>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -96,6 +127,29 @@ export default function OverviewTab({ stats, statsLoading, departments, requests
               </div>
             ))}
           </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="p-5 pb-0">
+            <CardHeader title="Recent activity"
+              subtitle="Sign-ins, credentials and exports" icon={ScrollText} />
+          </div>
+          <AuditFeed limit={6} />
+        </Card>
+
+        <Card>
+          <CardHeader title="Export" subtitle="Download as a spreadsheet" icon={Download} />
+          <div className="space-y-2">
+            <Button className="w-full justify-start" icon={Download}
+              onClick={() => onExport?.("today")}>Today's records</Button>
+            <Button className="w-full justify-start" icon={Download}
+              onClick={() => onExport?.("all")}>All records</Button>
+          </div>
+          <p className="text-xs text-muted-fg mt-3">
+            Every export is recorded in the activity log above.
+          </p>
         </Card>
       </div>
 

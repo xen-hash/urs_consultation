@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  ScrollText, Search, LogIn, QrCode, KeyRound, Ban, FileDown, UserPlus,
-  Archive, ShieldAlert, Pencil, Trash2, ScanLine, CircleSlash,
-} from "lucide-react";
+import { ScrollText, Search } from "lucide-react";
 import { Card, Badge, EmptyState, SkeletonRows, Pagination } from "../SharedUI.jsx";
 import { usePagedResource, useDebounced } from "./hooks.js";
+import { meta } from "./AuditFeed.jsx";
 import api from "../httpClient.js";
 
 /**
@@ -14,35 +12,6 @@ import api from "../httpClient.js";
  * trace to investigate. Every login, card issuance, revocation, PIN reset,
  * export and archive lands here with an actor and an IP.
  */
-
-// Each action gets an icon and a tone so a page of rows is scannable — the
-// security-relevant ones (failures, revocations, throttling) read as warnings.
-const ACTION_META = {
-  "admin.login":              { icon: LogIn,       tone: "info",    label: "Admin signed in" },
-  "admin.login_failed":       { icon: ShieldAlert, tone: "danger",  label: "Admin sign-in failed" },
-  "admin.login_throttled":    { icon: ShieldAlert, tone: "danger",  label: "Admin sign-in throttled" },
-  "admin.issue_qr":           { icon: QrCode,      tone: "success", label: "Faculty ID issued" },
-  "admin.revoke_qr":          { icon: Ban,         tone: "warning", label: "Faculty ID revoked" },
-  "admin.reset_pin":          { icon: KeyRound,    tone: "warning", label: "PIN reset" },
-  "admin.set_active":         { icon: CircleSlash, tone: "warning", label: "Account status changed" },
-  "admin.add_teacher":        { icon: UserPlus,    tone: "info",    label: "Faculty added" },
-  "admin.export":             { icon: FileDown,    tone: "info",    label: "Data exported" },
-  "admin.archive_requests":   { icon: Archive,     tone: "warning", label: "Requests archived" },
-  "admin.clear_requests":     { icon: Trash2,      tone: "danger",  label: "Requests deleted" },
-  "teacher.login":            { icon: LogIn,       tone: "neutral", label: "Faculty signed in" },
-  "teacher.login_throttled":  { icon: ShieldAlert, tone: "danger",  label: "Faculty sign-in throttled" },
-  "teacher.qr_login_failed":  { icon: ScanLine,    tone: "warning", label: "Unrecognised card scanned" },
-  "teacher.set_pin":          { icon: KeyRound,    tone: "neutral", label: "Faculty set a PIN" },
-  "teacher.rename":           { icon: Pencil,      tone: "neutral", label: "Faculty renamed" },
-  "student.login":            { icon: LogIn,       tone: "neutral", label: "Student signed in" },
-  "student.register":         { icon: UserPlus,    tone: "neutral", label: "Student registered" },
-  "student.set_pin":          { icon: KeyRound,    tone: "neutral", label: "Student set a PIN" },
-  "biometric.enroll":         { icon: ScanLine,    tone: "neutral", label: "Biometrics enrolled" },
-  "biometric.delete":         { icon: Trash2,      tone: "warning", label: "Biometrics removed" },
-};
-
-const meta = (action) =>
-  ACTION_META[action] || { icon: ScrollText, tone: "neutral", label: action };
 
 export default function AuditTab() {
   const [search, setSearch] = useState("");

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, BookOpen, GraduationCap, ClipboardList, UserPlus,
-  QrCode, ScrollText, LogOut, Shield, Download, RefreshCw,
+  QrCode, LogOut, Shield, Download, RefreshCw,
   Volume2, VolumeX, X,
 } from "lucide-react";
 import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
@@ -19,7 +19,6 @@ import FacultyTab from "./admin/FacultyTab.jsx";
 import CredentialsTab from "./admin/CredentialsTab.jsx";
 import StudentsTab from "./admin/StudentsTab.jsx";
 import RequestsTab from "./admin/RequestsTab.jsx";
-import AuditTab from "./admin/AuditTab.jsx";
 import AddTeacherTab from "./admin/AddTeacherTab.jsx";
 
 const TABS = [
@@ -28,7 +27,6 @@ const TABS = [
   { id: "faculty",     label: "Faculty",     short: "Faculty",  icon: BookOpen },
   { id: "students",    label: "Students",    short: "Students", icon: GraduationCap },
   { id: "requests",    label: "Requests",    short: "Requests", icon: ClipboardList },
-  { id: "audit",       label: "Audit log",   short: "Audit",    icon: ScrollText },
   { id: "add",         label: "Add faculty", short: "Add",      icon: UserPlus },
 ];
 
@@ -141,6 +139,8 @@ export default function DeanDashboard() {
               <span className="badge badge-warning">{stats.pending} pending</span>
             )}
             <IconButton icon={RefreshCw} label="Refresh" onClick={refreshAll} />
+            <IconButton icon={LogOut} label="Sign out" onClick={signOut}
+              className="hover:text-danger hover:bg-danger-50" />
           </div>
         </header>
 
@@ -152,6 +152,7 @@ export default function DeanDashboard() {
               departments={departments}
               requests={recent.data}
               onSeeAll={() => setTab("requests")}
+              onExport={exportData}
             />
           )}
           {tab === "credentials" && <CredentialsTab addToast={addToast} />}
@@ -161,7 +162,6 @@ export default function DeanDashboard() {
           )}
           {tab === "students" && <StudentsTab />}
           {tab === "requests" && <RequestsTab addToast={addToast} onChanged={refreshAll} />}
-          {tab === "audit" && <AuditTab />}
           {tab === "add" && (
             <AddTeacherTab addToast={addToast} onAdded={refreshAll}
               onGoToCredentials={() => setTab("credentials")} />
