@@ -27,7 +27,6 @@ const TABS = [
   { id: "faculty",     label: "Faculty",     short: "Faculty",  icon: BookOpen },
   { id: "students",    label: "Students",    short: "Students", icon: GraduationCap },
   { id: "requests",    label: "Requests",    short: "Requests", icon: ClipboardList },
-  { id: "add",         label: "Add faculty", short: "Add",      icon: UserPlus },
 ];
 
 // Bar order is by frequency of use, not the order of the sidebar: issuing and
@@ -43,6 +42,7 @@ export default function DeanDashboard() {
   const [tab, setTab] = useState("overview");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [muted, setMutedState] = useState(true);
 
   const { stats, loading: statsLoading, reload: reloadStats } = useStats();
@@ -158,14 +158,11 @@ export default function DeanDashboard() {
           {tab === "credentials" && <CredentialsTab addToast={addToast} />}
           {tab === "faculty" && (
             <FacultyTab departments={departments} loading={deptsLoading}
-              onAdd={() => setTab("add")} />
+              onAdd={() => setAddOpen(true)} />
           )}
-          {tab === "students" && <StudentsTab />}
+          {tab === "students" && <StudentsTab addToast={addToast} />}
           {tab === "requests" && <RequestsTab addToast={addToast} onChanged={refreshAll} />}
-          {tab === "add" && (
-            <AddTeacherTab addToast={addToast} onAdded={refreshAll}
-              onGoToCredentials={() => setTab("credentials")} />
-          )}
+
           <BottomNavSpacer />
         </main>
 
@@ -176,6 +173,14 @@ export default function DeanDashboard() {
           active={tab}
           onSelect={setTab}
           onMore={() => setSheetOpen(true)}
+        />
+
+        <AddTeacherTab
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          addToast={addToast}
+          onAdded={refreshAll}
+          onGoToCredentials={() => { setAddOpen(false); setTab("credentials"); }}
         />
 
         <MoreSheet
