@@ -218,3 +218,39 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Printing a Faculty ID card ───────────────────────────────────────────────
+   The issue dialog's Print button used to hand the printer the entire
+   dashboard — sidebar, backdrop and all — with the card somewhere inside it.
+   Everything is hidden except the element marked .print-card, which is then
+   laid out on its own.
+
+   visibility rather than display: the card sits inside a portalled dialog, so
+   collapsing its ancestors would take the card with it.
+
+   print-color-adjust keeps the navy header bar; browsers drop background fills
+   when printing unless asked not to. */
+@media print {
+  body * { visibility: hidden !important; }
+
+  .print-card, .print-card * { visibility: visible !important; }
+
+  .print-card {
+    position: absolute !important;
+    left: 0; top: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* The QR has to survive being scanned off paper, so give it a fixed physical
+     size rather than whatever the screen layout happened to compute. */
+  .print-card img { width: 45mm !important; height: 45mm !important; }
+
+  @page { margin: 12mm; }
+}

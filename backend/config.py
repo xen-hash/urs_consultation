@@ -274,6 +274,24 @@ def _resolve_admin_hash():
 
 ADMIN_PASSWORD_HASH = _resolve_admin_hash()
 
+# Say which credential source is in play, because getting this wrong looks
+# exactly like a mistyped password: ADMIN_PASSWORD_HASH silently wins over
+# ADMIN_PASSWORD when both are set, and a value pasted with a stray space is
+# invisible in a dashboard. Neither the password nor the hash is ever printed —
+# only which variable was read, the expected username, and the password's
+# length so a stray space shows up as an off-by-one.
+print(
+    f"[SECURITY] Admin login expects username={ADMIN_USERNAME!r}; "
+    f"credential from "
+    f"{'ADMIN_PASSWORD_HASH' if _admin_hash_env else 'ADMIN_PASSWORD'}"
+    + ("" if _admin_hash_env else f" (length {len(ADMIN_PASSWORD)})")
+)
+if _admin_hash_env and os.getenv("ADMIN_PASSWORD"):
+    print(
+        "[SECURITY] WARNING: both ADMIN_PASSWORD_HASH and ADMIN_PASSWORD are "
+        "set. The hash wins and ADMIN_PASSWORD is ignored — delete one of them."
+    )
+
 
 # ─── Startup guard ────────────────────────────────────────────────────────────
 
