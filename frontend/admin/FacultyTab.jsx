@@ -50,22 +50,18 @@ export default function FacultyTab({
           )}
         </div>
         <Button variant="primary" icon={UserPlus} className="ml-auto"
-          onClick={() => setAdding(a => !a)} aria-expanded={adding}
-          aria-controls="add-faculty-form">
+          onClick={() => setAdding(true)}>
           Add faculty
         </Button>
       </div>
 
-      {adding && (
-        <div id="add-faculty-form">
-          <AddFacultyForm
-            onClose={() => setAdding(false)}
-            addToast={addToast}
-            onAdded={onAdded}
-            onGoToCredentials={onGoToCredentials}
-          />
-        </div>
-      )}
+      <AddFacultyForm
+        open={adding}
+        onClose={() => setAdding(false)}
+        addToast={addToast}
+        onAdded={onAdded}
+        onGoToCredentials={onGoToCredentials}
+      />
 
       {/* Chips scroll rather than wrap: a wrapping row changes height as you
           filter, which shifts the list under your thumb mid-tap. */}
