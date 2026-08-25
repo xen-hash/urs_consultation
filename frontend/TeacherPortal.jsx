@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { QrCode, ScanLine, ChevronLeft, Lock, Delete, ArrowRight, CreditCard, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import SignedOutNotice from "./ui/SignedOutNotice.jsx";
+import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import ursLogo from "./URS_LOGO.png";
@@ -35,7 +37,7 @@ export default function TeacherPortal() {
 
   const enterDashboard = (teacher, message) => {
     addToast(message, "success");
-    setTimeout(() => navigate("/teacher/dashboard"), 500);
+    setTimeout(() => navigate("/teacher/dashboard", { replace: true }), 500);
   };
 
   const handleTeacherQRScan = async (value) => {
@@ -91,7 +93,7 @@ export default function TeacherPortal() {
   };
 
   return (
-    <div className="min-h-dvh bg-canvas flex flex-col">
+    <URSBackground>
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
@@ -116,9 +118,10 @@ export default function TeacherPortal() {
 
         {view === "home" && (
           <div className="animate-rise">
+            <SignedOutNotice />
             <header className="mb-8">
-              <h1 className="text-2xl sm:text-3xl font-bold text-fg tracking-tight">Faculty sign in</h1>
-              <p className="text-muted-fg mt-1.5">Scan your Faculty ID card, or use your Employee ID and PIN.</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-on-backdrop tracking-tight">Faculty sign in</h1>
+              <p className="text-on-backdrop/75 mt-1.5">Scan your Faculty ID card, or use your Employee ID and PIN.</p>
             </header>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -153,8 +156,8 @@ export default function TeacherPortal() {
         {view === "scanqr" && (
           <section className="animate-rise" aria-labelledby="scan-heading">
             <header className="mb-6">
-              <h1 id="scan-heading" className="text-2xl font-bold text-fg tracking-tight">Scan your Faculty ID</h1>
-              <p className="text-muted-fg mt-1.5">Hold the QR code on your card inside the frame.</p>
+              <h1 id="scan-heading" className="text-2xl font-bold text-on-backdrop tracking-tight">Scan your Faculty ID</h1>
+              <p className="text-on-backdrop/75 mt-1.5">Hold the QR code on your card inside the frame.</p>
             </header>
             <div className="card">
               <QRScanner onScan={handleTeacherQRScan} onError={msg => addToast(msg, "error")} />
@@ -180,7 +183,7 @@ export default function TeacherPortal() {
           />
         )}
       </main>
-    </div>
+    </URSBackground>
   );
 }
 
@@ -200,10 +203,10 @@ function PinPanel({ mode, teacher, employeeId, onEmployeeId, pin, onPin, loading
         <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
           {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}
         </span>
-        <h1 id="pin-heading" className="text-2xl font-bold text-fg tracking-tight">
+        <h1 id="pin-heading" className="text-2xl font-bold text-on-backdrop tracking-tight">
           {setting ? "Choose a PIN" : "Employee ID + PIN"}
         </h1>
-        <p className="text-muted-fg mt-1.5">
+        <p className="text-on-backdrop/75 mt-1.5">
           {setting
             ? `Welcome, ${teacher?.professor_name || "there"}. Pick a 4-digit PIN so you can sign in without your card.`
             : "Enter your Employee ID and 4-digit PIN."}

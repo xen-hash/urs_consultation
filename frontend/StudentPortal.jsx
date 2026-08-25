@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, UserPlus } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, Alert } from "./SharedUI.jsx";
+import SignedOutNotice from "./ui/SignedOutNotice.jsx";
+import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import ursLogo from "./URS_LOGO.png";
@@ -44,7 +46,7 @@ export default function StudentPortal() {
       });
       setSession("student", data.token, data.student);
       addToast(`Welcome, ${data.student.full_name}!`, "success");
-      setTimeout(() => navigate("/student/dashboard"), 500);
+      setTimeout(() => navigate("/student/dashboard", { replace: true }), 500);
     } catch (e) {
       setPinError(apiError(e, "Incorrect PIN. Try again."));
       setPin("");
@@ -53,7 +55,7 @@ export default function StudentPortal() {
   };
 
   return (
-    <div className="min-h-dvh bg-canvas flex flex-col">
+    <URSBackground>
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
@@ -75,9 +77,10 @@ export default function StudentPortal() {
 
         {!mode && (
           <div className="animate-rise">
+            <SignedOutNotice />
             <header className="mb-7">
-              <h1 className="text-title font-bold text-fg">Student sign in</h1>
-              <p className="text-muted-fg mt-1.5">Scan your student QR code, or enter your ID.</p>
+              <h1 className="text-title font-bold text-on-backdrop">Student sign in</h1>
+              <p className="text-on-backdrop/75 mt-1.5">Scan your student QR code, or enter your ID.</p>
             </header>
 
             <div className="space-y-3">
@@ -111,8 +114,8 @@ export default function StudentPortal() {
         {mode === "qr" && (
           <section className="animate-rise" aria-labelledby="s-scan">
             <header className="mb-6">
-              <h1 id="s-scan" className="text-title font-bold text-fg">Scan your QR code</h1>
-              <p className="text-muted-fg mt-1.5">Hold it inside the frame.</p>
+              <h1 id="s-scan" className="text-title font-bold text-on-backdrop">Scan your QR code</h1>
+              <p className="text-on-backdrop/75 mt-1.5">Hold it inside the frame.</p>
             </header>
             <div className="card">
               {loading
@@ -125,7 +128,7 @@ export default function StudentPortal() {
         {mode === "manual" && (
           <section className="animate-rise" aria-labelledby="s-id">
             <header className="mb-6">
-              <h1 id="s-id" className="text-title font-bold text-fg">Enter your Student ID</h1>
+              <h1 id="s-id" className="text-title font-bold text-on-backdrop">Enter your Student ID</h1>
             </header>
             <div className="card space-y-4">
               <div>
@@ -156,7 +159,7 @@ export default function StudentPortal() {
           />
         )}
       </main>
-    </div>
+    </URSBackground>
   );
 }
 
@@ -174,10 +177,10 @@ function StudentPinStep({ student, setting, pin, onPin, error, loading, onSubmit
         <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
           {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}
         </span>
-        <h1 id="s-pin" className="text-title font-bold text-fg">
+        <h1 id="s-pin" className="text-title font-bold text-on-backdrop">
           Hello, {student.full_name?.split(" ")[0] || "there"}
         </h1>
-        <p className="text-muted-fg mt-1.5">
+        <p className="text-on-backdrop/75 mt-1.5">
           {setting ? "This account has no PIN yet — signing in will let you set one."
                    : "Enter your 4-digit PIN."}
         </p>

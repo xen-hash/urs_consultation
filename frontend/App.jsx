@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import useIdleLogout from "./useIdleLogout.js";
 import LandingPage      from "./LandingPage.jsx";
 import StudentPortal    from "./StudentPortal.jsx";
 import TeacherPortal    from "./TeacherPortal.jsx";
@@ -10,6 +11,9 @@ import DeanDashboard    from "./DeanDashboard.jsx";
 import KioskView        from "./KioskView.jsx";
 
 export default function App() {
+  // One place for every role, rather than three copies that drift apart.
+  useIdleLogout();
+
   return (
     <Routes>
       <Route path="/"                  element={<LandingPage />} />

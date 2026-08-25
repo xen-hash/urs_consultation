@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Monitor } from "lucide-react";
 import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
+import URSBackground from "./URSBackground.jsx";
 import ursLogo from "./URS_LOGO.png";
 
 const PORTALS = [
@@ -25,7 +26,7 @@ export default function LandingPage() {
   const online = useOnlineStatus();
 
   return (
-    <div className="min-h-dvh bg-canvas flex flex-col">
+    <URSBackground>
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-6xl mx-auto w-full">
           <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
@@ -43,10 +44,10 @@ export default function LandingPage() {
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-16 pb-safe">
         <header className="max-w-2xl animate-rise">
-          <h1 className="text-display font-bold text-fg">
+          <h1 className="text-display font-bold text-on-backdrop">
             Faculty consultation, without the guesswork
           </h1>
-          <p className="text-muted-fg mt-3 text-base sm:text-lg leading-relaxed">
+          <p className="text-on-backdrop/75 mt-3 text-base sm:text-lg leading-relaxed">
             Live faculty availability, consultation requests and scheduling for the
             URS College of Engineering.
           </p>
@@ -73,10 +74,10 @@ export default function LandingPage() {
           </Link>
         </div>
 
-        <p className="text-xs text-subtle-fg mt-12">
+        <p className="text-xs text-on-backdrop/50 mt-12">
           URS College of Engineering · Faculty Consultation System
         </p>
       </main>
-    </div>
+    </URSBackground>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, GraduationCap } from "lucide-react";
 import { Toast, useToastState, Button, Alert } from "./SharedUI.jsx";
+import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import { DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
@@ -51,7 +52,7 @@ export default function StudentRegister() {
   };
 
   return (
-    <div className="min-h-dvh bg-canvas flex flex-col">
+    <URSBackground>
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
@@ -74,8 +75,8 @@ export default function StudentRegister() {
             <span className="icon-tile icon-tile-brand mx-auto mb-4 w-14 h-14">
               <Check size={26} aria-hidden="true" />
             </span>
-            <h1 id="done" className="text-title font-bold text-fg">You're registered</h1>
-            <p className="text-muted-fg mt-1.5">Welcome, {result.full_name}.</p>
+            <h1 id="done" className="text-title font-bold text-on-backdrop">You're registered</h1>
+            <p className="text-on-backdrop/75 mt-1.5">Welcome, {result.full_name}.</p>
 
             <div className="card mt-6">
               <img
@@ -94,7 +95,7 @@ export default function StudentRegister() {
             </div>
 
             <Button variant="primary" className="w-full mt-3"
-              onClick={() => navigate("/student/dashboard")}>
+              onClick={() => navigate("/student/dashboard", { replace: true })}>
               Go to my dashboard <ArrowRight size={16} aria-hidden="true" />
             </Button>
           </section>
@@ -102,11 +103,11 @@ export default function StudentRegister() {
           <>
             <header className="mb-6">
               <span className="icon-tile icon-tile-brand mb-3"><GraduationCap size={22} aria-hidden="true" /></span>
-              <h1 className="text-title font-bold text-fg">Create your account</h1>
-              <p className="text-muted-fg mt-1.5">Step {step} of 2 — {step === 1 ? "your details" : "choose a PIN"}</p>
+              <h1 className="text-title font-bold text-on-backdrop">Create your account</h1>
+              <p className="text-on-backdrop/75 mt-1.5">Step {step} of 2 — {step === 1 ? "your details" : "choose a PIN"}</p>
               <div className="flex gap-1.5 mt-4" aria-hidden="true">
                 {[1, 2].map(s => (
-                  <span key={s} className={`h-1 flex-1 rounded-full ${s <= step ? "bg-brand" : "bg-border"}`} />
+                  <span key={s} className={`h-1 flex-1 rounded-full ${s <= step ? "bg-accent" : "bg-on-backdrop/25"}`} />
                 ))}
               </div>
             </header>
@@ -162,7 +163,7 @@ export default function StudentRegister() {
           </>
         )}
       </main>
-    </div>
+    </URSBackground>
   );
 }
 
