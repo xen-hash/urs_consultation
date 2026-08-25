@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, UserPlus } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, Alert } from "./SharedUI.jsx";
-import api, { apiError } from "./api.js";
+import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import ursLogo from "./URS_LOGO.png";
 

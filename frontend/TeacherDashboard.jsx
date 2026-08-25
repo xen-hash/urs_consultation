@@ -9,7 +9,7 @@ import {
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
-import api, { apiError } from "./api.js";
+import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import { SOCKET_URL } from "./constants.js";
 import QRCodeLib from "qrcode";

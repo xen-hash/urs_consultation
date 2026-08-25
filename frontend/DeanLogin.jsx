@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
 import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
-import api, { apiError } from "./api.js";
+import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 
 // The credentials this screen used to check (`dean` / `dean2024`) were two

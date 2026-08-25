@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Spinner } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
-import api, { apiError } from "./api.js";
+import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession } from "./auth.js";
 import DepartmentIcon from "./ui/DepartmentIcon.jsx";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";

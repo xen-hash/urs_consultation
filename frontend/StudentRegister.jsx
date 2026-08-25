@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, GraduationCap } from "lucide-react";
 import { Toast, useToastState, Button, Alert } from "./SharedUI.jsx";
-import api, { apiError } from "./api.js";
+import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import { DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import ursLogo from "./URS_LOGO.png";

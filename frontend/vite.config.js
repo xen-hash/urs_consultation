@@ -85,9 +85,12 @@ export default defineConfig({
   ],
   server: {
     // Dev proxy — only active during `npm run dev` on localhost
+    // Anchored to a trailing slash on purpose. A bare "/api" prefix also
+    // matches sibling module paths like /apiClient.js, which then get proxied
+    // to the backend and 404 instead of being served as source.
     proxy: {
-      "/api": { target: "http://localhost:5000", changeOrigin: true },
-      "/socket.io": { target: "http://localhost:5000", ws: false, changeOrigin: true }
+      "^/api/": { target: "http://localhost:5000", changeOrigin: true },
+      "^/socket\\.io/": { target: "http://localhost:5000", ws: false, changeOrigin: true }
     }
   },
   build: { outDir: "dist", sourcemap: false }

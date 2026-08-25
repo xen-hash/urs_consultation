@@ -5,7 +5,7 @@ import { LogOut, Search, ChevronDown, ChevronRight, X, Users, CheckCircle2, Laye
 import { StatusBadge, Modal, Button, Alert, Toast, useToastState, EmptyState } from "./SharedUI.jsx";
 import DepartmentIcon, { shortDepartment } from "./ui/DepartmentIcon.jsx";
 import VirtualKeyboard from "./VirtualKeyboard.jsx";
-import api, { apiError } from "./api.js";
+import api, { apiError } from "./httpClient.js";
 // SOCKET_URL was used here but never imported, so mounting this screen threw a
 // ReferenceError and the live board never connected at all.
 import { API_BASE, SOCKET_URL } from "./constants.js";
