@@ -273,8 +273,10 @@ function IssuedCardModal({ card, onClose }) {
             : "This QR is shown once and cannot be retrieved later. Print or download it now — if it is lost, issue a new card."}
         </Alert>
 
-        {/* The printable card. print:* keeps only this on paper. */}
-        <div className="rounded-xl border border-border overflow-hidden print:border-0">
+        {/* The printable card. The .print-card hook is what the print
+            stylesheet in index.css isolates; without it the Print button hands
+            the printer the whole dashboard. */}
+        <div className="print-card rounded-xl border border-border overflow-hidden">
           <div className="bg-brand-900 text-white px-5 py-4">
             <p className="font-semibold text-sm">University of Rizal System</p>
             <p className="text-white/60 text-xs">College of Engineering — Faculty ID</p>
