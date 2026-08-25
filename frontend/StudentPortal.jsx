@@ -116,7 +116,9 @@ export default function StudentPortal() {
               <button onClick={() => setMode("qr")} className="card card-action w-full text-left">
                 <span className="icon-tile icon-tile-brand"><QrCode size={22} aria-hidden="true" /></span>
                 <span className="font-semibold text-fg">Scan QR code</span>
-                <span className="text-sm text-muted-fg">Use the QR from your registration.</span>
+                <span className="text-sm text-muted-fg">
+                Scan it, or upload the picture if it's saved on this phone.
+              </span>
               </button>
               <button onClick={() => setMode("manual")} className="card card-action w-full text-left">
                 <span className="icon-tile icon-tile-accent"><Keyboard size={22} aria-hidden="true" /></span>
@@ -149,7 +151,13 @@ export default function StudentPortal() {
             <div className="card">
               {loading
                 ? <div className="flex justify-center py-10"><Spinner size={9} /></div>
-                : <QRScanner onScan={findStudent} onError={msg => addToast(msg, "error")} />}
+                : <QRScanner
+                    onScan={findStudent}
+                    uploadLabel="Upload your QR image"
+                    onError={(msg, kind) => kind === "qr_unreadable"
+                      ? setFailure({ kind: "qr_unreadable", detail: msg })
+                      : addToast(msg, "error")}
+                  />}
             </div>
           </section>
         )}

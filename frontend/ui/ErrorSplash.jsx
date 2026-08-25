@@ -31,6 +31,10 @@ const GUIDANCE = {
     title: "Card not recognised",
     body: "This card isn't active. Cards are replaced when reissued, so an older printout stops working — ask the admin office for a current one.",
   },
+  qr_foreign: {
+    title: "That isn't a Faculty ID card",
+    body: "The code scanned fine, but it isn't a card this system issued — a student QR or a code from another app will do this. Use the Faculty ID card the admin office gave you.",
+  },
   qr_unreadable: {
     title: "Couldn't read that code",
     body: "Hold the card flat inside the frame, in even light, and keep it steady for a moment.",

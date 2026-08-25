@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
-import { Camera, CameraOff, RefreshCw } from "lucide-react";
+import { Camera, CameraOff, RefreshCw, ImageUp } from "lucide-react";
 import { Button, Spinner, Alert } from "./SharedUI.jsx";
 
 // jsQR is imported at module scope. It used to be dynamically imported *inside*
@@ -12,20 +12,30 @@ const SCAN_INTERVAL_MS = 100;   // ~10fps is plenty for a QR in frame
 const SCAN_EDGE = 480;          // downscale before decoding
 const METADATA_TIMEOUT_MS = 10000;
 
+// A saved photo or screenshot is decoded at a few sizes before giving up. A
+// live frame is framed by the person holding the phone; a picture from the
+// gallery might be a 12-megapixel photo of a card on a desk, or a 300px
+// screenshot, and one fixed scale reads only some of those.
+const FILE_SCAN_EDGES = [1000, 640, 1600];
+const MAX_FILE_BYTES = 12 * 1024 * 1024;
+
 /** Touch devices need an explicit gesture before getUserMedia. */
 const isTouch = () =>
   typeof window !== "undefined" &&
   window.matchMedia?.("(pointer: coarse)").matches;
 
-export default function QRScanner({ onScan, onError }) {
+export default function QRScanner({ onScan, onError, uploadLabel = "Upload a QR image" }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
   const scannedRef = useRef(false);
 
+  const fileRef = useRef(null);
+
   const [active, setActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reading, setReading] = useState(false);
   const [err, setErr] = useState(null);
 
   const stopCamera = useCallback(() => {
@@ -58,6 +68,74 @@ export default function QRScanner({ onScan, onError }) {
       onScan(code.data.trim());
     }
   }, [onScan, stopCamera]);
+
+  /**
+   * Read a QR out of a picture the person already has.
+   *
+   * On one device there is nothing to point the camera at: the card is a PDF or
+   * a photo in the same phone's gallery, or it was emailed to them. Scanning
+   * assumes two devices, one showing the code and one reading it, and plenty of
+   * people have exactly one.
+   */
+  const readFile = useCallback(async (file) => {
+    if (!file) return;
+    setErr(null);
+
+    if (!file.type.startsWith("image/")) {
+      const msg = "That file isn't an image. Choose the picture of your QR code.";
+      setErr(msg); onError?.(msg, "qr_unreadable");
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      const msg = "That image is too large. Try a screenshot of the code instead.";
+      setErr(msg); onError?.(msg, "qr_unreadable");
+      return;
+    }
+
+    setReading(true);
+    stopCamera();
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("decode"));
+        image.src = url;
+      });
+
+      const canvas = canvasRef.current || document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      for (const edge of FILE_SCAN_EDGES) {
+        const scale = Math.min(1, edge / Math.max(img.naturalWidth, img.naturalHeight));
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // attemptBoth, unlike the live loop: a screenshot of a dark-mode card
+        // or a photo shot against the light can arrive inverted, and there is
+        // no next frame to do better.
+        const code = jsQR(frame.data, frame.width, frame.height,
+                          { inversionAttempts: "attemptBoth" });
+        if (code?.data) {
+          scannedRef.current = true;
+          onScan(code.data.trim());
+          return;
+        }
+      }
+
+      const msg = "No QR code found in that image. Make sure the whole code is in the picture and try again.";
+      setErr(msg);
+      onError?.(msg, "qr_unreadable");
+    } catch {
+      const msg = "That image couldn't be opened. Try a different file.";
+      setErr(msg);
+      onError?.(msg, "qr_unreadable");
+    } finally {
+      URL.revokeObjectURL(url);
+      setReading(false);
+    }
+  }, [onScan, onError, stopCamera]);
 
   const startCamera = useCallback(async () => {
     setLoading(true);
@@ -96,7 +174,7 @@ export default function QRScanner({ onScan, onError }) {
           ? "The camera didn't start. Close other apps using it and try again."
           : "Could not start the camera. Try again.";
       setErr(msg);
-      onError?.(msg);
+      onError?.(msg, "camera");
       stopCamera();
     } finally {
       setLoading(false);
@@ -157,17 +235,45 @@ export default function QRScanner({ onScan, onError }) {
 
       {err && <Alert tone="danger">{err}</Alert>}
 
-      <Button
-        variant={active ? "secondary" : "primary"}
-        icon={active ? CameraOff : err ? RefreshCw : Camera}
-        onClick={active ? stopCamera : startCamera}
-        loading={loading}
-      >
-        {active ? "Stop camera" : err ? "Try again" : "Open camera"}
-      </Button>
+      <div className="w-full max-w-xs flex flex-col gap-2">
+        <Button
+          variant={active ? "secondary" : "primary"}
+          icon={active ? CameraOff : err ? RefreshCw : Camera}
+          onClick={active ? stopCamera : startCamera}
+          loading={loading}
+          className="w-full"
+        >
+          {active ? "Stop camera" : err ? "Try again" : "Open camera"}
+        </Button>
+
+        {/* The way in for anyone holding a single device: the code is a photo
+            or a PDF on this same phone, with no second screen to point at. */}
+        <Button
+          icon={ImageUp}
+          onClick={() => fileRef.current?.click()}
+          loading={reading}
+          className="w-full"
+        >
+          {reading ? "Reading image…" : uploadLabel}
+        </Button>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          aria-label={uploadLabel}
+          onChange={e => {
+            const file = e.target.files?.[0];
+            // Reset first, so choosing the same file twice still fires.
+            e.target.value = "";
+            readFile(file);
+          }}
+        />
+      </div>
 
       <p className="text-xs text-muted-fg text-center">
-        Point the camera at the QR code.
+        Point the camera at the QR code, or upload a picture of it.
       </p>
     </div>
   );

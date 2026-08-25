@@ -217,7 +217,10 @@ def generate_qr_b64(data: str) -> str:
 
 
 def teacher_by_employee_id(employee_id):
+    # A removed account is gone for every purpose, including a session token
+    # issued before the removal — otherwise a leaver keeps working access until
+    # their token expires.
     return query(
-        "SELECT * FROM teacher_accounts WHERE employee_id=%s",
+        "SELECT * FROM teacher_accounts WHERE employee_id=%s AND removed_at IS NULL",
         ((employee_id or "").strip(),), fetchone=True
     )

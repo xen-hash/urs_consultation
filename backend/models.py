@@ -156,6 +156,13 @@ LATE_COLUMNS = [
     ("teacher_accounts",      "qr_issued_at",       "TIMESTAMP"),
     ("teacher_accounts",      "last_login",         "TIMESTAMP"),
     ("teacher_accounts",      "active",             "BOOLEAN DEFAULT TRUE"),
+    # Removal is a tombstone, not a DELETE. The roster in config is re-seeded on
+    # every boot, so a deleted row for a listed professor would simply come back
+    # on the next restart; a marked row is skipped by the seeder's ON CONFLICT
+    # and stays gone. It also keeps the reason attached to the account itself,
+    # not only to the audit line.
+    ("teacher_accounts",      "removed_at",         "TIMESTAMP"),
+    ("teacher_accounts",      "removed_reason",     "TEXT"),
     ("students",              "last_login",         "TIMESTAMP"),
 ]
 

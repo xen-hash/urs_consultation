@@ -43,7 +43,15 @@ export default function TeacherPortal() {
     setSplash({ title: message, subtitle: teacher?.department });
   };
 
+  // An issued serial is 32 URL-safe characters. Anything else came from a
+  // different QR entirely — a student card, a Wi-Fi code, a poster — and saying
+  // so beats sending it to the server to be told it is unrecognised.
+  const looksLikeFacultyCard = (value) => /^[A-Za-z0-9_-]{20,64}$/.test(value);
+
   const handleTeacherQRScan = async (value) => {
+    if (!looksLikeFacultyCard(value)) {
+      return setFailure({ kind: "qr_foreign" });
+    }
     setLoading(true);
     try {
       const { data } = await api.post("/auth/teacher/qr-login", { qr_token: value });
@@ -143,7 +151,9 @@ export default function TeacherPortal() {
               <button onClick={() => setView("scanqr")} className="card card-action text-left">
                 <span className="icon-tile icon-tile-brand"><QrCode size={22} aria-hidden="true" /></span>
                 <span className="font-semibold text-fg">Scan Faculty ID</span>
-                <span className="text-sm text-muted-fg">Point your camera at the QR code on your card.</span>
+                <span className="text-sm text-muted-fg">
+                  Point your camera at it, or upload the picture if it's saved on this phone.
+                </span>
               </button>
 
               <button onClick={() => setView("pinlogin")} className="card card-action text-left">
@@ -173,10 +183,19 @@ export default function TeacherPortal() {
           <section className="animate-rise" aria-labelledby="scan-heading">
             <header className="mb-6">
               <h1 id="scan-heading" className="text-2xl font-bold text-on-backdrop tracking-tight">Scan your Faculty ID</h1>
-              <p className="text-on-backdrop/75 mt-1.5">Hold the QR code on your card inside the frame.</p>
+              <p className="text-on-backdrop/75 mt-1.5">
+                Hold the QR code on your card inside the frame — or, if the card is
+                saved on this phone, upload the picture instead.
+              </p>
             </header>
             <div className="card">
-              <QRScanner onScan={handleTeacherQRScan} onError={msg => addToast(msg, "error")} />
+              <QRScanner
+                onScan={handleTeacherQRScan}
+                uploadLabel="Upload your ID card image"
+                onError={(msg, kind) => kind === "qr_unreadable"
+                  ? setFailure({ kind: "qr_unreadable", detail: msg })
+                  : addToast(msg, "error")}
+              />
               {loading && (
                 <p className="text-center text-sm text-muted-fg mt-3 flex items-center justify-center gap-2">
                   <Spinner size={4} /> Signing you in…
