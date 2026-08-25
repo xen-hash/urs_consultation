@@ -57,9 +57,12 @@ export function useConfirmed(ms = 1600) {
 
 /** Icon-only button. Always needs a label — the icon alone tells a screen
  *  reader nothing, and the old codebase had a dozen of these unlabelled. */
-export function IconButton({ icon: Icon, label, className = "", size = 18, ...rest }) {
+export function IconButton({ icon: Icon, label, className = "", size = 18, type = "button", ...rest }) {
   return (
     <button
+      // Defaults to "button": a bare <button> inside a form submits it, and the
+      // close control in a form modal's header must not do that.
+      type={type}
       aria-label={label}
       title={label}
       className={`w-11 h-11 grid place-items-center rounded-lg text-muted-fg
@@ -297,9 +300,24 @@ export function useScrollLock(active) {
 
 /* ── Modal ────────────────────────────────────────────────────────────────── */
 
-export function Modal({ open, onClose, title, description, children, footer, size = "md", label }) {
+/**
+ * `onSubmit` makes the whole panel a <form> — header, body and footer inside
+ * it — so a modal that asks for input behaves like a form rather than a box
+ * with a button: Enter submits, the footer's submit button belongs to the
+ * fields above it, and autofill works.
+ *
+ * `anchor` picks how it arrives. The default rises from the bottom edge on a
+ * phone, which suits a short confirmation. A form is better centred with the
+ * page visible around it — edge-anchored, a form reads as an action sheet, and
+ * the fields sit right where the keyboard opens.
+ */
+export function Modal({
+  open, onClose, title, description, children, footer,
+  size = "md", label, onSubmit, anchor = "sheet",
+}) {
   useScrollLock(open);
   const panelRef = useRef(null);
+  const Panel = onSubmit ? "form" : "div";
 
   useEffect(() => {
     if (!open) return undefined;
@@ -313,17 +331,22 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   if (!open) return null;
   const sizes = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-lg", xl: "max-w-2xl" };
 
+  const centred = anchor === "center";
+
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className={`fixed inset-0 z-50 flex justify-center
+      ${centred ? "items-center p-4" : "items-end sm:items-center p-0 sm:p-4"}`}>
       <div className="absolute inset-0 bg-brand-900/50 animate-fade" onClick={onClose} aria-hidden="true" />
-      <div
+      <Panel
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={label || (typeof title === "string" ? title : undefined)}
         tabIndex={-1}
+        {...(onSubmit ? { onSubmit, noValidate: true } : {})}
         className={`relative bg-surface w-full ${sizes[size]} shadow-lg animate-rise
-                    rounded-t-xl sm:rounded-xl flex flex-col max-h-[92dvh] focus:outline-none`}
+                    flex flex-col max-h-[92dvh] focus:outline-none
+                    ${centred ? "rounded-xl" : "rounded-t-xl sm:rounded-xl"}`}
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border shrink-0">
           <div className="min-w-0">
@@ -336,11 +359,13 @@ export function Modal({ open, onClose, title, description, children, footer, siz
             would otherwise put its buttons off-screen with no way to reach. */}
         <div className="px-5 py-4 overflow-y-auto grow">{children}</div>
         {footer && (
-          <div className="px-5 py-4 border-t border-border flex gap-2 justify-end shrink-0 pb-safe">
+          <div className={`px-5 py-4 border-t border-border shrink-0 flex gap-2
+            ${centred ? "" : "pb-safe"}
+            ${onSubmit ? "flex-col-reverse sm:flex-row sm:justify-end" : "justify-end"}`}>
             {footer}
           </div>
         )}
-      </div>
+      </Panel>
     </div>,
     document.body
   );
