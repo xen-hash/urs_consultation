@@ -31,9 +31,34 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_MB", 8)) * 1024 * 
 # deployment must name its frontend origin.
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 _origins_raw = (os.getenv("ALLOWED_ORIGINS") or DEFAULT_ORIGINS).strip()
-ALLOWED_ORIGINS = [o.strip() for o in _origins_raw.split(",") if o.strip()]
+
+
+def _normalise_origin(value):
+    """An Origin header is scheme://host[:port] — never a trailing slash, never
+    a path. Operators paste browser URLs, which have both, and the mismatch is
+    invisible: the server answers 200 and the browser silently drops the
+    response for a missing header. Normalise so a pasted URL still matches."""
+    origin = value.strip()
+    if not origin or origin == "*":
+        return origin
+    if "://" in origin:
+        scheme, _, rest = origin.partition("://")
+        return f"{scheme.lower()}://{rest.split('/', 1)[0]}"
+    return origin.split("/", 1)[0]
+
+
+ALLOWED_ORIGINS = [o for o in (_normalise_origin(p) for p in _origins_raw.split(",")) if o]
 if "*" in ALLOWED_ORIGINS:
     print("[SECURITY] WARNING: ALLOWED_ORIGINS is '*' — any website can call this API.")
+# Print the effective list. A rejected origin is otherwise only visible as a
+# browser-side failure, while the server reports 200 and looks healthy.
+print(f"[SECURITY] Accepting browser requests from: {', '.join(ALLOWED_ORIGINS)}")
+if not os.getenv("ALLOWED_ORIGINS"):
+    print(
+        "[SECURITY] WARNING: ALLOWED_ORIGINS is not set, so only local "
+        "development origins are accepted. A deployed frontend will have every "
+        "request blocked by the browser."
+    )
 
 CORS(
     app,
