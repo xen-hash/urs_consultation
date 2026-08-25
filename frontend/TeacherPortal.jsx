@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { QrCode, ScanLine, ChevronLeft, Lock, Delete, ArrowRight, CreditCard, ShieldCheck } from "lucide-react";
+import { QrCode, ScanLine, ChevronLeft, Lock, Delete, ArrowRight, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, ConfirmSplash } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -24,6 +24,7 @@ export default function TeacherPortal() {
   const [pinEmpId, setPinEmpId] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
+  const [splash, setSplash] = useState(null);
 
   // Set-PIN step, shown right after a QR login when no PIN exists yet. A printed
   // card on its own is a single factor that survives being photographed, so a
@@ -35,9 +36,10 @@ export default function TeacherPortal() {
     setView("home"); setPin(""); setPinEmpId(""); setNewPin(""); setPendingTeacher(null);
   };
 
+  // The splash holds the confirmation while the route changes underneath it,
+  // which a toast cannot do — navigation unmounts the toast host.
   const enterDashboard = (teacher, message) => {
-    addToast(message, "success");
-    setTimeout(() => navigate("/teacher/dashboard", { replace: true }), 500);
+    setSplash({ title: message, subtitle: teacher?.department });
   };
 
   const handleTeacherQRScan = async (value) => {
@@ -50,7 +52,7 @@ export default function TeacherPortal() {
         setView("setpin");
         addToast("Welcome! Set a PIN to finish securing your account.", "info");
       } else {
-        enterDashboard(data.teacher, `Welcome back, ${data.teacher.professor_name}!`);
+        enterDashboard(data.teacher, `Welcome back, ${data.teacher.professor_name}`);
       }
     } catch (e) {
       addToast(apiError(e, "QR code not recognised."), "error");
@@ -69,7 +71,7 @@ export default function TeacherPortal() {
         employee_id: pinEmpId.trim().toUpperCase(), pin,
       });
       setSession("teacher", data.token, data.teacher);
-      enterDashboard(data.teacher, `Welcome, ${data.teacher.professor_name}!`);
+      enterDashboard(data.teacher, `Welcome, ${data.teacher.professor_name}`);
     } catch (e) {
       addToast(apiError(e, "Login failed."), "error");
       setPin("");
@@ -83,7 +85,7 @@ export default function TeacherPortal() {
     setLoading(true);
     try {
       await api.post("/auth/teacher/set-pin", { pin: newPin });
-      enterDashboard(pendingTeacher, "PIN set. Welcome!");
+      enterDashboard(pendingTeacher, "PIN set");
     } catch (e) {
       addToast(apiError(e, "Could not set your PIN."), "error");
       setNewPin("");
@@ -94,6 +96,12 @@ export default function TeacherPortal() {
 
   return (
     <URSBackground>
+      <ConfirmSplash
+        open={!!splash}
+        title={splash?.title}
+        subtitle={splash?.subtitle}
+        onDone={() => navigate("/teacher/dashboard", { replace: true })}
+      />
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
@@ -138,17 +146,18 @@ export default function TeacherPortal() {
               </button>
             </div>
 
-            <div className="card mt-6 flex gap-3 items-start">
-              <span className="icon-tile icon-tile-muted shrink-0">
-                <CreditCard size={20} aria-hidden="true" />
-              </span>
-              <div className="text-sm">
-                <p className="font-semibold text-fg">Don't have a Faculty ID card yet?</p>
-                <p className="text-muted-fg mt-1">
-                  Cards are issued by the admin office. Ask them to print yours — for
-                  security, they can no longer be generated from this page.
-                </p>
-              </div>
+            {/* Not a card. The two above it are white cards that are buttons, so
+                anything sharing that treatment reads as a third thing to press.
+                This is a note: no surface of its own, no icon tile, just an
+                inset rule and quieter text. */}
+            <div className="mt-8 pl-3.5 border-l-2 border-on-backdrop/25">
+              <p className="text-sm font-semibold text-on-backdrop/90">
+                Don't have a Faculty ID card yet?
+              </p>
+              <p className="text-sm text-on-backdrop/65 mt-1 leading-relaxed">
+                Cards are issued by the admin office. Ask them to print yours — for
+                security, they can no longer be generated from this page.
+              </p>
             </div>
           </div>
         )}

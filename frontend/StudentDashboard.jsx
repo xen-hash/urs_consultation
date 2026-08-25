@@ -6,7 +6,7 @@ import {
   Send, RefreshCw, Search, GraduationCap, BookOpen, X,
   ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Delete
 } from "lucide-react";
-import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession } from "./auth.js";
@@ -191,6 +191,7 @@ function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
+  const [signingOut, setSigningOut] = useState(false);
   const student = getSession("student");
 
   // Rendered redirect, not an imperative one. Calling navigate() during
@@ -363,10 +364,17 @@ export default function StudentDashboard() {
   return (
     <PageWrapper>
       <Toast toasts={toasts} removeToast={removeToast} />
+      <ConfirmSplash
+        open={signingOut}
+        title="Signed out"
+        subtitle="See you next time"
+        tone="brand"
+        onDone={() => { clearSession(); navigate("/student", { replace: true }); }}
+      />
       <URSHeader
         subtitle="Student Dashboard"
         user={{ name: student.full_name, sub: student.student_id }}
-        onLogout={() => { clearSession(); navigate("/student", { replace: true }); }}
+        onLogout={() => setSigningOut(true)}
       />
 
       {/* Desktop tab strip. On phones this is replaced by the bottom bar. */}

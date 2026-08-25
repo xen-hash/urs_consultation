@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, GraduationCap } from "lucide-react";
-import { Toast, useToastState, Button, Alert } from "./SharedUI.jsx";
+import { Toast, useToastState, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
@@ -19,6 +19,7 @@ export default function StudentRegister() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [splash, setSplash] = useState(false);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -36,6 +37,7 @@ export default function StudentRegister() {
       const { data } = await api.post("/auth/student/register", { ...form, pin });
       // Registration signs you in — the server returns a session token with it.
       setSession("student", data.token, data.student);
+      setSplash(true);
       setResult(data);
     } catch (e) {
       addToast(apiError(e, "Registration failed."), "error");
@@ -54,6 +56,12 @@ export default function StudentRegister() {
   return (
     <URSBackground>
       <Toast toasts={toasts} removeToast={removeToast} />
+      <ConfirmSplash
+        open={splash}
+        title="Account created"
+        subtitle={form.full_name || undefined}
+        onDone={() => setSplash(false)}
+      />
 
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3">

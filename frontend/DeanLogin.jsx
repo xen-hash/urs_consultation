@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
-import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, ConfirmSplash } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
@@ -19,6 +19,7 @@ export default function DeanLogin() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [splash, setSplash] = useState(false);
 
   const handleLogin = async () => {
     if (!username || !password) return addToast("Enter your username and password.", "warning");
@@ -26,7 +27,7 @@ export default function DeanLogin() {
     try {
       const { data } = await api.post("/auth/admin/login", { username: username.trim(), password });
       setSession("admin", data.token, data.admin);
-      navigate("/dean/dashboard", { replace: true });
+      setSplash(true);
     } catch (e) {
       addToast(apiError(e, "Sign in failed."), "error");
       setPassword("");
@@ -39,6 +40,12 @@ export default function DeanLogin() {
   return (
     <div className="min-h-dvh flex bg-canvas">
       <Toast toasts={toasts} removeToast={removeToast} />
+      <ConfirmSplash
+        open={splash}
+        title="Signed in"
+        subtitle="Administration"
+        onDone={() => navigate("/dean/dashboard", { replace: true })}
+      />
 
       {/* Context panel — desktop only; the form is the whole page on mobile. */}
       <aside className="hidden lg:flex flex-col w-[420px] shrink-0 bg-brand-900 text-white p-10">

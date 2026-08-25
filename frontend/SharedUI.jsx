@@ -9,6 +9,7 @@ import { LogOut, ArrowLeft } from "lucide-react";
 import ursLogo from "./URS_LOGO.png";
 import { IconButton } from "./ui/index.jsx";
 
+export { default as ConfirmSplash } from "./ui/ConfirmSplash.jsx";
 export {
   Button, IconButton, Card, CardHeader, StatusBadge, RequestBadge, Badge,
   Spinner, Skeleton, SkeletonRows, EmptyState, Alert, Modal, ConfirmModal,

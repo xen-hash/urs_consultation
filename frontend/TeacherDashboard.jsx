@@ -7,7 +7,7 @@ import {
   Pencil, X, Check, User, Camera, CalendarCheck, FileText,
   RotateCcw, AlertTriangle
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, useScrollLock } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
@@ -69,6 +69,7 @@ function getFirstName(fullName) {
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
+  const [signingOut, setSigningOut] = useState(false);
   const teacher = getSession("teacher");
 
   // Rendered redirect, not an imperative one. Calling navigate() during
@@ -288,9 +289,16 @@ export default function TeacherDashboard() {
   return (
     <PageWrapper>
       <Toast toasts={toasts} removeToast={removeToast} />
+      <ConfirmSplash
+        open={signingOut}
+        title="Signed out"
+        subtitle="See you next time"
+        tone="brand"
+        onDone={() => { clearSession(); navigate("/teacher", { replace: true }); }}
+      />
       <URSHeader subtitle="Teacher Dashboard" accent="orange"
         user={{ name: teacher.professor_name, sub: teacher.department }}
-        onLogout={() => { clearSession(); navigate("/teacher", { replace: true }); }} />
+        onLogout={() => setSigningOut(true)} />
 
       {ticker.length > 0 && (
         <div className="bg-brand-900 border-b-2 border-accent py-3 px-5 flex items-center gap-4 overflow-hidden">

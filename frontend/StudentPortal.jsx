@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, UserPlus } from "lucide-react";
+import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner, Button, Alert } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -19,6 +19,7 @@ export default function StudentPortal() {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [splash, setSplash] = useState(null);
 
   const home = () => { setMode(null); setStudentId(""); setPending(null); setPin(""); setPinError(null); };
 
@@ -45,8 +46,8 @@ export default function StudentPortal() {
         student_id: pending.student_id, pin,
       });
       setSession("student", data.token, data.student);
-      addToast(`Welcome, ${data.student.full_name}!`, "success");
-      setTimeout(() => navigate("/student/dashboard", { replace: true }), 500);
+      setSplash({ title: `Welcome, ${data.student.full_name.split(" ")[0]}`,
+                  subtitle: "Signing you in" });
     } catch (e) {
       setPinError(apiError(e, "Incorrect PIN. Try again."));
       setPin("");
@@ -57,6 +58,12 @@ export default function StudentPortal() {
   return (
     <URSBackground>
       <Toast toasts={toasts} removeToast={removeToast} />
+      <ConfirmSplash
+        open={!!splash}
+        title={splash?.title}
+        subtitle={splash?.subtitle}
+        onDone={() => navigate("/student/dashboard", { replace: true })}
+      />
 
       <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
@@ -96,17 +103,17 @@ export default function StudentPortal() {
               </button>
             </div>
 
-            <div className="card mt-6 flex items-start gap-3">
-              <span className="icon-tile icon-tile-muted shrink-0"><UserPlus size={20} aria-hidden="true" /></span>
-              <div className="text-sm min-w-0">
-                <p className="font-semibold text-fg">New here?</p>
-                <p className="text-muted-fg mt-0.5">
-                  <Link to="/student/register" className="text-brand font-semibold underline underline-offset-2">
-                    Register your student account
-                  </Link>{" "}
-                  to request consultations.
-                </p>
-              </div>
+            {/* A note rather than a card, so it is not mistaken for a third
+                sign-in option alongside the two above. */}
+            <div className="mt-8 pl-3.5 border-l-2 border-on-backdrop/25">
+              <p className="text-sm font-semibold text-on-backdrop/90">New here?</p>
+              <p className="text-sm text-on-backdrop/65 mt-1 leading-relaxed">
+                <Link to="/student/register"
+                  className="text-on-backdrop font-semibold underline underline-offset-2 decoration-on-backdrop/40">
+                  Register your student account
+                </Link>{" "}
+                to request consultations.
+              </p>
             </div>
           </div>
         )}
