@@ -6,9 +6,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // We surface our own "new version available" toast instead of
-      // silently swapping the app out from under someone mid-consultation.
-      registerType: "prompt",
+      // autoUpdate, not prompt.
+      //
+      // Waiting for someone to tap "update" assumes the cached version still
+      // works while they decide. Since the API now authenticates every request,
+      // an old cached bundle cannot talk to the backend at all — it has no
+      // token to send — so the prompt would be asking people to tap a button
+      // inside an app that is already broken, and a security release would sit
+      // behind that tap indefinitely.
+      registerType: "autoUpdate",
       injectRegister: null,
       includeAssets: ["favicon.ico", "favicon-16x16.png", "favicon-32x32.png"],
       manifestFilename: "site.webmanifest",

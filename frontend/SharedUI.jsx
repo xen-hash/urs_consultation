@@ -18,6 +18,12 @@ export {
 /** Top bar for a signed-in area. `pt-safe` keeps it clear of the iOS notch —
  *  the PWA draws behind a translucent status bar. */
 export function URSHeader({ title, subtitle, user, onLogout, backTo }) {
+  // Callers pass either a display string or { name, sub } — the dashboards use
+  // the object form to show who is signed in and their ID or department.
+  // Rendering the object directly is a React crash, which unmounts the whole
+  // route to a blank page rather than failing locally.
+  const person = typeof user === "string" ? { name: user } : user || null;
+
   return (
     <header className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
       <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
@@ -32,9 +38,16 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo }) {
           <p className="font-semibold text-sm text-fg truncate">{title || "University of Rizal System"}</p>
           {subtitle && <p className="text-xs text-muted-fg truncate">{subtitle}</p>}
         </div>
-        {user && (
+        {(person || onLogout) && (
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-sm text-muted-fg truncate max-w-[180px]">{user}</span>
+            {person?.name && (
+              <div className="hidden sm:block text-right min-w-0">
+                <p className="text-sm font-medium text-fg truncate max-w-[200px]">{person.name}</p>
+                {person.sub && (
+                  <p className="text-xs text-muted-fg truncate max-w-[200px]">{person.sub}</p>
+                )}
+              </div>
+            )}
             {onLogout && <IconButton icon={LogOut} label="Sign out" onClick={onLogout} />}
           </div>
         )}
