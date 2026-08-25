@@ -65,15 +65,15 @@ export function WebcamCapture({ onCapture, onSkip }) {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="relative w-full max-w-sm aspect-square bg-black rounded-2xl overflow-hidden border-2 border-white/20">
+      <div className="relative w-full max-w-sm aspect-square bg-black rounded-lg overflow-hidden border-2 border-border">
         <video ref={videoRef} className="w-full h-full object-cover"
           muted playsInline style={{ transform: "scaleX(-1)", display: active ? "block" : "none" }} />
         <canvas ref={canvasRef} className="hidden" />
 
         {!active && !loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-3">
-            <User size={48} className="text-white/30" />
-            <p className="text-white/50 text-sm">Camera not active</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-fg gap-3">
+            <User size={48} className="text-muted-fg" />
+            <p className="text-muted-fg text-sm">Camera not active</p>
           </div>
         )}
         {loading && (
@@ -83,20 +83,20 @@ export function WebcamCapture({ onCapture, onSkip }) {
         )}
         {countdown !== null && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <span className="text-white font-display font-black text-8xl animate-bounce-in">{countdown}</span>
+            <span className="text-fg font-bold text-8xl animate-rise">{countdown}</span>
           </div>
         )}
         {active && countdown === null && (
           <>
             {/* Face guide oval */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-40 h-48 border-2 border-white/50 rounded-full" style={{ borderStyle: "dashed" }} />
+              <div className="w-40 h-48 border-2 border-border rounded-full" style={{ borderStyle: "dashed" }} />
             </div>
             {/* Corner guides */}
-            <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-[#ffa000]" />
-            <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-[#ffa000]" />
-            <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-[#ffa000]" />
-            <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-[#ffa000]" />
+            <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-accent" />
+            <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-accent" />
+            <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-accent" />
+            <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-accent" />
           </>
         )}
       </div>
@@ -106,26 +106,23 @@ export function WebcamCapture({ onCapture, onSkip }) {
       <div className="flex gap-3 w-full max-w-sm">
         {!active ? (
           <button onClick={startCamera} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
-                       text-white font-semibold py-3 rounded-2xl transition-all disabled:opacity-50">
+            className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all disabled:opacity-50">
             {loading ? <Spinner size={4} light /> : <Camera size={18} />}
             {loading ? "Starting..." : "Open Camera"}
           </button>
         ) : (
           <button onClick={capturePhoto} disabled={countdown !== null}
-            className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700
-                       text-white font-semibold py-3 rounded-2xl transition-all disabled:opacity-60">
+            className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-fg font-semibold py-3 rounded-lg transition-all disabled:opacity-60">
             <Camera size={18} />
             {countdown !== null ? `Taking photo in ${countdown}...` : "Take Photo"}
           </button>
         )}
         <button onClick={onSkip}
-          className="flex items-center gap-1.5 text-white/50 hover:text-white text-sm px-4 py-3
-                     glass rounded-2xl transition-all">
+          className="flex items-center gap-1.5 text-muted-fg hover:text-fg text-sm px-4 py-3 glass rounded-lg transition-all">
           Skip
         </button>
       </div>
-      <p className="text-white/30 text-xs">Position your face inside the oval guide</p>
+      <p className="text-muted-fg text-xs">Position your face inside the oval guide</p>
     </div>
   );
 }
@@ -247,25 +244,25 @@ export function FacultyIDCard({ name, department, employeeId, photo, qrBase64, o
     <div className="flex flex-col items-center gap-4 w-full">
       {/* Preview Card */}
       <div ref={cardRef}
-        className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl border border-white/20"
+        className="relative w-full max-w-lg rounded-lg overflow-hidden shadow-2xl border border-border"
         style={{ background: "linear-gradient(135deg, #001a4d 0%, #003366 50%, #001a4d 100%)" }}>
 
         {/* Gold top accent */}
         <div className="h-2 bg-gradient-to-r from-[#ffa000] to-[#ffcc02]" />
 
         {/* Header */}
-        <div className="px-5 py-3 border-b border-white/10">
-          <p className="text-white font-display font-bold text-sm">UNIVERSITY OF RIZAL SYSTEM</p>
-          <p className="text-white/40 text-xs">College of Engineering — Faculty Identification Card</p>
+        <div className="px-5 py-3 border-b border-border">
+          <p className="text-fg font-semibold text-sm">UNIVERSITY OF RIZAL SYSTEM</p>
+          <p className="text-muted-fg text-xs">College of Engineering — Faculty Identification Card</p>
         </div>
 
         {/* Body */}
         <div className="flex items-start gap-4 p-5">
           {/* Photo */}
-          <div className="w-28 h-32 rounded-xl overflow-hidden border-2 border-white/20 shrink-0 bg-white/10 flex items-center justify-center">
+          <div className="w-28 h-32 rounded-xl overflow-hidden border-2 border-border shrink-0 bg-surface-2 flex items-center justify-center">
             {photo
               ? <img src={photo} alt="Profile" className="w-full h-full object-cover" />
-              : <div className="flex flex-col items-center gap-1 text-white/30">
+              : <div className="flex flex-col items-center gap-1 text-muted-fg">
                   <User size={32} />
                   <span className="text-xs">No photo</span>
                 </div>
@@ -274,27 +271,27 @@ export function FacultyIDCard({ name, department, employeeId, photo, qrBase64, o
 
           {/* Info */}
           <div className="flex-1 min-w-0 py-1">
-            <p className="font-display font-bold text-white text-lg leading-tight truncate">{name}</p>
-            <p className="text-[#ffa000] font-bold text-xs uppercase mt-1 tracking-wider">{department}</p>
-            <p className="text-white/40 text-xs mt-2">FACULTY</p>
+            <p className="font-semibold text-fg text-lg leading-tight truncate">{name}</p>
+            <p className="text-accent-fg font-bold text-xs uppercase mt-1 tracking-wider">{department}</p>
+            <p className="text-muted-fg text-xs mt-2">FACULTY</p>
             <div className="mt-3">
-              <p className="text-white/40 text-[10px] uppercase tracking-wider">Employee ID</p>
-              <p className="text-white font-mono font-bold text-sm">{employeeId}</p>
+              <p className="text-muted-fg text-[10px] uppercase tracking-wider">Employee ID</p>
+              <p className="text-fg font-mono font-bold text-sm">{employeeId}</p>
             </div>
           </div>
 
           {/* QR */}
           <div className="shrink-0 flex flex-col items-center gap-1.5">
-            <div className="w-36 h-36 bg-white rounded-2xl p-2 shadow-xl border border-white/20">
+            <div className="w-36 h-36 bg-white rounded-lg p-2 shadow-xl border border-border">
               {qrBase64 && <img src={`data:image/png;base64,${qrBase64}`} alt="QR" className="w-full h-full" />}
             </div>
-            <p className="text-white/30 text-[9px] text-center">Scan to verify</p>
+            <p className="text-muted-fg text-[9px] text-center">Scan to verify</p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-2.5 bg-white/5 border-t border-white/10">
-          <p className="text-white/25 text-[9px]">
+        <div className="px-5 py-2.5 bg-surface-2 border-t border-border">
+          <p className="text-subtle-fg text-[9px]">
             This card is the property of URS. If found, please return to the Registrar's Office.
           </p>
         </div>
@@ -303,14 +300,12 @@ export function FacultyIDCard({ name, department, employeeId, photo, qrBase64, o
       {/* Actions */}
       <div className="flex gap-3 w-full max-w-lg">
         <button onClick={downloadID}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
-                     text-white font-semibold py-3 rounded-2xl transition-all shadow-lg">
+          className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all shadow-lg">
           <Download size={16} /> Download ID Card
         </button>
         {onDownload && (
           <button onClick={onDownload}
-            className="flex items-center justify-center gap-2 glass text-white font-semibold
-                       py-3 px-5 rounded-2xl transition-all text-sm">
+            className="flex items-center justify-center gap-2 glass text-fg font-semibold py-3 px-5 rounded-lg transition-all text-sm">
             <Check size={15} /> Done
           </button>
         )}

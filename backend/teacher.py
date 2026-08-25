@@ -5,12 +5,16 @@ from datetime import datetime, date, timedelta
 from flask import Blueprint, request, jsonify
 from db import query, execute
 from config import PROFESSOR_LIST
+from security import (
+    require_role, subject, owns, forbid_unless_owner, is_admin,
+    current_claims, record_audit,
+)
 
 teacher_bp = Blueprint("teacher", __name__)
 PH = pytz.timezone("Asia/Manila")
 
 # ── In-memory caches ──────────────────────────────────────────────────────────
-_logs_cache     = {"data": None, "ts": 0}
+_logs_cache     = {"data": None, "ts": 0, "photos": {}}
 _LOGS_TTL       = 30  # seconds
 
 _students_cache = {"data": None, "ts": 0, "key": ""}
@@ -37,6 +41,18 @@ def _serialize_row(row):
         else:
             result[k] = v
     return result
+
+
+def _with_photos(result):
+    """Re-attach faculty photos to a cached, photo-free availability payload."""
+    photos = _logs_cache.get("photos") or {}
+    return [
+        {**dept, "professors": [
+            {**p, "photo": photos.get((p["name"], dept["department"]))}
+            for p in dept["professors"]
+        ]}
+        for dept in result
+    ]
 
 
 DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
@@ -115,10 +131,18 @@ def _compute_status(log):
 
 @teacher_bp.route("/teacher-logs", methods=["GET"])
 def get_teacher_logs():
+    """The public availability board. The kiosk reads this with no session.
+
+    Faculty photos are personal data and used to be served to anyone who asked,
+    so they are included only for authenticated callers. The cache therefore
+    holds the anonymous (photo-free) shape, and the authenticated variant is
+    built from the same rows on demand.
+    """
     global _logs_cache
+    authed = current_claims() is not None
     now = _time.time()
     if _logs_cache["data"] is not None and now - _logs_cache["ts"] < _LOGS_TTL:
-        return jsonify(_logs_cache["data"])
+        return jsonify(_with_photos(_logs_cache["data"]) if authed else _logs_cache["data"])
 
     merged = {dept: list(profs) for dept, profs in PROFESSOR_LIST.items()}
     db_accounts = query(
@@ -200,26 +224,25 @@ def get_teacher_logs():
                 "manual_status": combined["manual_status"],
                 "manual": combined["manual"],
                 "weekly_schedule": weekly,
-                "photo": photo_map.get(key),
                 "consumed_today": consumed_today,
                 "slots_left": slots_left,
                 "day_limit": day_limit,
             })
         result.append({"department": dept, "professors": dept_list})
 
-    _logs_cache = {"data": result, "ts": now}
-    return jsonify(result)
+    # Cached without photos; _with_photos() re-attaches them for signed-in users.
+    _logs_cache = {"data": result, "ts": now, "photos": photo_map}
+    return jsonify(_with_photos(result) if authed else result)
 
 
 # ─── RESET DAILY CONSULTATION COUNT ──────────────────────────────────────────
 
 @teacher_bp.route("/teacher/reset-daily-count", methods=["POST"])
+@require_role("teacher", "admin")
 def reset_daily_count():
     global _logs_cache, _requests_cache, _students_cache
-    data = request.json or {}
-    employee_id = (data.get("employee_id") or "").strip()
-    if not employee_id:
-        return jsonify({"error": "employee_id required"}), 400
+    # The account is the caller's own; an employee_id in the body is ignored.
+    employee_id = subject()
     teacher = query(
         "SELECT professor_name FROM teacher_accounts WHERE employee_id=%s",
         (employee_id,), fetchone=True
@@ -243,14 +266,15 @@ def reset_daily_count():
 # ─── SAVE WEEKLY SCHEDULE ─────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/save-schedule", methods=["POST"])
+@require_role("teacher", "admin")
 def save_schedule():
     global _logs_cache
     data = request.json or {}
-    employee_id     = data.get("employee_id")
+    employee_id     = subject()
     weekly_schedule = data.get("weekly_schedule")
 
-    if not employee_id or not weekly_schedule:
-        return jsonify({"error": "Missing employee_id or weekly_schedule"}), 400
+    if not weekly_schedule:
+        return jsonify({"error": "Missing weekly_schedule"}), 400
 
     teacher = query(
         "SELECT professor_name, department FROM teacher_accounts WHERE employee_id=%s",
@@ -274,14 +298,15 @@ def save_schedule():
 # ─── SAVE MANUAL STATUS ───────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/save-manual-status", methods=["POST"])
+@require_role("teacher", "admin")
 def save_manual_status():
     global _logs_cache
     data = request.json or {}
-    employee_id   = data.get("employee_id")
+    employee_id   = subject()
     manual_status = data.get("manual_status")
 
-    if not employee_id or not manual_status:
-        return jsonify({"error": "Missing fields"}), 400
+    if not manual_status:
+        return jsonify({"error": "Missing manual_status"}), 400
 
     teacher = query(
         "SELECT professor_name, department FROM teacher_accounts WHERE employee_id=%s",
@@ -309,7 +334,11 @@ def save_manual_status():
 # ─── GET REQUESTS FOR TEACHER ─────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/requests/<employee_id>", methods=["GET"])
+@require_role("teacher", "admin")
 def get_teacher_requests(employee_id):
+    denied = forbid_unless_owner(employee_id)
+    if denied:
+        return denied
     teacher = query(
         "SELECT professor_name, department FROM teacher_accounts WHERE employee_id=%s",
         (employee_id,), fetchone=True
@@ -330,9 +359,36 @@ def get_teacher_requests(employee_id):
 
 # ─── MARK REQUEST DONE ────────────────────────────────────────────────────────
 
+def _own_request_or_error(req_id):
+    """Load a consultation request, refusing one that belongs to someone else.
+
+    Without this check any signed-in teacher could resolve any other teacher's
+    requests just by guessing the row id, which is a small integer.
+    """
+    req = query(
+        "SELECT id, professor_name FROM consultation_requests WHERE id=%s",
+        (req_id,), fetchone=True
+    )
+    if not req:
+        return None, (jsonify({"error": "Request not found"}), 404)
+    if is_admin():
+        return req, None
+    me = query(
+        "SELECT professor_name FROM teacher_accounts WHERE employee_id=%s",
+        (subject(),), fetchone=True
+    )
+    if not me or me["professor_name"] != req["professor_name"]:
+        return None, (jsonify({"error": "Not permitted."}), 403)
+    return req, None
+
+
 @teacher_bp.route("/teacher/requests/<int:req_id>/done", methods=["POST"])
+@require_role("teacher", "admin")
 def mark_done(req_id):
     global _logs_cache, _requests_cache
+    _, denied = _own_request_or_error(req_id)
+    if denied:
+        return denied
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='done' WHERE id=%s", (req_id,))
@@ -342,8 +398,12 @@ def mark_done(req_id):
 # ─── DECLINE REQUEST ──────────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/requests/<int:req_id>/decline", methods=["POST"])
+@require_role("teacher", "admin")
 def decline_request(req_id):
     global _logs_cache, _requests_cache
+    _, denied = _own_request_or_error(req_id)
+    if denied:
+        return denied
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='declined' WHERE id=%s", (req_id,))
@@ -353,33 +413,59 @@ def decline_request(req_id):
 # ─── CLEAR ALL LOGS ───────────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/clear-logs", methods=["POST"])
+@require_role("admin")
 def clear_logs():
+    """Delete every consultation request.
+
+    This used to be unauthenticated *and* to delete teacher_logs as well, which
+    is where saved schedules and status overrides live — so the dashboard's
+    "Delete All" button quietly wiped every professor's schedule. It now touches
+    consultation requests only. Prefer /api/admin/requests/archive, which is
+    reversible; this stays for a genuine full reset.
+    """
     global _logs_cache, _requests_cache, _students_cache
-    execute("DELETE FROM teacher_logs")
+    total = query("SELECT COUNT(*) AS c FROM consultation_requests", fetchone=True)["c"]
     execute("DELETE FROM consultation_requests")
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     _students_cache["ts"] = 0
-    return jsonify({"message": "All logs cleared"})
+    record_audit("admin.clear_requests", detail=f"{total} requests deleted")
+    return jsonify({"message": f"{total} consultation requests deleted"})
 
 
 # ─── DEAN: STUDENTS ───────────────────────────────────────────────────────────
 
 @teacher_bp.route("/dean/students", methods=["GET"])
+@require_role("admin")
 def dean_get_students():
     global _students_cache
     page      = max(1, int(request.args.get("page", 1)))
     limit     = min(50, int(request.args.get("limit", 20)))
-    cache_key = f"{page}:{limit}"
+    search    = (request.args.get("search") or "").strip()
+    cache_key = f"{page}:{limit}:{search}"
     now       = _time.time()
     if _students_cache["data"] is not None and now - _students_cache["ts"] < _STUDENTS_TTL and _students_cache["key"] == cache_key:
         return jsonify(_students_cache["data"])
     offset = (page - 1) * limit
-    rows   = query(
-        "SELECT * FROM students ORDER BY created_at DESC LIMIT %s OFFSET %s",
-        (limit, offset), fetchall=True
-    )
-    total  = query("SELECT COUNT(*) as c FROM students", fetchone=True)["c"]
+    # Filtering happens in SQL. The dashboard used to filter the 20 rows it had
+    # already loaded, so searching never looked past the current page.
+    if search:
+        like = f"%{search}%"
+        rows = query(
+            "SELECT * FROM students WHERE full_name ILIKE %s OR student_id ILIKE %s "
+            "ORDER BY created_at DESC LIMIT %s OFFSET %s",
+            (like, like, limit, offset), fetchall=True
+        )
+        total = query(
+            "SELECT COUNT(*) as c FROM students WHERE full_name ILIKE %s OR student_id ILIKE %s",
+            (like, like), fetchone=True
+        )["c"]
+    else:
+        rows  = query(
+            "SELECT * FROM students ORDER BY created_at DESC LIMIT %s OFFSET %s",
+            (limit, offset), fetchall=True
+        )
+        total = query("SELECT COUNT(*) as c FROM students", fetchone=True)["c"]
     resp   = {
         "data":  [_serialize_row(r) for r in (rows or [])],
         "page":  page, "limit": limit, "total": total,
@@ -392,28 +478,47 @@ def dean_get_students():
 # ─── DEAN: REQUESTS ───────────────────────────────────────────────────────────
 
 @teacher_bp.route("/dean/requests", methods=["GET"])
+@require_role("admin")
 def dean_get_requests():
     global _requests_cache
-    page      = max(1, int(request.args.get("page", 1)))
-    limit     = min(50, int(request.args.get("limit", 20)))
-    status    = request.args.get("status", "")
-    cache_key = f"{page}:{limit}:{status}"
-    now       = _time.time()
+    page       = max(1, int(request.args.get("page", 1)))
+    limit      = min(50, int(request.args.get("limit", 20)))
+    status     = (request.args.get("status") or "").strip()
+    department = (request.args.get("department") or "").strip()
+    search     = (request.args.get("search") or "").strip()
+    date_from  = (request.args.get("from") or "").strip()
+    date_to    = (request.args.get("to") or "").strip()
+    cache_key  = f"{page}:{limit}:{status}:{department}:{search}:{date_from}:{date_to}"
+    now        = _time.time()
     if _requests_cache["data"] is not None and now - _requests_cache["ts"] < _REQUESTS_TTL and _requests_cache["key"] == cache_key:
         return jsonify(_requests_cache["data"])
     offset = (page - 1) * limit
+
+    # Filters are composed as parameterised fragments — never string-formatted
+    # into the SQL — so the free-text search cannot reach the query structure.
+    where, args = [], []
     if status:
-        rows  = query(
-            "SELECT * FROM consultation_requests WHERE status=%s ORDER BY created_at DESC LIMIT %s OFFSET %s",
-            (status, limit, offset), fetchall=True
-        )
-        total = query("SELECT COUNT(*) as c FROM consultation_requests WHERE status=%s", (status,), fetchone=True)["c"]
-    else:
-        rows  = query(
-            "SELECT * FROM consultation_requests ORDER BY created_at DESC LIMIT %s OFFSET %s",
-            (limit, offset), fetchall=True
-        )
-        total = query("SELECT COUNT(*) as c FROM consultation_requests", fetchone=True)["c"]
+        where.append("status = %s");     args.append(status)
+    if department:
+        where.append("department = %s"); args.append(department)
+    if search:
+        where.append("(student_name ILIKE %s OR professor_name ILIKE %s OR student_id ILIKE %s)")
+        like = f"%{search}%"
+        args += [like, like, like]
+    if date_from:
+        where.append("request_time >= %s::timestamp"); args.append(f"{date_from} 00:00:00")
+    if date_to:
+        where.append("request_time <= %s::timestamp"); args.append(f"{date_to} 23:59:59")
+    clause = (" WHERE " + " AND ".join(where)) if where else ""
+
+    rows  = query(
+        f"SELECT * FROM consultation_requests{clause} ORDER BY created_at DESC LIMIT %s OFFSET %s",
+        tuple(args + [limit, offset]), fetchall=True
+    )
+    total = query(
+        f"SELECT COUNT(*) as c FROM consultation_requests{clause}",
+        tuple(args), fetchone=True
+    )["c"]
     resp = {
         "data":  [_serialize_row(r) for r in (rows or [])],
         "page":  page, "limit": limit, "total": total,
@@ -426,6 +531,7 @@ def dean_get_requests():
 # ─── DEAN: GET TEACHERS ───────────────────────────────────────────────────────
 
 @teacher_bp.route("/dean/teachers", methods=["GET"])
+@require_role("admin")
 def dean_get_teachers():
     rows = query("SELECT * FROM teacher_accounts ORDER BY created_at DESC", fetchall=True)
     for r in (rows or []):
@@ -437,6 +543,7 @@ def dean_get_teachers():
 # ─── DEAN: ADD TEACHER ────────────────────────────────────────────────────────
 
 @teacher_bp.route("/dean/add-teacher", methods=["POST"])
+@require_role("admin")
 def dean_add_teacher():
     global _students_cache
     data           = request.json or {}
@@ -465,6 +572,8 @@ def dean_add_teacher():
         (employee_id, professor_name, department, pw_hash)
     )
     _logs_cache["ts"] = 0
+    record_audit("admin.add_teacher", target=employee_id,
+                 detail=f"{professor_name} / {department}")
     return jsonify({
         "message": "Teacher added successfully",
         "employee_id": employee_id,
@@ -476,10 +585,13 @@ def dean_add_teacher():
 # ─── UPDATE TEACHER NAME ──────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/update-name", methods=["POST"])
+@require_role("teacher", "admin")
 def update_teacher_name():
     global _logs_cache
     data = request.json or {}
-    employee_id = data.get("employee_id")
+    # Admins rename other people from the dashboard; a teacher renames only
+    # themselves, so a body-supplied id is honoured for admins alone.
+    employee_id = (data.get("employee_id") or "").strip() if is_admin() else subject()
     new_name    = (data.get("new_name") or "").strip()
 
     if not employee_id or not new_name:
@@ -498,6 +610,8 @@ def update_teacher_name():
     execute("UPDATE consultation_requests SET professor_name=%s WHERE professor_name=%s",
             (new_name, teacher["professor_name"]))
     _logs_cache["ts"] = 0
+    record_audit("teacher.rename", target=employee_id,
+                 detail=f'{teacher["professor_name"]} -> {new_name}')
     return jsonify({
         "message": "Name updated successfully",
         "new_name": new_name,
@@ -509,18 +623,23 @@ def update_teacher_name():
 # ─── TEACHER PROFILE PHOTO ────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/update-photo", methods=["POST"])
+@require_role("teacher", "admin")
 def update_teacher_photo():
     data = request.json or {}
-    employee_id = (data.get("employee_id") or "").strip()
+    employee_id = subject()
     photo       = data.get("photo")
-    if not employee_id or not photo:
-        return jsonify({"error": "Missing employee_id or photo"}), 400
+    if not photo:
+        return jsonify({"error": "Missing photo"}), 400
     execute("UPDATE teacher_accounts SET photo=%s WHERE employee_id=%s", (photo, employee_id))
     return jsonify({"message": "Photo updated"})
 
 
 @teacher_bp.route("/teacher/profile/<employee_id>", methods=["GET"])
+@require_role("teacher", "admin")
 def get_teacher_profile(employee_id):
+    denied = forbid_unless_owner(employee_id)
+    if denied:
+        return denied
     teacher = query(
         "SELECT * FROM teacher_accounts WHERE employee_id=%s",
         (employee_id,), fetchone=True
@@ -531,15 +650,20 @@ def get_teacher_profile(employee_id):
         "employee_id": teacher["employee_id"],
         "professor_name": teacher["professor_name"],
         "department": teacher["department"],
-        "photo": teacher.get("photo")
+        "photo": teacher.get("photo"),
+        "has_pin": bool(teacher.get("pin_hash")),
     })
 
 
 # ─── APPOINTMENT SCHEDULING ───────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/requests/<int:req_id>/appoint", methods=["POST"])
+@require_role("teacher", "admin")
 def set_appointment(req_id):
     global _requests_cache
+    _, denied = _own_request_or_error(req_id)
+    if denied:
+        return denied
     data = request.json or {}
     appt_date  = data.get("appointment_date")
     appt_time  = data.get("appointment_time")
@@ -559,22 +683,3 @@ def set_appointment(req_id):
     )
     _requests_cache["ts"] = 0
     return jsonify({"message": "Appointment set successfully"})
-
-
-# ─── TEACHER PIN LOGIN & SET PIN ─────────────────────────────────────────────
-
-@teacher_bp.route("/teacher/set-pin", methods=["POST"])
-def teacher_set_pin():
-    import bcrypt as _bcrypt
-    data        = request.json or {}
-    employee_id = (data.get("employee_id") or "").strip()
-    pin         = str(data.get("pin") or "").strip()
-
-    if not employee_id or not pin:
-        return jsonify({"error": "Employee ID and PIN required"}), 400
-    if len(pin) != 4 or not pin.isdigit():
-        return jsonify({"error": "PIN must be exactly 4 digits"}), 400
-
-    pin_hash = _bcrypt.hashpw(pin.encode(), _bcrypt.gensalt()).decode()
-    execute("UPDATE teacher_accounts SET pin_hash=%s WHERE employee_id=%s", (pin_hash, employee_id))
-    return jsonify({"message": "PIN set successfully"})

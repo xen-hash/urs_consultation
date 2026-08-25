@@ -4,6 +4,10 @@
 import requests
 from flask import Blueprint, request, jsonify
 from db import query, execute
+from security import (
+    require_role, subject, is_admin, current_claims,
+    too_many_attempts, client_ip, record_audit, issue_token,
+)
 
 biometric_bp = Blueprint("biometric", __name__)
 
@@ -23,6 +27,7 @@ def _proxy_post(path, payload):
 
 @biometric_bp.route("/biometric/detect", methods=["POST"])
 def detect():
+    """Liveness/framing feedback for the webcam overlay. Returns no identity."""
     data, code = _proxy_post("/api/detect", request.json)
     return jsonify(data), code
 
@@ -43,6 +48,12 @@ def face_login():
     image   = payload.get("image")
     if not image:
         return jsonify({"error": "No image provided"}), 400
+
+    # Face login is unauthenticated by nature, so it is throttled per client to
+    # keep it from being used as an identity oracle.
+    throttled = too_many_attempts(f"face-login:{client_ip()}", 15, 15 * 60)
+    if throttled:
+        return throttled
 
     result, code = _proxy_post("/api/recognize", {"image": image})
     if code != 200:
@@ -70,6 +81,7 @@ def face_login():
         return jsonify({
             "recognized":      True,
             "type":            "student",
+            "token":           issue_token("student", student["student_id"], student["full_name"]),
             "face_confidence": result.get("face_confidence"),
             "eye_confidence":  result.get("eye_confidence"),
             "student": {
@@ -90,9 +102,12 @@ def face_login():
         )
         if not teacher:
             return jsonify({"error": "Teacher not found", "recognized": False}), 404
+        if teacher.get("active") is False:
+            return jsonify({"error": "This account is deactivated.", "recognized": False}), 403
         return jsonify({
             "recognized":      True,
             "type":            "teacher",
+            "token":           issue_token("teacher", teacher["employee_id"], teacher["professor_name"]),
             "face_confidence": result.get("face_confidence"),
             "eye_confidence":  result.get("eye_confidence"),
             "teacher": {
@@ -108,10 +123,27 @@ def face_login():
 
 # ── Enroll ────────────────────────────────────────────────────────────────────
 
+def _label_is_own(label):
+    """True when `label` names the caller's own account.
+
+    Enrolment used to accept any label, so anyone could enrol their own face
+    as `teacher_T-12345` and then walk in through /biometric/login — a second
+    complete authentication bypass alongside the public QR endpoint.
+    """
+    claims = current_claims()
+    if not claims:
+        return False
+    if claims["role"] == "admin":
+        return True
+    expected = f'{claims["role"]}_{claims["sub"]}'
+    return (label or "").strip().lower() == expected.lower()
+
+
 @biometric_bp.route("/biometric/enroll", methods=["POST"])
+@require_role("student", "teacher", "admin")
 def face_enroll():
     """
-    Enroll face + eye biometrics for a student or teacher.
+    Enroll face + eye biometrics for the caller's own account.
     body: { "label": "student_M2024-0001", "images": ["<base64>", ...] }
     """
     payload = request.json or {}
@@ -120,10 +152,13 @@ def face_enroll():
 
     if not label or not images:
         return jsonify({"error": "label and images required"}), 400
+    if not _label_is_own(label):
+        return jsonify({"error": "You can only enrol your own biometrics."}), 403
 
     result, code = _proxy_post("/api/enroll", {"label": label, "images": images})
 
     if result.get("enrolled"):
+        record_audit("biometric.enroll", target=label)
         # Record enrollment in DB
         if label.startswith("student_"):
             student_id = label[len("student_"):]
@@ -143,7 +178,11 @@ def face_enroll():
 # ── Delete enrollment ─────────────────────────────────────────────────────────
 
 @biometric_bp.route("/biometric/enroll/<label>", methods=["DELETE"])
+@require_role("student", "teacher", "admin")
 def delete_enroll(label):
+    if not _label_is_own(label):
+        return jsonify({"error": "You can only remove your own biometrics."}), 403
+    record_audit("biometric.delete", target=label)
     try:
         r = requests.delete(f"{BIOMETRIC_URL}/api/enroll/{label}", timeout=10)
         return jsonify(r.json()), r.status_code
@@ -154,7 +193,9 @@ def delete_enroll(label):
 # ── List enrolled ─────────────────────────────────────────────────────────────
 
 @biometric_bp.route("/biometric/enrolled", methods=["GET"])
+@require_role("admin")
 def enrolled():
+    """The full enrolment roster — a list of everyone with biometrics on file."""
     try:
         r = requests.get(f"{BIOMETRIC_URL}/api/enrolled", timeout=5)
         return jsonify(r.json()), r.status_code

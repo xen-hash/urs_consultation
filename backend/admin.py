@@ -1,0 +1,326 @@
+"""Administrator routes: faculty credentials, the audit log and real totals.
+
+Issuing a faculty QR card lives here, and only here. It used to be a public
+endpoint on the teacher portal that would hand anyone any professor's login
+credential on request.
+
+The card encodes a random `qr_serial`, never the employee ID. That matters
+because employee IDs are derived from name + department and are therefore
+guessable — a QR encoding one is not a secret. Issuing a new card overwrites
+the serial, so the previous card stops working the moment a replacement is
+printed.
+"""
+
+import secrets
+from datetime import datetime, date, timedelta
+
+import bcrypt
+import pytz
+from flask import Blueprint, request, jsonify
+
+from db import query, execute
+from security import require_role, record_audit, generate_qr_b64
+
+admin_bp = Blueprint("admin", __name__)
+PH = pytz.timezone("Asia/Manila")
+
+
+def _serialize(row):
+    if not row:
+        return row
+    out = {}
+    for k, v in row.items():
+        if isinstance(v, datetime):
+            out[k] = v.strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(v, date):
+            out[k] = v.isoformat()
+        elif isinstance(v, timedelta):
+            total = int(v.total_seconds())
+            h, rem = divmod(total, 3600)
+            m, s = divmod(rem, 60)
+            out[k] = f"{h:02}:{m:02}:{s:02}"
+        else:
+            out[k] = v
+    return out
+
+
+def _now_ph():
+    return datetime.now(PH).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _teacher_or_404(employee_id):
+    return query(
+        "SELECT * FROM teacher_accounts WHERE employee_id=%s",
+        ((employee_id or "").strip(),), fetchone=True
+    )
+
+
+def _credential_view(row):
+    """Account state for the credentials table. Never includes hashes."""
+    return {
+        "employee_id":    row["employee_id"],
+        "professor_name": row["professor_name"],
+        "department":     row["department"],
+        "photo":          row.get("photo"),
+        "has_pin":        bool(row.get("pin_hash")),
+        "has_qr":         bool(row.get("qr_serial")),
+        "qr_issued_at":   row.get("qr_issued_at"),
+        "last_login":     row.get("last_login"),
+        "active":         row.get("active") is not False,
+        "created_at":     row.get("created_at"),
+    }
+
+
+# ─── FACULTY CREDENTIALS ──────────────────────────────────────────────────────
+
+@admin_bp.route("/teachers", methods=["GET"])
+@require_role("admin")
+def list_teachers():
+    search = (request.args.get("search") or "").strip()
+    if search:
+        like = f"%{search}%"
+        rows = query(
+            "SELECT * FROM teacher_accounts "
+            "WHERE professor_name ILIKE %s OR employee_id ILIKE %s OR department ILIKE %s "
+            "ORDER BY department, professor_name",
+            (like, like, like), fetchall=True
+        )
+    else:
+        rows = query(
+            "SELECT * FROM teacher_accounts ORDER BY department, professor_name",
+            fetchall=True
+        )
+    return jsonify([_serialize(_credential_view(r)) for r in (rows or [])])
+
+
+@admin_bp.route("/teachers/<employee_id>/issue-qr", methods=["POST"])
+@require_role("admin")
+def issue_qr(employee_id):
+    """Mint a new Faculty ID credential and return the card to print.
+
+    The QR payload is shown once, in this response. It is not stored anywhere
+    retrievable — only its value in `qr_serial`, which is what a scan is matched
+    against. Losing the printout means issuing a new card, not recovering this
+    one.
+    """
+    teacher = _teacher_or_404(employee_id)
+    if not teacher:
+        return jsonify({"error": "Teacher not found"}), 404
+
+    serial = secrets.token_urlsafe(24)
+    execute(
+        "UPDATE teacher_accounts SET qr_serial=%s, qr_issued_at=%s::timestamp WHERE employee_id=%s",
+        (serial, _now_ph(), teacher["employee_id"])
+    )
+    replaced = bool(teacher.get("qr_serial"))
+    record_audit(
+        "admin.issue_qr", target=teacher["employee_id"],
+        detail=("reissued — previous card revoked" if replaced else "first issue")
+    )
+    return jsonify({
+        "message":        "Faculty ID issued. The previous card no longer works."
+                          if replaced else "Faculty ID issued.",
+        "replaced":       replaced,
+        "qr_base64":      generate_qr_b64(serial),
+        "employee_id":    teacher["employee_id"],
+        "professor_name": teacher["professor_name"],
+        "department":     teacher["department"],
+        "photo":          teacher.get("photo"),
+        "issued_at":      _now_ph(),
+    })
+
+
+@admin_bp.route("/teachers/<employee_id>/revoke-qr", methods=["POST"])
+@require_role("admin")
+def revoke_qr(employee_id):
+    """Kill the current card without issuing a replacement."""
+    teacher = _teacher_or_404(employee_id)
+    if not teacher:
+        return jsonify({"error": "Teacher not found"}), 404
+    if not teacher.get("qr_serial"):
+        return jsonify({"message": "No active card to revoke."})
+
+    execute(
+        "UPDATE teacher_accounts SET qr_serial=NULL, qr_issued_at=NULL WHERE employee_id=%s",
+        (teacher["employee_id"],)
+    )
+    record_audit("admin.revoke_qr", target=teacher["employee_id"])
+    return jsonify({"message": "Card revoked. Scanning it will no longer work."})
+
+
+@admin_bp.route("/teachers/<employee_id>/reset-pin", methods=["POST"])
+@require_role("admin")
+def reset_pin(employee_id):
+    """Clear a forgotten PIN. The teacher sets a new one after their next login."""
+    teacher = _teacher_or_404(employee_id)
+    if not teacher:
+        return jsonify({"error": "Teacher not found"}), 404
+
+    execute("UPDATE teacher_accounts SET pin_hash=NULL WHERE employee_id=%s",
+            (teacher["employee_id"],))
+    record_audit("admin.reset_pin", target=teacher["employee_id"])
+    return jsonify({"message": "PIN cleared. They can set a new one after scanning their card."})
+
+
+@admin_bp.route("/teachers/<employee_id>/active", methods=["POST"])
+@require_role("admin")
+def set_active(employee_id):
+    """Deactivate or reactivate an account.
+
+    Deactivating also revokes the card, so a leaver's printed ID is dead even if
+    the account is later reactivated.
+    """
+    teacher = _teacher_or_404(employee_id)
+    if not teacher:
+        return jsonify({"error": "Teacher not found"}), 404
+
+    active = bool((request.json or {}).get("active", True))
+    if active:
+        execute("UPDATE teacher_accounts SET active=TRUE WHERE employee_id=%s",
+                (teacher["employee_id"],))
+    else:
+        execute(
+            "UPDATE teacher_accounts SET active=FALSE, qr_serial=NULL, qr_issued_at=NULL "
+            "WHERE employee_id=%s",
+            (teacher["employee_id"],)
+        )
+    record_audit("admin.set_active", target=teacher["employee_id"],
+                 detail="activated" if active else "deactivated — card revoked")
+    return jsonify({
+        "message": "Account reactivated." if active
+                   else "Account deactivated and card revoked.",
+        "active": active,
+    })
+
+
+# ─── AUDIT LOG ────────────────────────────────────────────────────────────────
+
+@admin_bp.route("/audit", methods=["GET"])
+@require_role("admin")
+def audit_log():
+    page   = max(1, int(request.args.get("page", 1)))
+    limit  = min(100, int(request.args.get("limit", 25)))
+    action = (request.args.get("action") or "").strip()
+    search = (request.args.get("search") or "").strip()
+    offset = (page - 1) * limit
+
+    where, args = [], []
+    if action:
+        where.append("action = %s")
+        args.append(action)
+    if search:
+        like = f"%{search}%"
+        where.append("(actor_name ILIKE %s OR actor_id ILIKE %s OR target ILIKE %s)")
+        args += [like, like, like]
+    clause = (" WHERE " + " AND ".join(where)) if where else ""
+
+    rows = query(
+        f"SELECT * FROM audit_log{clause} ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s",
+        tuple(args + [limit, offset]), fetchall=True
+    )
+    total = query(f"SELECT COUNT(*) AS c FROM audit_log{clause}", tuple(args), fetchone=True)["c"]
+    actions = query(
+        "SELECT DISTINCT action FROM audit_log ORDER BY action", fetchall=True
+    ) or []
+
+    return jsonify({
+        "data":    [_serialize(r) for r in (rows or [])],
+        "page":    page,
+        "limit":   limit,
+        "total":   total,
+        "pages":   -(-total // limit) if total else 1,
+        "actions": [r["action"] for r in actions],
+    })
+
+
+# ─── DASHBOARD TOTALS ─────────────────────────────────────────────────────────
+
+@admin_bp.route("/stats", methods=["GET"])
+@require_role("admin")
+def stats():
+    """Real counts, computed in SQL.
+
+    The dashboard used to derive its headline numbers from whichever 20 rows the
+    current page happened to hold, so every figure was wrong past page one.
+    """
+    today = datetime.now(PH).strftime("%Y-%m-%d")
+    one = lambda sql, args=None: query(sql, args, fetchone=True)["c"]
+
+    by_status = query(
+        "SELECT status, COUNT(*) AS c FROM consultation_requests GROUP BY status",
+        fetchall=True
+    ) or []
+    status_counts = {r["status"]: r["c"] for r in by_status}
+
+    by_category = query(
+        "SELECT category, COUNT(*) AS c FROM consultation_requests "
+        "WHERE category IS NOT NULL GROUP BY category ORDER BY c DESC LIMIT 6",
+        fetchall=True
+    ) or []
+
+    return jsonify({
+        "students":  one("SELECT COUNT(*) AS c FROM students"),
+        "teachers":  one("SELECT COUNT(*) AS c FROM teacher_accounts"),
+        "requests":  one("SELECT COUNT(*) AS c FROM consultation_requests"),
+        "today":     one(
+            "SELECT COUNT(*) AS c FROM consultation_requests WHERE request_time::date = %s::date",
+            (today,)
+        ),
+        "pending":   status_counts.get("pending", 0),
+        "done":      status_counts.get("done", 0),
+        "declined":  status_counts.get("declined", 0),
+        "archived":  status_counts.get("archived", 0),
+        "with_pin":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE pin_hash IS NOT NULL"),
+        "with_qr":   one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE qr_serial IS NOT NULL"),
+        "inactive":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE active = FALSE"),
+        "categories": [{"category": r["category"], "count": r["c"]} for r in by_category],
+    })
+
+
+# ─── ARCHIVE REQUESTS ─────────────────────────────────────────────────────────
+
+@admin_bp.route("/requests/archive", methods=["POST"])
+@require_role("admin")
+def archive_requests():
+    """Archive consultation requests instead of deleting them.
+
+    The dashboard's old "Delete All" ran /teacher/clear-logs, which also emptied
+    teacher_logs — every saved schedule and status override in the system. This
+    marks requests archived (they drop out of the active views but stay in the
+    exports) and touches nothing else.
+    """
+    data      = request.json or {}
+    date_from = (data.get("from") or "").strip()
+    date_to   = (data.get("to") or "").strip()
+    status    = (data.get("status") or "").strip()
+
+    where = ["status <> 'archived'"]
+    args  = []
+    if status:
+        where.append("status = %s")
+        args.append(status)
+    if date_from:
+        where.append("request_time >= %s::timestamp")
+        args.append(f"{date_from} 00:00:00")
+    if date_to:
+        where.append("request_time <= %s::timestamp")
+        args.append(f"{date_to} 23:59:59")
+    clause = " WHERE " + " AND ".join(where)
+
+    affected = query(f"SELECT COUNT(*) AS c FROM consultation_requests{clause}",
+                     tuple(args), fetchone=True)["c"]
+    execute(f"UPDATE consultation_requests SET status='archived'{clause}", tuple(args))
+
+    scope = ", ".join(filter(None, [
+        f"status={status}" if status else "",
+        f"from={date_from}" if date_from else "",
+        f"to={date_to}" if date_to else "",
+    ])) or "all active requests"
+    record_audit("admin.archive_requests", detail=f"{affected} archived ({scope})")
+
+    # Dashboards read through short-lived caches; drop them so the change shows.
+    import teacher as teacher_module
+    teacher_module._requests_cache["ts"] = 0
+    teacher_module._logs_cache["ts"] = 0
+
+    return jsonify({"message": f"{affected} requests archived.", "archived": affected})

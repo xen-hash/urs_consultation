@@ -1,31 +1,26 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { io } from "socket.io-client";
 import {
+  Clock, CheckCircle2, XCircle, CalendarCheck,
   Send, RefreshCw, Search, GraduationCap, BookOpen, X,
-  ChevronLeft, Users, Inbox, User, Camera, Download,
-  CalendarCheck, Pencil, Delete
+  ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Delete
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Spinner } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
-import { API_BASE, SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
+import api, { apiError } from "./httpClient.js";
+import { getSession, patchProfile, clearSession } from "./auth.js";
+import DepartmentIcon from "./ui/DepartmentIcon.jsx";
+import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
 
 let socket = null;
 
-const DEPT_ICONS = {
-  "Civil Engineering Department":       "🏗️",
-  "Computer Engineering Department":    "💻",
-  "Electronics Engineering Department": "⚡",
-  "Electrical Engineering Department":  "🔌",
-  "Mechanical Engineering Department":  "⚙️",
-  "GEC GEAS Department":                "📐",
-};
-
-
-
 // ── Keyboard layout definitions ───────────────────────────────────────────────
+// The on-screen keyboard keeps a dark surface of its own rather than adopting
+// the page tokens: it stands in for the system keyboard, and platform keyboards
+// are a distinct surface from the page they type into. The hex values below are
+// scoped to this widget for that reason.
 // Letter mode
 const L_ROW1 = ["q","w","e","r","t","y","u","i","o","p"];
 const L_ROW2 = ["a","s","d","f","g","h","j","k","l"];
@@ -43,12 +38,12 @@ function KbKey({ label, icon, onPress, accent, danger, dark, wide, narrow, cls =
     "text-[15px] font-semibold cursor-pointer touch-none active:border-b-0 active:translate-y-[3px] " +
     "transition-transform duration-75 h-[46px] ";
   const color = accent
-    ? "bg-[#003366] border-[#001f44] text-white "
+    ? "bg-brand border-[#001f44] text-fg "
     : danger
-    ? "bg-[#c0392b] border-[#922b21] text-white "
+    ? "bg-[#c0392b] border-[#922b21] text-fg "
     : dark
-    ? "bg-[#151f2e] border-[#0a1018] text-white/50 "
-    : "bg-[#2c3e52] border-[#1a2535] text-white ";
+    ? "bg-[#151f2e] border-[#0a1018] text-muted-fg "
+    : "bg-[#2c3e52] border-[#1a2535] text-fg ";
   const width = narrow ? "w-[46px] shrink-0 " : wide ? "flex-[1.6] " : "flex-1 ";
   return (
     <button
@@ -67,13 +62,13 @@ function KbKey({ label, icon, onPress, accent, danger, dark, wide, narrow, cls =
  *   q w e r t y u i o p
  *    a s d f g h j k l
  *   ⇧  z x c v b n m  ⌫
- *   123      space      .   Done ✓
+ *   123      space      .   Done
  *
  * Number mode layout:
  *   1 2 3 4 5 6 7 8 9 0
  *   - / : ; ( ) % @ " '
  *   #+  . , ? ! # &    ⌫
- *   ABC      space      .   Done ✓
+ *   ABC      space      .   Done
  */
 function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
   const [caps, setCaps]       = useState(false);
@@ -135,7 +130,7 @@ function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
               <KbKey label="ABC" dark narrow onPress={() => setNumMode(false)} />
               <KbKey label="space" dark onPress={() => tap(" ")} />
               <KbKey label="." dark narrow onPress={() => tap(".")} />
-              <KbKey label="Done ✓" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
+              <KbKey label="Done" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
             </div>
           </>
         ) : (
@@ -177,12 +172,12 @@ function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
               />
             </div>
 
-            {/* Row 4: 123 / space / . / Done ✓ */}
+            {/* Row 4: 123 / space / . / Done */}
             <div className="flex gap-[5px]">
               <KbKey label="123" dark narrow onPress={() => setNumMode(true)} />
               <KbKey label="space" dark onPress={() => tap(" ")} />
               <KbKey label="." dark narrow onPress={() => tap(".")} />
-              <KbKey label="Done ✓" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
+              <KbKey label="Done" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
             </div>
           </>
         )}
@@ -195,8 +190,7 @@ function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
-  const studentRaw = sessionStorage.getItem("student");
-  const student    = studentRaw ? JSON.parse(studentRaw) : null;
+  const student = getSession("student");
 
   if (!student) { navigate("/student"); return null; }
 
@@ -209,6 +203,9 @@ export default function StudentDashboard() {
   const [profPage, setProfPage]           = useState(1);
   const PROF_PAGE_SIZE = 9;
   const [reqModal, setReqModal]         = useState(null);
+  // Full-screen overlays: lock the page behind them. `overflow: hidden` on the
+  // body does not hold on iOS Safari, so this pins it and restores the scroll
+  // position on close.
   const [reqForm, setReqForm]           = useState({ purpose: "", category: "Academic" });
   const [submitting, setSubmitting]     = useState(false);
   const purposeRef = useRef(null);
@@ -219,6 +216,7 @@ export default function StudentDashboard() {
   });
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [selectedReq, setSelectedReq]   = useState(null);
+  useScrollLock(!!reqModal || !!selectedReq);
 
   const [profile, setProfile]               = useState({ ...student });
   const [profilePhoto, setProfilePhoto]     = useState(student.photo || null);
@@ -231,7 +229,7 @@ export default function StudentDashboard() {
 
   const fetchProfessors = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/teacher-logs`);
+      const res = await api.get(`/teacher-logs`);
       res.data.forEach(dept => dept.professors.forEach(prof => {
         if (!prevAvail.current[prof.name] && prof.status === "Available") {
           addToast(`${prof.name} is now available!`, "success");
@@ -246,7 +244,7 @@ export default function StudentDashboard() {
   const fetchInbox = useCallback(async () => {
     setLoadingInbox(true);
     try {
-      const res = await axios.get(`${API_BASE}/consultation/history/${student.student_id}?page=1&limit=10`);
+      const res = await api.get(`/consultation/history/${student.student_id}?page=1&limit=10`);
       const data = res.data?.data ?? res.data ?? [];
       setMyRequests(data);
     } catch (_) {}
@@ -279,8 +277,7 @@ export default function StudentDashboard() {
     if (hasPending) return addToast(`You already have a pending request with ${reqModal.name}. Wait for it to be resolved first.`, "warning");
     setSubmitting(true);
     try {
-      await axios.post(`${API_BASE}/consultation/request`, {
-        student_id: student.student_id, student_name: student.full_name,
+      await api.post(`/consultation/request`, {
         course: student.course, professor_name: reqModal.name,
         department: reqModal.department, purpose: reqForm.purpose, category: reqForm.category,
       });
@@ -297,16 +294,15 @@ export default function StudentDashboard() {
   const savePhotoOnly = async (photoDataUrl) => {
     setSavingProfile(true);
     try {
-      const res = await axios.post(`${API_BASE}/student/update-profile`, {
-        student_id: student.student_id, full_name: profile.full_name,
+      const res = await api.post(`/student/update-profile`, {
+        full_name: profile.full_name,
         course: profile.course, year_level: profile.year_level,
         department: profile.department, photo: photoDataUrl,
       });
       const saved = res.data.student;
       setProfile(p => ({ ...p, ...saved }));
       if (saved.photo) setProfilePhoto(saved.photo);
-      const cur = JSON.parse(sessionStorage.getItem("student") || "{}");
-      sessionStorage.setItem("student", JSON.stringify({ ...cur, ...saved }));
+      patchProfile("student", saved);
       addToast("Photo saved!", "success");
     } catch (e) { addToast("Failed to save photo.", "error"); }
     finally { setSavingProfile(false); }
@@ -315,16 +311,15 @@ export default function StudentDashboard() {
   const saveProfile = async () => {
     setSavingProfile(true);
     try {
-      const res = await axios.post(`${API_BASE}/student/update-profile`, {
-        student_id: student.student_id, full_name: profile.full_name,
+      const res = await api.post(`/student/update-profile`, {
+        full_name: profile.full_name,
         course: profile.course, year_level: profile.year_level,
         department: profile.department, photo: profilePhoto,
       });
       const saved = res.data.student;
       setProfile(p => ({ ...p, ...saved }));
       if (saved.photo) setProfilePhoto(saved.photo);
-      const cur = JSON.parse(sessionStorage.getItem("student") || "{}");
-      sessionStorage.setItem("student", JSON.stringify({ ...cur, ...saved }));
+      patchProfile("student", saved);
       addToast("Profile updated!", "success");
       setEditingProfile(false);
       } catch (e) { addToast("Failed to save profile.", "error"); }
@@ -361,19 +356,19 @@ export default function StudentDashboard() {
       <URSHeader
         subtitle="Student Dashboard"
         user={{ name: student.full_name, sub: student.student_id }}
-        onLogout={() => { sessionStorage.removeItem("student"); navigate("/student"); }}
+        onLogout={() => { clearSession(); navigate("/student"); }}
       />
 
       {/* Tab bar */}
-      <div className="bg-white/5 backdrop-blur-sm border-b border-white/10">
+      <div className="bg-surface-2 border-b border-border">
         <div className="max-w-5xl mx-auto px-4 flex gap-1 pt-2">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-semibold transition-all
-                ${tab === t.id ? "bg-white/15 text-white border-b-2 border-[#ffa000]" : "text-white/50 hover:text-white/80"}`}>
+ ${tab === t.id ? "bg-surface-2 text-fg border-b-2 border-accent" : "text-muted-fg hover:text-muted-fg"}`}>
               {t.icon}{t.label}
               {t.id === "inbox" && myRequests.filter(r => r.appointment_date && r.status === "pending").length > 0 && (
-                <span className="bg-[#ffa000] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                <span className="bg-accent text-fg text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {myRequests.filter(r => r.appointment_date && r.status === "pending").length}
                 </span>
               )}
@@ -389,44 +384,44 @@ export default function StudentDashboard() {
           <>
             {/* ── Appointment Alert Banner ── */}
             {myRequests.filter(r => r.appointment_date && r.status === "pending").length > 0 && (
-              <div className="mb-4 animate-slide-up">
+              <div className="mb-4 animate-rise">
                 {myRequests.filter(r => r.appointment_date && r.status === "pending").map(req => (
                   <div key={req.id}
-                    className="flex items-start gap-3 bg-orange-500 rounded-2xl p-4 shadow-xl border border-orange-400 cursor-pointer"
+                    className="flex items-start gap-3 bg-orange-500 rounded-lg p-4 shadow-xl border border-orange-400 cursor-pointer"
                     onClick={() => setTab("inbox")}>
-                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0 text-xl">📅</div>
+                    <div className="w-10 h-10 bg-surface-2 rounded-xl flex items-center justify-center shrink-0"><CalendarCheck size={20} aria-hidden="true" /></div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-bold text-sm">New Appointment Set!</p>
-                      <p className="text-white/90 text-xs mt-0.5 truncate">
+                      <p className="text-fg font-bold text-sm">New Appointment Set!</p>
+                      <p className="text-muted-fg text-xs mt-0.5 truncate">
                         {req.professor_name} — {new Date(req.appointment_date).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })} at {req.appointment_time || "TBD"}
                       </p>
                       {req.appointment_notes && (
-                        <p className="text-white/75 text-xs mt-0.5 italic truncate">"{req.appointment_notes}"</p>
+                        <p className="text-muted-fg text-xs mt-0.5 italic truncate">"{req.appointment_notes}"</p>
                       )}
                     </div>
-                    <span className="text-white/80 text-xs font-semibold shrink-0 mt-1">View →</span>
+                    <span className="text-muted-fg text-xs font-semibold shrink-0 mt-1">View →</span>
                   </div>
                 ))}
               </div>
             )}
-            <div className="bg-gradient-to-r from-[#003366] to-[#0055aa] rounded-3xl p-5 text-white shadow-xl mb-5">
+            <div className="bg-gradient-to-r from-brand to-brand-500 rounded-xl p-5 text-fg shadow-xl mb-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="w-12 h-12 bg-surface-2 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
                     {profilePhoto ? <img src={profilePhoto} alt="" className="w-full h-full object-cover" /> : <GraduationCap size={24} />}
                   </div>
                   <div>
-                    <p className="font-display font-bold text-lg leading-tight">{student.full_name}</p>
-                    <p className="text-white/60 text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
+                    <p className="font-semibold text-lg leading-tight">{student.full_name}</p>
+                    <p className="text-muted-fg text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-3xl font-display font-black text-[#ffa000]">{totalAvail}</p>
-                    <p className="text-white/50 text-xs">available now</p>
+                    <p className="text-3xl font-bold text-accent-fg">{totalAvail}</p>
+                    <p className="text-muted-fg text-xs">available now</p>
                   </div>
                   <button onClick={() => { setLoading(true); fetchProfessors(); }}
-                    className="w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl flex items-center justify-center transition-all">
+                    className="w-10 h-10 bg-surface-2 hover:bg-surface-2 border border-border rounded-xl flex items-center justify-center transition-all">
                     <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
                   </button>
                 </div>
@@ -434,18 +429,18 @@ export default function StudentDashboard() {
             </div>
 
             {selectedDept && currentDept ? (
-              <div className="animate-slide-up">
+              <div className="animate-rise">
                 <button onClick={() => { setSelectedDept(null); setSearch(""); setFilter("all"); }}
-                  className="flex items-center gap-2 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+                  className="flex items-center gap-2 text-muted-fg hover:text-fg text-sm mb-4 transition-colors">
                   <ChevronLeft size={16} /> Back to Departments
                 </button>
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-4 mb-4 flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center text-2xl shrink-0">
-                    {DEPT_ICONS[selectedDept] || "🎓"}
+                <div className="card rounded-xl p-4 mb-4 flex items-center gap-4">
+                  <div className="w-12 h-12 bg-surface-2 rounded-lg flex items-center justify-center text-2xl shrink-0">
+                    <DepartmentIcon department={selectedDept} size={26} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-display font-bold text-white leading-tight">{selectedDept}</h2>
-                    <p className="text-white/50 text-xs mt-0.5">
+                    <h2 className="font-semibold text-fg leading-tight">{selectedDept}</h2>
+                    <p className="text-muted-fg text-xs mt-0.5">
                       {currentDept.professors.length} professors · <span className="text-emerald-400 font-semibold">
                         {currentDept.professors.filter(p => p.status === "Available").length} available
                       </span>
@@ -454,20 +449,19 @@ export default function StudentDashboard() {
                 </div>
                 <div className="flex gap-2 mb-4">
                   <div className="relative flex-1">
-                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
-                    <input className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/30
-                                     rounded-2xl px-4 py-3 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
+                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg" />
+                    <input className="w-full bg-surface-2 border border-border text-fg placeholder:text-muted-fg rounded-lg px-4 py-3 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 transition-all"
                       placeholder="Search professor..." value={search} onChange={e => setSearch(e.target.value)} />
                   </div>
-                  <div className="flex gap-1 bg-white/10 border border-white/20 rounded-2xl p-1">
+                  <div className="flex gap-1 bg-surface-2 border border-border rounded-lg p-1">
                     {[["all", "All"], ["available", "Available"]].map(([v, l]) => (
                       <button key={v} onClick={() => setFilter(v)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all
-                          ${filter === v ? "bg-white text-[#003366] shadow" : "text-white/60 hover:text-white"}`}>{l}</button>
+ ${filter === v ? "bg-white text-brand shadow" : "text-muted-fg hover:text-fg"}`}>{l}</button>
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {filteredProfs.map(prof => {
                     const isAvail = prof.status === "Available";
                     const initials = prof.name
@@ -487,17 +481,17 @@ export default function StudentDashboard() {
                           setReqModal({ ...prof, department: selectedDept });
                           setReqForm({ purpose: "", category: "Academic" });
                         }}
-                        className={`relative flex flex-col items-center rounded-2xl overflow-hidden transition-all active:scale-95
-                          ${isAvail
-                            ? "shadow-xl hover:shadow-2xl hover:-translate-y-0.5 cursor-pointer"
-                            : "opacity-50 cursor-not-allowed"}`}>
+                        className={`relative flex flex-col items-center rounded-lg overflow-hidden transition-all active:scale-95
+ ${isAvail
+ ? "shadow-xl hover:shadow-2xl hover:-translate-y-0.5 cursor-pointer"
+ : "opacity-50 cursor-not-allowed"}`}>
 
                         {/* Full-bleed image / initials background */}
                         <div className={`w-full aspect-square overflow-hidden flex items-center justify-center relative
-                          ${isAvail ? "bg-[#003366]" : "bg-white/10"}`}>
+ ${isAvail ? "bg-brand" : "bg-surface-2"}`}>
                           {prof.photo
                             ? <img src={prof.photo} alt={prof.name} className="w-full h-full object-cover" />
-                            : <span className="text-white font-display font-bold text-4xl leading-none">{initials}</span>
+                            : <span className="text-fg font-semibold text-4xl leading-none">{initials}</span>
                           }
 
                           {/* Dark gradient overlay at bottom for text readability */}
@@ -505,28 +499,28 @@ export default function StudentDashboard() {
 
                           {/* Name + status overlaid on image */}
                           <div className="absolute bottom-0 inset-x-0 px-2 pb-2 pt-4 flex flex-col items-center gap-1">
-                            <p className="text-white text-xs font-bold text-center leading-tight line-clamp-2 drop-shadow">
+                            <p className="text-fg text-xs font-bold text-center leading-tight line-clamp-2 drop-shadow">
                               {prof.name.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i, "")}
                             </p>
                             {isAvail
-                              ? <span className="text-[9px] font-bold text-emerald-300 bg-emerald-500/30 border border-emerald-400/50 px-2 py-0.5 rounded-full backdrop-blur-sm">Available</span>
-                              : <span className="text-[9px] font-medium text-white/50">{prof.status}</span>
+                              ? <span className="text-[9px] font-bold text-emerald-300 bg-emerald-500/30 border border-emerald-400/50 px-2 py-0.5 rounded-full">Available</span>
+                              : <span className="text-[9px] font-medium text-muted-fg">{prof.status}</span>
                             }
                             {prof.day_limit > 0 && prof.slots_left !== null && prof.slots_left !== undefined && (
-                              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm
-                                ${prof.slots_left === 0
-                                  ? "text-red-300 bg-red-500/30 border border-red-400/50"
-                                  : prof.slots_left <= 2
-                                  ? "text-yellow-300 bg-yellow-500/30 border border-yellow-400/50"
-                                  : "text-blue-300 bg-blue-500/30 border border-blue-400/50"}`}>
+                              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full 
+ ${prof.slots_left === 0
+ ? "text-red-300 bg-red-500/30 border border-red-400/50"
+ : prof.slots_left <= 2
+ ? "text-yellow-300 bg-yellow-500/30 border border-yellow-400/50"
+ : "text-blue-300 bg-blue-500/30 border border-blue-400/50"}`}>
                                 {prof.slots_left === 0 ? "Full" : `${prof.slots_left}/${prof.day_limit} left`}
                               </span>
                             )}
                           </div>
 
                           {/* Status dot */}
-                          <span className={`absolute top-2 right-2 w-3 h-3 rounded-full border-2 border-white/60 shadow
-                            ${isAvail ? "bg-emerald-400" : "bg-slate-400"}`} />
+                          <span className={`absolute top-2 right-2 w-3 h-3 rounded-full border-2 border-border shadow
+ ${isAvail ? "bg-emerald-400" : "bg-slate-400"}`} />
                         </div>
 
                         {/* Corner highlights for available professors */}
@@ -543,7 +537,7 @@ export default function StudentDashboard() {
                         const sched = prof.weekly_schedule;
                         if (!sched || !sched[today] || sched[today].unavailable) return (
                           <div className="w-full px-2 py-1.5 bg-black/30">
-                            <p className="text-[9px] text-white/40 text-center">No class today</p>
+                            <p className="text-[9px] text-muted-fg text-center">No class today</p>
                           </div>
                         );
                         const day = sched[today];
@@ -551,11 +545,11 @@ export default function StudentDashboard() {
                         return (
                           <div className="w-full px-2 py-1.5 bg-black/40 space-y-0.5">
                             {slots.slice(0,2).map((sl, i) => (
-                              <p key={i} className="text-[8px] text-white/70 text-center font-mono">
-                                🕐 {sl.start} – {sl.end}
+                              <p key={i} className="text-[8px] text-muted-fg text-center font-mono">
+                                <Clock size={9} aria-hidden="true" className="inline mr-0.5" />{sl.start} – {sl.end}
                               </p>
                             ))}
-                            {day.limit && <p className="text-[8px] text-[#ffa000] text-center font-bold">{day.limit} slots</p>}
+                            {day.limit && <p className="text-[8px] text-accent-fg text-center font-bold">{day.limit} slots</p>}
                           </div>
                         );
                       })()}
@@ -566,23 +560,23 @@ export default function StudentDashboard() {
 
                 {/* Prof Pagination */}
                 {profTotalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
-                    <p className="text-white/40 text-xs">{((profPage-1)*PROF_PAGE_SIZE)+1}–{Math.min(profPage*PROF_PAGE_SIZE,allFilteredProfs.length)} of {allFilteredProfs.length}</p>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+                    <p className="text-muted-fg text-xs">{((profPage-1)*PROF_PAGE_SIZE)+1}–{Math.min(profPage*PROF_PAGE_SIZE,allFilteredProfs.length)} of {allFilteredProfs.length}</p>
                     <div className="flex gap-2">
                       <button onClick={()=>setProfPage(p=>Math.max(1,p-1))} disabled={profPage===1}
-                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
-                      <span className="px-2 py-1.5 text-xs text-white/40">{profPage}/{profTotalPages}</span>
+                        className="px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-xl text-muted-fg hover:text-fg disabled:opacity-30 transition-all">← Prev</button>
+                      <span className="px-2 py-1.5 text-xs text-muted-fg">{profPage}/{profTotalPages}</span>
                       <button onClick={()=>setProfPage(p=>Math.min(profTotalPages,p+1))} disabled={profPage===profTotalPages}
-                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">Next →</button>
+                        className="px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-xl text-muted-fg hover:text-fg disabled:opacity-30 transition-all">Next →</button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="animate-slide-up">
+              <div className="animate-rise">
                 <div className="mb-4">
-                  <h2 className="font-display font-bold text-xl text-white">Faculty Departments</h2>
-                  <p className="text-white/50 text-sm mt-0.5">Select a department to view availability</p>
+                  <h2 className="font-semibold text-xl text-fg">Faculty Departments</h2>
+                  <p className="text-muted-fg text-sm mt-0.5">Select a department to view availability</p>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                   {departments.map((dept, i) => {
@@ -592,34 +586,30 @@ export default function StudentDashboard() {
                     return (
                       <button key={dept.department}
                         onClick={() => { setSelectedDept(dept.department); setSearch(""); setFilter("all"); setProfPage(1); }}
-                        className="group flex flex-col gap-3 p-5 text-left bg-white/10 hover:bg-white/18
-                                   backdrop-blur-xl border border-white/20 hover:border-white/35 rounded-3xl
-                                   transition-all active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-2xl
-                                   h-full min-h-[160px]"
+                        className="group flex flex-col gap-3 p-5 text-left bg-surface-2 hover:bg-white/18 border border-border hover:border-border rounded-xl transition-all active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-2xl h-full min-h-[160px]"
                         style={{ animationDelay: `${i * 60}ms` }}>
                         <div className="flex items-start justify-between">
-                          <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center
-                                         text-3xl group-hover:scale-110 transition-transform duration-200">
-                            {DEPT_ICONS[dept.department] || "🎓"}
+                          <div className="w-14 h-14 bg-surface-2 rounded-lg flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-200">
+                            <DepartmentIcon department={dept.department} size={22} />
                           </div>
                           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
-                            ${avail > 0
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                              : "bg-white/10 text-white/40 border border-white/15"}`}>
+ ${avail > 0
+ ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+ : "bg-surface-2 text-muted-fg border border-border"}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${avail > 0 ? "bg-emerald-400 animate-pulse" : "bg-white/30"}`} />
                             {avail} available
                           </div>
                         </div>
                         <div>
-                          <p className="font-display font-bold text-white text-base leading-snug">{dept.department}</p>
-                          <p className="text-white/40 text-xs mt-1 flex items-center gap-1"><Users size={10} />{total} professors</p>
+                          <p className="font-semibold text-fg text-base leading-snug">{dept.department}</p>
+                          <p className="text-muted-fg text-xs mt-1 flex items-center gap-1"><Users size={10} />{total} professors</p>
                         </div>
                         <div>
-                          <div className="flex justify-between text-[10px] text-white/40 mb-1">
+                          <div className="flex justify-between text-[10px] text-muted-fg mb-1">
                             <span>Availability</span><span>{pct}%</span>
                           </div>
-                          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-700 ${avail > 0 ? "bg-emerald-400" : "bg-white/20"}`}
+                          <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-700 ${avail > 0 ? "bg-emerald-400" : "bg-surface-2"}`}
                               style={{ width: `${pct}%` }} />
                           </div>
                         </div>
@@ -634,13 +624,13 @@ export default function StudentDashboard() {
 
         {/* ── INBOX TAB ── */}
         {tab === "inbox" && (
-          <div className="animate-slide-up space-y-4">
+          <div className="animate-rise space-y-4">
 
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-display font-bold text-xl text-white">Inbox</h2>
-                <p className="text-white/50 text-sm mt-0.5">
+                <h2 className="font-semibold text-xl text-fg">Inbox</h2>
+                <p className="text-muted-fg text-sm mt-0.5">
                   {myRequests.filter(r => !readIds.has(r.id)).length > 0
                     ? `${myRequests.filter(r => !readIds.has(r.id)).length} unread`
                     : "All caught up"}
@@ -652,11 +642,11 @@ export default function StudentDashboard() {
                   setReadIds(all);
                   localStorage.setItem("urs_read_ids", JSON.stringify([...all]));
                 }}
-                  className="text-xs text-white/40 hover:text-white bg-white/10 px-3 py-2 rounded-xl border border-white/20 transition-all">
+                  className="text-xs text-muted-fg hover:text-fg bg-surface-2 px-3 py-2 rounded-xl border border-border transition-all">
                   Mark all read
                 </button>
                 <button onClick={fetchInbox}
-                  className="flex items-center gap-1.5 text-white/50 hover:text-white text-xs bg-white/10 px-3 py-2 rounded-xl border border-white/20 transition-all">
+                  className="flex items-center gap-1.5 text-muted-fg hover:text-fg text-xs bg-surface-2 px-3 py-2 rounded-xl border border-border transition-all">
                   <RefreshCw size={12} className={loadingInbox ? "animate-spin" : ""} />
                 </button>
               </div>
@@ -665,7 +655,7 @@ export default function StudentDashboard() {
             {loadingInbox ? (
               <div className="flex justify-center py-16"><Spinner size={10} light /></div>
             ) : myRequests.length === 0 ? (
-              <div className="text-center py-16 text-white/40">
+              <div className="text-center py-16 text-muted-fg">
                 <Inbox size={48} className="mx-auto mb-3 opacity-30" />
                 <p className="font-semibold">No requests yet</p>
                 <p className="text-sm mt-1">Submit a consultation request to get started</p>
@@ -692,68 +682,55 @@ export default function StudentDashboard() {
                     : isDeclined ? "border-l-red-400"
                     :              "border-l-yellow-400";
 
-                  const badgeCls = hasAppt  ? "bg-orange-400/20 text-orange-200 border-orange-400/40"
-                    : isDone     ? "bg-emerald-400/20 text-emerald-200 border-emerald-400/40"
-                    : isDeclined ? "bg-red-400/20 text-red-200 border-red-400/40"
-                    :              "bg-yellow-400/20 text-yellow-100 border-yellow-400/40";
-
-                  const badgeLabel = hasAppt ? "📅 Appointment Set"
-                    : isDone     ? "✅ Done"
-                    : isDeclined ? "❌ Declined"
-                    :              "⏳ Pending";
-
                   return (
                     <div key={req.id}
-                      className={`relative bg-white/10 backdrop-blur-xl border border-white/20
-                                  rounded-2xl p-4 border-l-4 ${borderColor} transition-all
-                                  ${!isRead ? "ring-1 ring-white/20" : "opacity-80"}`}
+                      className={`relative card
+ rounded-lg p-4 border-l-4 ${borderColor} transition-all
+ ${!isRead ? "ring-1 ring-brand/20" : "opacity-80"}`}
                       onClick={markRead}>
 
                       {/* Unread dot */}
                       {!isRead && (
-                        <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#ffa000] rounded-full" />
+                        <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-accent rounded-full" />
                       )}
 
                       {/* Top row */}
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#003366] to-[#0055aa]
-                                        flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-brand-500 flex items-center justify-center text-fg text-xs font-bold shrink-0">
                           {req.professor_name?.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i,"")
                             .split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase() || "?"}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white font-semibold text-sm truncate">{req.professor_name}</p>
-                          <p className="text-white/50 text-xs">{req.category} · {req.department?.replace(" Department","")}</p>
+                          <p className="text-fg font-semibold text-sm truncate">{req.professor_name}</p>
+                          <p className="text-muted-fg text-xs">{req.category} · {req.department?.replace(" Department","")}</p>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full border shrink-0 ${badgeCls}`}>
-                          {badgeLabel}
-                        </span>
+                        <RequestBadge status={req.status} hasAppointment={hasAppt} />
                       </div>
 
                       {/* Purpose */}
-                      <p className="text-white/70 text-xs italic mb-3 line-clamp-2">"{req.purpose}"</p>
+                      <p className="text-muted-fg text-xs italic mb-3 line-clamp-2">"{req.purpose}"</p>
 
                       {/* Appointment details */}
                       {hasAppt && (
                         <div className="bg-orange-500/15 border border-orange-400/30 rounded-xl px-3 py-2 mb-3">
-                          <p className="text-orange-200 text-xs font-bold mb-0.5">📅 Appointment Details</p>
-                          <p className="text-white text-sm font-semibold">
+                          <p className="text-orange-200 text-xs font-bold mb-0.5 flex items-center gap-1.5"><CalendarCheck size={12} aria-hidden="true" />Appointment details</p>
+                          <p className="text-fg text-sm font-semibold">
                             {new Date(req.appointment_date).toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
                             {req.appointment_time && ` at ${req.appointment_time}`}
                           </p>
                           {req.appointment_notes && (
-                            <p className="text-white/60 text-xs mt-1 italic">"{req.appointment_notes}"</p>
+                            <p className="text-muted-fg text-xs mt-1 italic">"{req.appointment_notes}"</p>
                           )}
                         </div>
                       )}
 
                       {/* Footer */}
                       <div className="flex items-center justify-between">
-                        <p className="text-white/30 text-xs">
+                        <p className="text-muted-fg text-xs">
                           {req.request_time ? new Date(req.request_time).toLocaleDateString("en-PH",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}
                         </p>
                         <button onClick={e => { e.stopPropagation(); setSelectedReq(req); }}
-                          className="text-xs text-white/50 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1 rounded-lg transition-all">
+                          className="text-xs text-muted-fg hover:text-fg bg-surface-2 hover:bg-surface-2 px-3 py-1 rounded-lg transition-all">
                           View Details
                         </button>
                       </div>
@@ -767,13 +744,13 @@ export default function StudentDashboard() {
 
         {/* ── PROFILE TAB ── */}
         {tab === "profile" && (
-          <div className="animate-slide-up max-w-lg mx-auto">
+          <div className="animate-rise max-w-lg mx-auto">
             <div className="mb-5">
-              <h2 className="font-display font-bold text-xl text-white">My Profile & Student ID</h2>
-              <p className="text-white/50 text-sm mt-0.5">Edit your information and generate your ID card</p>
+              <h2 className="font-semibold text-xl text-fg">My Profile & Student ID</h2>
+              <p className="text-muted-fg text-sm mt-0.5">Edit your information and generate your ID card</p>
             </div>
             {showCamera ? (
-              <div className="bg-white rounded-3xl p-6 shadow-2xl animate-bounce-in">
+              <div className="bg-white rounded-xl p-6 shadow-2xl animate-rise">
                 <WebcamCapture
                   title="Take Your ID Photo"
                   onCapture={(dataUrl) => { setProfilePhoto(dataUrl); setShowCamera(false); savePhotoOnly(dataUrl); }}
@@ -782,19 +759,18 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-5">
+                <div className="card rounded-xl p-5">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
-                      {profilePhoto ? <img src={profilePhoto} alt="" className="w-full h-full object-cover" /> : <User size={32} className="text-white/30" />}
+                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-surface-2 border border-border flex items-center justify-center shrink-0">
+                      {profilePhoto ? <img src={profilePhoto} alt="" className="w-full h-full object-cover" /> : <User size={32} className="text-muted-fg" />}
                     </div>
                     <div className="flex-1">
-                      <p className="font-display font-bold text-white">{profile.full_name}</p>
-                      <p className="text-white/50 text-xs mt-0.5">{profile.course} · {profile.year_level}</p>
-                      <p className="text-white/40 text-xs">{student.student_id}</p>
+                      <p className="font-semibold text-fg">{profile.full_name}</p>
+                      <p className="text-muted-fg text-xs mt-0.5">{profile.course} · {profile.year_level}</p>
+                      <p className="text-muted-fg text-xs">{student.student_id}</p>
                     </div>
                     <button onClick={() => setShowCamera(true)}
-                      className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs
-                                 bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-2 rounded-xl transition-all">
+                      className="flex items-center gap-1.5 text-muted-fg hover:text-fg text-xs bg-surface-2 hover:bg-surface-2 border border-border px-3 py-2 rounded-xl transition-all">
                       <Camera size={13} /> {profilePhoto ? "Retake" : "Add Photo"}
                     </button>
                   </div>
@@ -804,16 +780,15 @@ export default function StudentDashboard() {
                     photo={profilePhoto} qrBase64={studentQR} type="student"
                   />
                   <button onClick={downloadID}
-                    className="w-full flex items-center justify-center gap-2 mt-4 bg-[#003366] hover:bg-[#004080]
-                               text-white font-semibold py-3 rounded-2xl transition-all text-sm">
+                    className="w-full flex items-center justify-center gap-2 mt-4 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm">
                     <Download size={15} /> Download Student ID
                   </button>
                 </div>
-                <div className="bg-white/95 rounded-3xl p-5 shadow-lg">
+                <div className="bg-surface rounded-xl p-5 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-display font-bold text-[#003366]">Edit Information</h3>
+                    <h3 className="font-semibold text-brand">Edit Information</h3>
                     <button onClick={() => { setEditingProfile(v => !v); }}
-                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#003366] transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-brand transition-colors">
                       <Pencil size={12} /> {editingProfile ? "Cancel" : "Edit"}
                     </button>
                   </div>
@@ -827,9 +802,7 @@ export default function StudentDashboard() {
                         {editingProfile ? (
                           <input
                             type="text"
-                            className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366]
-                                       focus:bg-white transition-all"
+                            className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
                             placeholder={f.placeholder}
                             value={profile[f.key] || ""}
                             onChange={e => setProfile(p => ({ ...p, [f.key]: e.target.value.slice(0, f.max) }))}
@@ -846,8 +819,7 @@ export default function StudentDashboard() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Year Level</label>
-                        <select className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm
-                                          focus:outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:opacity-60"
+                        <select className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
                           value={profile.year_level} disabled={!editingProfile}
                           onChange={e => setProfile(p => ({ ...p, year_level: e.target.value }))}>
                           {YEAR_LEVELS.map(y => <option key={y}>{y}</option>)}
@@ -855,8 +827,7 @@ export default function StudentDashboard() {
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Department</label>
-                        <select className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm
-                                          focus:outline-none focus:ring-2 focus:ring-[#003366]/20 disabled:opacity-60"
+                        <select className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
                           value={profile.department} disabled={!editingProfile}
                           onChange={e => setProfile(p => ({ ...p, department: e.target.value }))}>
                           {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
@@ -865,8 +836,7 @@ export default function StudentDashboard() {
                     </div>
                     {editingProfile && (
                       <button onClick={saveProfile} disabled={savingProfile}
-                        className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
-                                   text-white font-semibold py-3 rounded-2xl transition-all text-sm disabled:opacity-50">
+                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                         {savingProfile ? <Spinner size={4} light /> : <CheckIcon />}
                         {savingProfile ? "Saving..." : "Save Changes"}
                       </button>
@@ -902,7 +872,7 @@ export default function StudentDashboard() {
               <ChevronLeft size={18} className="text-gray-600" />
             </button>
             <div className="flex-1 min-w-0">
-              <h2 className="font-display font-bold text-base text-[#003366]">Request Consultation</h2>
+              <h2 className="font-semibold text-base text-brand">Request Consultation</h2>
               <p className="text-gray-400 text-xs truncate">{reqModal.name} · {reqModal.department}</p>
             </div>
             <StatusBadge status={reqModal.status} />
@@ -912,7 +882,7 @@ export default function StudentDashboard() {
           <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-5">
 
             {/* Teacher card — left-aligned banner with large circular photo */}
-            <div className="relative rounded-2xl overflow-hidden border border-blue-100 shadow-md bg-gradient-to-br from-[#003366] to-[#0055aa]">
+            <div className="relative rounded-lg overflow-hidden border border-blue-100 shadow-md bg-gradient-to-br from-brand to-brand-500">
               {/* Blurred bg from photo */}
               {reqModal.photo && (
                 <img src={reqModal.photo} alt=""
@@ -920,18 +890,18 @@ export default function StudentDashboard() {
               )}
               <div className="relative flex flex-row items-center gap-5 py-5 px-5">
                 {/* Large circular photo / initials */}
-                <div className="w-32 h-32 rounded-full overflow-hidden flex items-center justify-center bg-white/20 border-4 border-white/50 shadow-xl shrink-0">
+                <div className="w-32 h-32 rounded-full overflow-hidden flex items-center justify-center bg-surface-2 border-4 border-border shadow-xl shrink-0">
                   {reqModal.photo
                     ? <img src={reqModal.photo} alt={reqModal.name} className="w-full h-full object-cover" />
-                    : <span className="text-white font-display font-bold text-4xl leading-none">
+                    : <span className="text-fg font-semibold text-4xl leading-none">
                         {reqModal.name.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i,"").split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
                       </span>
                   }
                 </div>
                 {/* Name & dept — left aligned */}
                 <div className="flex flex-col gap-1">
-                  <p className="font-display font-bold text-white text-xl leading-tight">{reqModal.name}</p>
-                  <p className="text-white/60 text-sm">{reqModal.department}</p>
+                  <p className="font-semibold text-fg text-xl leading-tight">{reqModal.name}</p>
+                  <p className="text-muted-fg text-sm">{reqModal.department}</p>
                   <span className="inline-flex items-center gap-1.5 mt-1 text-[11px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full w-fit">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Available
@@ -948,9 +918,9 @@ export default function StudentDashboard() {
                   <button key={c}
                     onClick={() => setReqForm(p => ({ ...p, category: c }))}
                     className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border
-                      ${reqForm.category === c
-                        ? "bg-[#003366] text-white border-[#003366] shadow"
-                        : "bg-gray-50 text-gray-600 border-gray-200 hover:border-[#003366]/40"}`}>
+ ${reqForm.category === c
+ ? "bg-brand text-fg border-brand shadow"
+ : "bg-gray-50 text-gray-600 border-gray-200 hover:border-brand/40"}`}>
                     {c}
                   </button>
                 ))}
@@ -962,7 +932,7 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purpose</label>
                 <span className={`text-xs font-semibold tabular-nums
-                  ${(300 - reqForm.purpose.length) < 50 ? "text-red-400" : "text-gray-300"}`}>
+ ${(300 - reqForm.purpose.length) < 50 ? "text-red-400" : "text-gray-300"}`}>
                   {reqForm.purpose.length}/300
                 </span>
               </div>
@@ -972,10 +942,7 @@ export default function StudentDashboard() {
                 onChange={e => setReqForm(p => ({ ...p, purpose: e.target.value.slice(0, 300) }))}
                 placeholder="Describe your consultation purpose…"
                 rows={4}
-                className="w-full border border-gray-200 bg-gray-50 hover:border-[#003366]/40
-                           focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/15 focus:bg-white
-                           rounded-2xl px-4 py-4 text-sm text-gray-800 placeholder:text-gray-400
-                           transition-all resize-none outline-none leading-relaxed"
+                className="w-full border border-gray-200 bg-gray-50 hover:border-brand/40 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:bg-white rounded-lg px-4 py-4 text-sm text-gray-800 placeholder:text-gray-400 transition-all resize-none outline-none leading-relaxed"
               />
             </div>
           </div>
@@ -984,15 +951,13 @@ export default function StudentDashboard() {
           <div className="shrink-0 flex gap-3 px-5 py-4 bg-white">
             <button
               onPointerDown={e => { e.preventDefault(); setReqModal(null); }}
-              className="flex-1 border-2 border-[#003366] text-[#003366] hover:bg-[#003366] hover:text-white
-                         font-semibold py-3.5 rounded-2xl transition-all text-sm">
+              className="flex-1 border-2 border-brand text-brand hover:bg-brand hover:text-fg font-semibold py-3.5 rounded-lg transition-all text-sm">
               Cancel
             </button>
             <button
               onClick={submitRequest}
               disabled={submitting}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
-                         text-white font-semibold py-3.5 rounded-2xl transition-all text-sm disabled:opacity-50">
+              className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3.5 rounded-lg transition-all text-sm disabled:opacity-50">
               {submitting ? <Spinner size={4} light /> : <Send size={14} />}
               {submitting ? "Sending…" : "Submit Request"}
             </button>
@@ -1008,22 +973,22 @@ export default function StudentDashboard() {
         const isDeclined = req.status === "declined";
 
         const statusCfg = hasAppt
-          ? { label: "Appointment Set", icon: "📅", bar: "bg-orange-400",  text: "text-orange-600",  bg: "bg-orange-50" }
+          ? { label: "Appointment Set", icon: CalendarCheck, bar: "bg-orange-400",  text: "text-orange-600",  bg: "bg-orange-50" }
           : isDone
-          ? { label: "Done",            icon: "✅", bar: "bg-emerald-400", text: "text-emerald-600", bg: "bg-emerald-50" }
+          ? { label: "Done",            icon: CheckCircle2, bar: "bg-emerald-400", text: "text-emerald-600", bg: "bg-emerald-50" }
           : isDeclined
-          ? { label: "Declined",        icon: "❌", bar: "bg-red-400",     text: "text-red-600",     bg: "bg-red-50" }
-          : { label: "Pending",         icon: "⏳", bar: "bg-yellow-400",  text: "text-yellow-600",  bg: "bg-yellow-50" };
+          ? { label: "Declined",        icon: XCircle, bar: "bg-red-400",     text: "text-red-600",     bg: "bg-red-50" }
+          : { label: "Pending",         icon: Clock, bar: "bg-yellow-400",  text: "text-yellow-600",  bg: "bg-yellow-50" };
 
         return (
           <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center p-0 sm:p-4">
             {/* Backdrop */}
             <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/50"
               onClick={() => setSelectedReq(null)} />
 
             {/* Sheet */}
-            <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+            <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-xl shadow-2xl overflow-hidden"
               style={{ animation: "sheetUp 0.22s cubic-bezier(0.34,1.2,0.64,1) both" }}>
               <style>{`@keyframes sheetUp{from{transform:translateY(100%);opacity:0}to{transform:none;opacity:1}}`}</style>
 
@@ -1033,7 +998,7 @@ export default function StudentDashboard() {
               {/* Header */}
               <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{statusCfg.icon}</span>
+                  <statusCfg.icon size={18} aria-hidden="true" className={statusCfg.text} />
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text}`}>
                     {statusCfg.label}
                   </span>
@@ -1050,7 +1015,7 @@ export default function StudentDashboard() {
                 {/* Professor */}
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Professor</p>
-                  <p className="font-display font-bold text-[#003366] text-base">{req.professor_name}</p>
+                  <p className="font-semibold text-brand text-base">{req.professor_name}</p>
                   <p className="text-gray-400 text-xs">{req.department}</p>
                 </div>
 
@@ -1080,8 +1045,8 @@ export default function StudentDashboard() {
 
                 {/* Appointment block */}
                 {hasAppt && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 space-y-2">
-                    <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">📅 Appointment Details</p>
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-2">
+                    <p className="text-[10px] font-bold text-accent-fg uppercase tracking-widest flex items-center gap-1.5"><CalendarCheck size={11} aria-hidden="true" />Appointment details</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-[10px] text-gray-400 font-semibold mb-0.5">Date</p>
@@ -1109,7 +1074,7 @@ export default function StudentDashboard() {
               {/* Footer */}
               <div className="px-5 pb-5">
                 <button onClick={() => setSelectedReq(null)}
-                  className="w-full bg-[#003366] hover:bg-[#004080] text-white font-semibold py-3 rounded-2xl transition-all text-sm">
+                  className="w-full bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm">
                   Close
                 </button>
               </div>

@@ -1,6 +1,10 @@
 flask
 flask-socketio
 flask-cors
+# Signs the session tokens in security.py. Flask pulls it in transitively, but
+# this app imports it directly, and an undeclared direct dependency breaks the
+# moment the transitive one moves -- the same trap as `packaging` below.
+itsdangerous
 pg8000
 # pymysql is only needed by migrate_mysql_to_postgres.py, the one-off script
 # that copies old MySQL data across. Not used by the app itself. If you migrate

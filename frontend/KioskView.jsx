@@ -1,245 +1,249 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { io } from "socket.io-client";
-import { Monitor, RefreshCw, LogOut, Search, ChevronDown, ChevronRight } from "lucide-react";
-import { StatusBadge } from "./SharedUI.jsx";
+import { LogOut, Search, ChevronDown, ChevronRight, X, Users, CheckCircle2, Layers, RefreshCw } from "lucide-react";
+import { StatusBadge, Modal, Button, Alert, Toast, useToastState, EmptyState } from "./SharedUI.jsx";
+import DepartmentIcon, { shortDepartment } from "./ui/DepartmentIcon.jsx";
 import VirtualKeyboard from "./VirtualKeyboard.jsx";
-import { API_BASE, KIOSK_PASSWORD } from "./constants.js";
+import api, { apiError } from "./httpClient.js";
+// SOCKET_URL was used here but never imported, so mounting this screen threw a
+// ReferenceError and the live board never connected at all.
+import { API_BASE, SOCKET_URL } from "./constants.js";
 
 let socket = null;
 
 export default function KioskView() {
   const navigate = useNavigate();
+  const { toasts, addToast, removeToast } = useToastState();
   const [departments, setDepartments] = useState([]);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState({});
-  const [exitModal, setExitModal] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
   const [exitPass, setExitPass] = useState("");
   const [exitErr, setExitErr] = useState("");
-  const [kbTarget, setKbTarget] = useState("search"); // "search" | "exit"
+  const [checking, setChecking] = useState(false);
   const [showKB, setShowKB] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [now, setNow] = useState(new Date());
+  const searchRef = useRef(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/teacher-logs`);
-      setDepartments(res.data || []);
+      const { data } = await api.get("/teacher-logs");
+      setDepartments(data || []);
       setLastUpdate(new Date());
-    } catch (_) {}
+    } catch { /* the board keeps showing the last good data */ }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
     fetchData();
-    const iv = setInterval(fetchData, 10000);
-    socket = io(SOCKET_URL, { transports: ["websocket"] });
+    const poll = setInterval(fetchData, 30000);
+    const clock = setInterval(() => setNow(new Date()), 30000);
+    socket = io(SOCKET_URL || window.location.origin, {
+      transports: ["polling"], reconnectionAttempts: 3,
+    });
     socket.on("status_update", fetchData);
-    return () => { clearInterval(iv); socket?.disconnect(); };
-  }, []);
+    return () => { clearInterval(poll); clearInterval(clock); socket?.disconnect(); };
+  }, [fetchData]);
 
-  const handleKey = (k) => {
-    if (kbTarget === "search") setSearch(p => p + k);
-    else setExitPass(p => p + k);
-  };
-  const handleDelete = () => {
-    if (kbTarget === "search") setSearch(p => p.slice(0, -1));
-    else setExitPass(p => p.slice(0, -1));
-  };
-  const handleClear = () => {
-    if (kbTarget === "search") setSearch("");
-    else setExitPass("");
-  };
-
-  const handleExit = () => {
-    if (exitPass === (KIOSK_PASSWORD || "admin123")) {
+  const handleExit = async () => {
+    if (!exitPass) return setExitErr("Enter the exit password.");
+    setChecking(true); setExitErr("");
+    try {
+      // Verified on the server. This used to be a string comparison against a
+      // constant in the JavaScript bundle, so the password was public.
+      await api.post("/kiosk/exit", { password: exitPass });
       socket?.disconnect();
       navigate("/");
-    } else {
-      setExitErr("Incorrect password.");
+    } catch (e) {
+      setExitErr(apiError(e, "Incorrect password."));
       setExitPass("");
-    }
+    } finally { setChecking(false); }
   };
 
-  const toggleDept = (dept) => setExpanded(p => ({ ...p, [dept]: !p[dept] }));
+  const filtered = departments
+    .map(d => ({
+      ...d,
+      professors: d.professors.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        d.department.toLowerCase().includes(search.toLowerCase())),
+    }))
+    .filter(d => d.professors.length > 0);
 
-  const filtered = departments.map(dept => ({
-    ...dept,
-    professors: dept.professors.filter(p =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      dept.department.toLowerCase().includes(search.toLowerCase())
-    )
-  })).filter(d => d.professors.length > 0);
+  const totalFaculty = departments.reduce((a, d) => a + d.professors.length, 0);
+  const totalAvail = departments.reduce(
+    (a, d) => a + d.professors.filter(p => p.status === "Available").length, 0);
 
-  const totalAvail = departments.reduce((acc, d) =>
-    acc + d.professors.filter(p => p.status === "Available").length, 0);
+  const stats = [
+    { label: "Faculty",    value: totalFaculty,       icon: Users },
+    { label: "Available",  value: totalAvail,         icon: CheckCircle2, highlight: true },
+    { label: "Departments", value: departments.length, icon: Layers },
+    { label: "Updated",    value: lastUpdate.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" }), icon: RefreshCw },
+  ];
 
   return (
-    <div className="min-h-screen bg-urs-blue flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-4 bg-urs-blue border-b border-white/10">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-urs-blue font-display font-black text-2xl">U</span>
-          </div>
-          <div>
-            <h1 className="font-display font-black text-white text-xl leading-tight">
-              Faculty Consultation System
+    <div className="min-h-dvh bg-canvas flex flex-col">
+      <Toast toasts={toasts} removeToast={removeToast} />
+
+      <header className="bg-brand-900 text-white pt-safe shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
+          <div className="min-w-0">
+            <h1 className="font-bold text-base sm:text-lg leading-tight truncate">
+              Faculty Consultation
             </h1>
-            <p className="text-blue-200 text-xs">University of Rizal System — Kiosk Display</p>
+            <p className="text-white/60 text-xs truncate">University of Rizal System — Live board</p>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right text-white">
-            <p className="text-2xl font-display font-bold">
-              {new Date().toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}
-            </p>
-            <p className="text-blue-200 text-xs">
-              {new Date().toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric" })}
-            </p>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="text-right leading-tight">
+              <p className="text-lg sm:text-2xl font-bold tabular-nums">
+                {now.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}
+              </p>
+              <p className="text-white/50 text-[11px] hidden xs:block">
+                {now.toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" })}
+              </p>
+            </div>
+            <button onClick={() => setExitOpen(true)}
+              className="btn btn-sm bg-white/10 text-white hover:bg-white/20">
+              <LogOut size={14} aria-hidden="true" />
+              <span className="hidden sm:inline">Exit</span>
+            </button>
           </div>
-          <div className="bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-            {totalAvail} Available
-          </div>
-          <button onClick={() => setExitModal(true)}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-sm px-3 py-1.5 rounded-lg transition-all border border-white/20">
-            <LogOut size={14} /> Exit Kiosk
-          </button>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* Search bar */}
-          <div
-            className="relative mb-4 cursor-text"
-            onClick={() => { setKbTarget("search"); setShowKB(true); }}
-          >
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <div className="w-full bg-white rounded-2xl px-5 py-3.5 pl-11 text-gray-700 shadow-md border-2 border-transparent focus-within:border-urs-orange cursor-text select-none min-h-[52px] flex items-center">
-              {search || <span className="text-gray-400">Tap to search professor name...</span>}
-              {kbTarget === "search" && showKB && <span className="ml-0.5 animate-pulse text-urs-orange">|</span>}
-            </div>
-          </div>
+      <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 pb-safe">
+        <div className="relative mb-4">
+          <Search size={18} aria-hidden="true"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-subtle-fg pointer-events-none" />
+          <input
+            ref={searchRef}
+            className="input pl-11 pr-11"
+            placeholder="Search faculty or department…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            aria-label="Search faculty or department"
+          />
+          {search && (
+            <button onClick={() => { setSearch(""); searchRef.current?.focus(); }}
+              aria-label="Clear search"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 grid place-items-center text-muted-fg hover:text-fg">
+              <X size={16} aria-hidden="true" />
+            </button>
+          )}
+        </div>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-4 gap-3 mb-5">
-            {[
-              { label: "Total Faculty", value: departments.reduce((a, d) => a + d.professors.length, 0), color: "bg-white text-urs-blue" },
-              { label: "Available Now", value: totalAvail, color: "bg-green-500 text-white" },
-              { label: "Departments", value: departments.length, color: "bg-white text-urs-blue" },
-              { label: "Last Updated", value: lastUpdate.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" }), color: "bg-white text-urs-blue" }
-            ].map(s => (
-              <div key={s.label} className={`${s.color} rounded-2xl p-4 text-center shadow-lg`}>
-                <p className="text-2xl font-display font-black">{s.value}</p>
-                <p className="text-xs opacity-70 font-semibold mt-0.5">{s.label}</p>
+        {/* One column on a phone, two on a small tablet, four on the kiosk
+            display — this was a hard grid-cols-4 that crushed on anything small. */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
+          {stats.map(s => (
+            <div key={s.label}
+              className={`card p-3.5 sm:p-4 ${s.highlight ? "bg-success-50 border-success/20" : ""}`}>
+              <div className="flex items-center gap-2 text-muted-fg mb-1">
+                <s.icon size={14} aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wide truncate">{s.label}</span>
               </div>
-            ))}
-          </div>
+              <p className={`text-xl sm:text-2xl font-bold tabular-nums ${s.highlight ? "text-success" : "text-fg"}`}>
+                {s.value}
+              </p>
+            </div>
+          ))}
+        </div>
 
-          {/* Department accordion */}
-          <div className="space-y-3">
+        {loading ? (
+          <div className="space-y-2.5">
+            {[0, 1, 2].map(i => <div key={i} className="card h-20 animate-shimmer" aria-hidden="true" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="card">
+            <EmptyState icon={Search} title="No matches"
+              description={search ? `Nothing matches "${search}".` : "No faculty on the board yet."} />
+          </div>
+        ) : (
+          <div className="space-y-2.5">
             {filtered.map(dept => {
-              const isOpen = expanded[dept.department] !== false;
+              const open = expanded[dept.department] !== false;
               const avail = dept.professors.filter(p => p.status === "Available").length;
               return (
-                <div key={dept.department} className="bg-white rounded-2xl overflow-hidden shadow-lg">
-                  <button
-                    onClick={() => toggleDept(dept.department)}
-                    className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${avail > 0 ? "bg-green-500 animate-pulse" : "bg-gray-300"}`} />
-                      <div className="text-left">
-                        <h3 className="font-display font-bold text-urs-blue text-lg">{dept.department}</h3>
-                        <p className="text-xs text-gray-500">
-                          {dept.professors.length} professors ·{" "}
-                          <span className="text-green-600 font-semibold">{avail} available</span>
-                        </p>
-                      </div>
-                    </div>
-                    {isOpen
-                      ? <ChevronDown size={20} className="text-gray-400" />
-                      : <ChevronRight size={20} className="text-gray-400" />
-                    }
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t border-gray-100">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-100">
-                        {dept.professors.map(prof => (
-                          <div
-                            key={prof.name}
-                            className={`bg-white px-5 py-3.5 flex items-center justify-between
-                              ${prof.status === "Available" ? "border-l-4 border-l-green-500" : "border-l-4 border-l-transparent"}`}
-                          >
-                            <div>
-                              <p className="font-semibold text-gray-800 text-sm">{prof.name}</p>
-                            </div>
-                            <StatusBadge status={prof.status} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                <section key={dept.department} className="card p-0 overflow-hidden">
+                  <h2>
+                    <button
+                      onClick={() => setExpanded(p => ({ ...p, [dept.department]: !open }))}
+                      aria-expanded={open}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-surface-2 transition-colors"
+                    >
+                      <span className={`icon-tile shrink-0 ${avail > 0 ? "icon-tile-brand" : "icon-tile-muted"}`}>
+                        <DepartmentIcon department={dept.department} size={19} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold text-fg truncate">
+                          <span className="sm:hidden">{shortDepartment(dept.department)}</span>
+                          <span className="hidden sm:inline">{dept.department}</span>
+                        </span>
+                        <span className="block text-xs text-muted-fg">
+                          {dept.professors.length} faculty · {avail} available
+                        </span>
+                      </span>
+                      {open ? <ChevronDown size={18} className="text-muted-fg shrink-0" aria-hidden="true" />
+                            : <ChevronRight size={18} className="text-muted-fg shrink-0" aria-hidden="true" />}
+                    </button>
+                  </h2>
+                  {open && (
+                    <ul className="border-t border-border divide-y divide-border sm:grid sm:grid-cols-2 sm:divide-y-0 sm:gap-px sm:bg-border">
+                      {dept.professors.map(prof => (
+                        <li key={prof.name}
+                          className="bg-surface px-4 py-3 flex items-center justify-between gap-3">
+                          <span className="font-medium text-sm text-fg min-w-0 truncate">{prof.name}</span>
+                          <StatusBadge status={prof.status} />
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                </div>
+                </section>
               );
             })}
           </div>
-        </div>
-
-        {/* Virtual keyboard panel */}
-        {showKB && (
-          <div className="w-80 bg-gray-800 flex flex-col border-l border-white/10">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <p className="text-white text-sm font-semibold">On-Screen Keyboard</p>
-              <button onClick={() => setShowKB(false)} className="text-gray-400 hover:text-white text-xs px-2 py-1 bg-gray-700 rounded">
-                Hide
-              </button>
-            </div>
-            <div className="px-3 py-2">
-              <div className="bg-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono min-h-[38px] flex items-center">
-                {kbTarget === "search" ? (search || <span className="text-gray-400">search...</span>) : (exitPass ? "●".repeat(exitPass.length) : <span className="text-gray-400">password...</span>)}
-              </div>
-            </div>
-            <div className="p-3 flex-1 flex items-center">
-              <VirtualKeyboard
-                onKey={handleKey}
-                onDelete={handleDelete}
-                onClear={handleClear}
-                onEnter={() => {
-                  if (kbTarget === "exit") handleExit();
-                  else setShowKB(false);
-                }}
-              />
-            </div>
-          </div>
         )}
-      </div>
+      </main>
 
-      {/* Exit modal */}
-      {exitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl animate-bounce-in">
-            <h3 className="font-display font-bold text-lg text-urs-blue mb-1">Exit Kiosk Mode</h3>
-            <p className="text-gray-500 text-sm mb-4">Enter the admin password to exit</p>
-            <div
-              className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-700 text-sm mb-1 min-h-[44px] flex items-center cursor-text"
-              onClick={() => { setKbTarget("exit"); setShowKB(true); setExitModal(false); }}
-            >
-              {exitPass ? "●".repeat(exitPass.length) : <span className="text-gray-400">Tap to enter password</span>}
-            </div>
-            {exitErr && <p className="text-red-600 text-xs mb-3">{exitErr}</p>}
-            <div className="flex gap-2 mt-4">
-              <button onClick={() => { setExitModal(false); setExitPass(""); setExitErr(""); }}
-                className="flex-1 btn-outline text-sm py-2.5">Cancel</button>
-              <button onClick={handleExit}
-                className="flex-1 btn-primary text-sm py-2.5">Exit</button>
-            </div>
+      <Modal
+        open={exitOpen}
+        onClose={() => { setExitOpen(false); setExitPass(""); setExitErr(""); setShowKB(false); }}
+        title="Exit kiosk mode"
+        description="Enter the exit password to leave the display."
+        size="sm"
+        footer={
+          <>
+            <Button onClick={() => { setExitOpen(false); setExitPass(""); setExitErr(""); }}>Cancel</Button>
+            <Button variant="primary" onClick={handleExit} loading={checking}>Exit</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          {exitErr && <Alert tone="danger">{exitErr}</Alert>}
+          <div>
+            <label htmlFor="kiosk-pass" className="label">Password</label>
+            <input id="kiosk-pass" type="password" className="input" autoFocus
+              value={exitPass} onChange={e => { setExitPass(e.target.value); setExitErr(""); }}
+              onKeyDown={e => e.key === "Enter" && handleExit()} />
           </div>
+          {/* A kiosk touchscreen usually has no hardware keyboard, but a phone
+              or tablet opening this page does — so the on-screen one is opt-in. */}
+          <button onClick={() => setShowKB(v => !v)}
+            className="text-xs text-brand font-semibold underline underline-offset-2">
+            {showKB ? "Hide on-screen keyboard" : "Show on-screen keyboard"}
+          </button>
+          {showKB && (
+            <VirtualKeyboard
+              onKey={k => setExitPass(p => p + k)}
+              onDelete={() => setExitPass(p => p.slice(0, -1))}
+              onClear={() => setExitPass("")}
+              onEnter={handleExit}
+            />
+          )}
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
-

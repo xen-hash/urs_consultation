@@ -1,1 +1,11 @@
+# Root-level requirements, used by a Nixpacks/Railway deploy that builds from
+# the repository root rather than from backend/.
+#
+# This file used to list only `cryptography`, so that build installed none of
+# the app's actual dependencies and then tried to start `app:app` from a
+# directory with no app.py in it. Pull in the real list instead.
+-r backend/requirements.txt
+
+# Only needed by migrate_mysql_to_postgres.py, against a MySQL 8 server using
+# caching_sha2_password. Not used by the running app.
 cryptography
