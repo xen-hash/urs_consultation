@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { BookOpen, UserPlus, Search, X } from "lucide-react";
 import { Card, StatusBadge, EmptyState, Skeleton, Button } from "../SharedUI.jsx";
-import DepartmentIcon, { shortDepartment, departmentColor } from "../ui/DepartmentIcon.jsx";
+import { shortDepartment } from "../ui/DepartmentIcon.jsx";
+import DepartmentChips, { DepartmentTile } from "./DepartmentChips.jsx";
 import AddFacultyForm from "./AddFacultyForm.jsx";
 
 /**
@@ -31,8 +32,9 @@ export default function FacultyTab({
     all.filter(p => (!d || p.department === d) && p.status === "Available").length;
   const countIn = d => all.filter(p => !d || p.department === d).length;
 
-  const chips = [{ id: null, label: "All" },
-                 ...departments.map(d => ({ id: d.department, label: shortDepartment(d.department) }))];
+  const chips = [null, ...departments.map(d => d.department)].map(id => ({
+    id, count: availableIn(id), total: countIn(id),
+  }));
 
   return (
     <div className="animate-rise">
@@ -63,41 +65,7 @@ export default function FacultyTab({
         onGoToCredentials={onGoToCredentials}
       />
 
-      {/* Chips scroll rather than wrap: a wrapping row changes height as you
-          filter, which shifts the list under your thumb mid-tap. */}
-      <div role="tablist" aria-label="Filter by department"
-        className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 mb-4">
-        {chips.map(chip => {
-          const selected = chip.id === dept;
-          const color = departmentColor(chip.id);
-          return (
-            <button
-              key={chip.label}
-              role="tab"
-              aria-selected={selected}
-              onClick={() => setDept(chip.id)}
-              className={`shrink-0 inline-flex items-center gap-2 pl-2.5 pr-3 min-h-[40px] rounded-full
-                border text-sm font-medium transition-colors duration-150
-                ${selected
-                  ? "border-transparent text-white bg-brand"
-                  : "border-border bg-surface text-fg hover:bg-surface-2"}`}
-            >
-              {chip.id && (
-                <span className="w-5 h-5 rounded-full grid place-items-center shrink-0"
-                  style={selected
-                    ? { background: "rgb(255 255 255 / 0.22)", color: "#fff" }
-                    : { background: color.tint, color: color.ink }}>
-                  <DepartmentIcon department={chip.id} size={12} />
-                </span>
-              )}
-              {chip.label}
-              <span className={`text-xs tabular-nums ${selected ? "text-white/75" : "text-muted-fg"}`}>
-                {availableIn(chip.id)}/{countIn(chip.id)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <DepartmentChips chips={chips} value={dept} onChange={setDept} />
 
       {loading ? (
         <div className="space-y-2">{[0, 1, 2].map(i => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>
@@ -110,14 +78,10 @@ export default function FacultyTab({
         <Card className="p-0 overflow-hidden">
           <ul className="divide-y divide-border">
             {visible.map(p => {
-              const color = departmentColor(p.department);
               return (
                 <li key={`${p.department}-${p.name}`}
                   className="px-4 py-3 flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-lg grid place-items-center shrink-0"
-                    style={{ background: color.tint, color: color.ink }}>
-                    <DepartmentIcon department={p.department} size={17} />
-                  </span>
+                  <DepartmentTile department={p.department} />
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm text-fg truncate">{p.name}</p>
                     <p className="text-xs text-muted-fg truncate">

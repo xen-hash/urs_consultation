@@ -50,7 +50,7 @@ def _now_ph():
 
 def _teacher_or_404(employee_id):
     return query(
-        "SELECT * FROM teacher_accounts WHERE employee_id=%s",
+        "SELECT * FROM teacher_accounts WHERE employee_id=%s AND removed_at IS NULL",
         ((employee_id or "").strip(),), fetchone=True
     )
 
@@ -81,13 +81,15 @@ def list_teachers():
         like = f"%{search}%"
         rows = query(
             "SELECT * FROM teacher_accounts "
-            "WHERE professor_name ILIKE %s OR employee_id ILIKE %s OR department ILIKE %s "
+            "WHERE removed_at IS NULL AND "
+            "(professor_name ILIKE %s OR employee_id ILIKE %s OR department ILIKE %s) "
             "ORDER BY department, professor_name",
             (like, like, like), fetchall=True
         )
     else:
         rows = query(
-            "SELECT * FROM teacher_accounts ORDER BY department, professor_name",
+            "SELECT * FROM teacher_accounts WHERE removed_at IS NULL "
+            "ORDER BY department, professor_name",
             fetchall=True
         )
     return jsonify([_serialize(_credential_view(r)) for r in (rows or [])])
@@ -190,6 +192,55 @@ def set_active(employee_id):
         "message": "Account reactivated." if active
                    else "Account deactivated and card revoked.",
         "active": active,
+    })
+
+
+@admin_bp.route("/teachers/<employee_id>", methods=["DELETE"])
+@require_role("admin")
+def remove_teacher(employee_id):
+    """Remove a faculty account, on the record.
+
+    A reason is required rather than optional. Removing someone is the one
+    action here that cannot be undone from the dashboard, and "why is this
+    professor gone" is the question asked months later, when whoever did it has
+    forgotten — so it is asked at the time and written to the audit log.
+
+    Marked, not DELETEd: the roster in config is re-seeded on every boot, so a
+    deleted row for a listed professor would reappear on the next restart. The
+    mark also keeps their consultation history intact — those are the students'
+    records too, and deleting them to tidy up one account is not this action's
+    business.
+    """
+    teacher = _teacher_or_404(employee_id)
+    if not teacher:
+        return jsonify({"error": "Teacher not found"}), 404
+
+    reason = ((request.json or {}).get("reason") or "").strip()
+    if len(reason) < 4:
+        return jsonify({"error": "Give a reason for removing this account."}), 400
+    reason = reason[:500]
+
+    # Their card and PIN die with the account, so nothing is left that could
+    # sign in even if the row were later restored by hand.
+    execute(
+        "UPDATE teacher_accounts SET removed_at=%s::timestamp, removed_reason=%s, "
+        "active=FALSE, qr_serial=NULL, qr_issued_at=NULL, pin_hash=NULL "
+        "WHERE employee_id=%s",
+        (_now_ph(), reason, teacher["employee_id"])
+    )
+    # Also drop them from the seeded professor roster, so they stop appearing in
+    # the student-facing lists.
+    execute("DELETE FROM professors WHERE name=%s AND department=%s",
+            (teacher["professor_name"], teacher["department"]))
+
+    record_audit("admin.remove_teacher", target=teacher["employee_id"],
+                 detail=f"{teacher['professor_name']} ({teacher['department']}) — {reason}")
+
+    import teacher as teacher_module
+    teacher_module._logs_cache["ts"] = 0
+
+    return jsonify({
+        "message": f"{teacher['professor_name']} removed. Their card and PIN no longer work.",
     })
 
 
@@ -342,7 +393,7 @@ def stats():
     return jsonify({
         "daily":     [{"day": r["day"], "count": r["c"]} for r in daily],
         "students":  one("SELECT COUNT(*) AS c FROM students"),
-        "teachers":  one("SELECT COUNT(*) AS c FROM teacher_accounts"),
+        "teachers":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE removed_at IS NULL"),
         "requests":  one("SELECT COUNT(*) AS c FROM consultation_requests"),
         "today":     one(
             "SELECT COUNT(*) AS c FROM consultation_requests WHERE request_time::date = %s::date",
@@ -352,9 +403,9 @@ def stats():
         "done":      status_counts.get("done", 0),
         "declined":  status_counts.get("declined", 0),
         "archived":  status_counts.get("archived", 0),
-        "with_pin":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE pin_hash IS NOT NULL"),
-        "with_qr":   one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE qr_serial IS NOT NULL"),
-        "inactive":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE active = FALSE"),
+        "with_pin":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE removed_at IS NULL AND pin_hash IS NOT NULL"),
+        "with_qr":   one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE removed_at IS NULL AND qr_serial IS NOT NULL"),
+        "inactive":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE removed_at IS NULL AND active = FALSE"),
         "categories": [{"category": r["category"], "count": r["c"]} for r in by_category],
     })
 

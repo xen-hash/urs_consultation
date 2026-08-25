@@ -146,7 +146,8 @@ def get_teacher_logs():
 
     merged = {dept: list(profs) for dept, profs in PROFESSOR_LIST.items()}
     db_accounts = query(
-        "SELECT professor_name, department FROM teacher_accounts ORDER BY department, professor_name",
+        "SELECT professor_name, department FROM teacher_accounts "
+        "WHERE removed_at IS NULL ORDER BY department, professor_name",
         fetchall=True
     ) or []
     for row in db_accounts:
@@ -173,7 +174,7 @@ def get_teacher_logs():
     sched_map = {(r["professor_name"], r["department"]): r for r in sched_rows}
 
     photo_rows = query(
-        "SELECT professor_name, department, photo FROM teacher_accounts",
+        "SELECT professor_name, department, photo FROM teacher_accounts WHERE removed_at IS NULL",
         fetchall=True
     ) or []
     photo_map = {(r["professor_name"], r["department"]): r.get("photo") for r in photo_rows}
@@ -542,7 +543,9 @@ def dean_get_requests():
 @teacher_bp.route("/dean/teachers", methods=["GET"])
 @require_role("admin")
 def dean_get_teachers():
-    rows = query("SELECT * FROM teacher_accounts ORDER BY created_at DESC", fetchall=True)
+    rows = query(
+        "SELECT * FROM teacher_accounts WHERE removed_at IS NULL ORDER BY created_at DESC",
+        fetchall=True)
     for r in (rows or []):
         r.pop("password_hash", None)
         r.pop("pin_hash", None)
@@ -563,11 +566,34 @@ def dean_add_teacher():
         return jsonify({"error": "Name and department are required"}), 400
 
     existing = query(
-        "SELECT employee_id FROM teacher_accounts WHERE professor_name=%s AND department=%s",
+        "SELECT employee_id, removed_at FROM teacher_accounts "
+        "WHERE professor_name=%s AND department=%s",
         (professor_name, department), fetchone=True
     )
-    if existing:
+    if existing and not existing.get("removed_at"):
         return jsonify({"error": f"{professor_name} already exists in {department}"}), 409
+    if existing:
+        # Someone removed and now being added back. Restoring beats refusing:
+        # their employee ID is derived from name and department, so a fresh
+        # insert would collide with the tombstone anyway. They come back with no
+        # card and no PIN, exactly like a new account.
+        execute(
+            "UPDATE teacher_accounts SET removed_at=NULL, removed_reason=NULL, active=TRUE "
+            "WHERE employee_id=%s",
+            (existing["employee_id"],)
+        )
+        execute(
+            "INSERT INTO professors (name, department) VALUES (%s, %s) "
+            "ON CONFLICT (name, department) DO NOTHING",
+            (professor_name, department)
+        )
+        _logs_cache["ts"] = 0
+        return jsonify({
+            "message":        f"{professor_name} restored.",
+            "employee_id":    existing["employee_id"],
+            "professor_name": professor_name,
+            "department":     department,
+        })
 
     # One definition of the ID, shared with the startup seeding.
     from models import make_employee_id, _UNUSABLE_PASSWORD

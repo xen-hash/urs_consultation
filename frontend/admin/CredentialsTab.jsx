@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   QrCode, KeyRound, Ban, Undo2, Search, Printer, Download, AlertTriangle,
-  CheckCircle2, CircleSlash, Clock, ShieldCheck,
+  CheckCircle2, CircleSlash, Clock, ShieldCheck, Trash2, X,
 } from "lucide-react";
 import {
-  Card, Button, Badge, Modal, ConfirmModal, EmptyState, SkeletonRows, Alert, IconButton,
-  ConfirmMark,
+  Card, Button, Modal, ConfirmModal, EmptyState, Skeleton, Alert, ConfirmMark,
 } from "../SharedUI.jsx";
-import DepartmentIcon, { shortDepartment, departmentColor } from "../ui/DepartmentIcon.jsx";
+import { shortDepartment } from "../ui/DepartmentIcon.jsx";
+import DepartmentChips, { DepartmentTile } from "./DepartmentChips.jsx";
+import RemoveTeacherModal from "./RemoveTeacherModal.jsx";
 import { useDebounced } from "./hooks.js";
 import { DEPARTMENTS } from "../constants.js";
 import api, { apiError } from "../httpClient.js";
@@ -29,8 +30,10 @@ export default function CredentialsTab({ addToast }) {
   const [search, setSearch] = useState("");
   const debounced = useDebounced(search);
 
+  const [dept, setDept] = useState(null);       // null = all
   const [issued, setIssued] = useState(null);   // one-time card view
   const [confirm, setConfirm] = useState(null); // { action, teacher }
+  const [removing, setRemoving] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -47,12 +50,14 @@ export default function CredentialsTab({ addToast }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Grouped by department, ordered by the roster in constants so the sections
-  // always appear in the same order regardless of what the search returns.
-  const groups = DEPARTMENTS
-    .map(dept => ({ dept, people: rows.filter(t => t.department === dept) }))
-    .concat([{ dept: null, people: rows.filter(t => !DEPARTMENTS.includes(t.department)) }])
-    .filter(g => g.people.length > 0);
+  // Ordered by the roster in constants, so the chips keep the same order
+  // whatever the search returns.
+  const present = DEPARTMENTS.filter(d => rows.some(t => t.department === d));
+  const cardedIn = d => rows.filter(t => (!d || t.department === d) && t.has_qr).length;
+  const countIn  = d => rows.filter(t => !d || t.department === d).length;
+  const chips = [null, ...present].map(id => ({ id, count: cardedIn(id), total: countIn(id) }));
+
+  const visible = rows.filter(t => !dept || t.department === dept);
 
   const issue = async (teacher) => {
     setBusy(true);
@@ -119,87 +124,67 @@ export default function CredentialsTab({ addToast }) {
 
   return (
     <div className="animate-rise">
-      <div className="relative mb-4 max-w-sm">
+      {/* Same search row, same chips, same rows as the Faculty tab. It is the
+          same roster being looked at for a different reason, so it should not
+          be a different-looking screen. */}
+      <div className="relative mb-3 max-w-sm">
         <Search size={17} aria-hidden="true"
           className="absolute left-3.5 top-1/2 -translate-y-1/2 text-subtle-fg pointer-events-none" />
-        <input className="input pl-11" placeholder="Search faculty…" value={search}
+        <input className="input pl-11 pr-10" placeholder="Search faculty…" value={search}
           onChange={e => setSearch(e.target.value)} aria-label="Search faculty" />
+        {search && (
+          <button onClick={() => setSearch("")} aria-label="Clear search"
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 grid place-items-center text-muted-fg hover:text-fg">
+            <X size={16} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
-      <Card className="p-0 overflow-hidden">
-        {loading ? (
-          <SkeletonRows rows={6} cols={4} />
-        ) : rows.length === 0 ? (
+      <DepartmentChips chips={chips} value={dept} onChange={setDept}
+        label="Filter credentials by department" />
+
+      {loading ? (
+        <div className="space-y-2">{[0, 1, 2].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}</div>
+      ) : visible.length === 0 ? (
+        <Card>
           <EmptyState icon={Search} title="No faculty found"
             description={search ? `Nothing matches "${search}".` : "No faculty accounts yet."} />
-        ) : (
-          <>
-            {groups.map(({ dept, people }) => {
-              const color = departmentColor(dept);
-              const withCard = people.filter(p => p.has_qr).length;
-              return (
-                <section key={dept || "other"}>
-                  {/* The department band is the colour cue. A 4px edge stripe was
-                      too little to register while scrolling — this is the same
-                      hue doing a job you can actually see. */}
-                  <h3 className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-2.5 border-y border-border"
-                    style={{ background: color.tint, color: color.ink }}>
-                    <DepartmentIcon department={dept} size={17} />
-                    <span className="font-semibold text-sm truncate">
-                      {dept ? shortDepartment(dept) : "Other"}
-                    </span>
-                    <span className="ml-auto text-xs font-medium tabular-nums opacity-80">
-                      {withCard}/{people.length} carded
-                    </span>
-                  </h3>
-
-                  <ul className="sm:hidden divide-y divide-border">
-                    {people.map(t => (
-                      <li key={t.employee_id} className="p-4">
-                        <p className="font-semibold text-fg">{t.professor_name}</p>
-                        <p className="text-xs text-muted-fg mt-0.5 font-mono">{t.employee_id}</p>
-                        <div className="mt-2.5">
-                          <StateBadges teacher={t} />
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <RowActions teacher={t} onPick={(action) => setConfirm({ action, teacher: t })} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="hidden sm:block table-wrap">
-                    <table className="table">
-                      <caption className="sr-only">{dept || "Other"} faculty credentials</caption>
-                      <tbody>
-                        {people.map(t => (
-                          <tr key={t.employee_id}>
-                            <td>
-                              <p className="font-semibold text-fg">{t.professor_name}</p>
-                              <p className="text-xs text-muted-fg font-mono mt-0.5">{t.employee_id}</p>
-                            </td>
-                            <td><StateBadges teacher={t} /></td>
-                            <td className="text-muted-fg text-xs whitespace-nowrap">
-                              {t.last_login
-                                ? new Date(t.last_login.replace(" ", "T")).toLocaleDateString("en-PH",
-                                    { month: "short", day: "numeric", year: "numeric" })
-                                : "Never signed in"}
-                            </td>
-                            <td>
-                              <RowActions teacher={t} compact
-                                onPick={(action) => setConfirm({ action, teacher: t })} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+        </Card>
+      ) : (
+        <Card className="p-0 overflow-hidden">
+          <ul className="divide-y divide-border">
+            {visible.map(t => (
+              <li key={t.employee_id} className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <DepartmentTile department={t.department} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm text-fg truncate">{t.professor_name}</p>
+                    <p className="text-xs text-muted-fg truncate">
+                      <span className="font-mono">{t.employee_id}</span> · {shortDepartment(t.department)}
+                    </p>
                   </div>
-                </section>
-              );
-            })}
-          </>
-        )}
-      </Card>
+                  <div className="hidden sm:block shrink-0">
+                    <StateBadges teacher={t} />
+                  </div>
+                </div>
+
+                <div className="sm:hidden mt-2.5 pl-12">
+                  <StateBadges teacher={t} />
+                </div>
+
+                <div className="mt-2.5 pl-12 sm:pl-0">
+                  <RowActions
+                    teacher={t}
+                    onPick={(action) => action === "remove"
+                      ? setRemoving(t)
+                      : setConfirm({ action, teacher: t })}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {active && (
         <ConfirmModal
@@ -213,6 +198,13 @@ export default function CredentialsTab({ addToast }) {
           loading={busy}
         />
       )}
+
+      <RemoveTeacherModal
+        teacher={removing}
+        onClose={() => setRemoving(null)}
+        onRemoved={(message) => { setRemoving(null); addToast(message, "success"); load(); }}
+        addToast={addToast}
+      />
 
       <IssuedCardModal card={issued} onClose={() => setIssued(null)} />
     </div>
@@ -265,10 +257,10 @@ function StateBadges({ teacher }) {
   );
 }
 
-function RowActions({ teacher, onPick, compact = false }) {
+function RowActions({ teacher, onPick }) {
   const off = teacher.active === false;
   return (
-    <div className={`flex flex-wrap gap-1.5 ${compact ? "justify-end" : ""}`}>
+    <div className="flex flex-wrap gap-1.5">
       {!off && (
         <>
           <Button size="sm" variant="primary" icon={QrCode} onClick={() => onPick("issue")}>
@@ -284,6 +276,12 @@ function RowActions({ teacher, onPick, compact = false }) {
         </>
       )}
       {off && <Button size="sm" icon={Undo2} onClick={() => onPick("on")}>Reactivate</Button>}
+      {/* Removal is the one action here with no undo, so it sits apart from the
+          rest and states what it is rather than sharing their neutral styling. */}
+      <Button size="sm" variant="ghost" icon={Trash2} onClick={() => onPick("remove")}
+        className="text-danger hover:bg-danger-50">
+        Remove
+      </Button>
     </div>
   );
 }
