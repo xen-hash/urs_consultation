@@ -95,7 +95,7 @@ export default function StudentRegister() {
             </div>
 
             <Button variant="primary" className="w-full mt-3"
-              onClick={() => navigate("/student/dashboard")}>
+              onClick={() => navigate("/student/dashboard", { replace: true })}>
               Go to my dashboard <ArrowRight size={16} aria-hidden="true" />
             </Button>
           </section>

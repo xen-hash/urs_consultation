@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, UserPlus } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, Alert } from "./SharedUI.jsx";
+import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
@@ -45,7 +46,7 @@ export default function StudentPortal() {
       });
       setSession("student", data.token, data.student);
       addToast(`Welcome, ${data.student.full_name}!`, "success");
-      setTimeout(() => navigate("/student/dashboard"), 500);
+      setTimeout(() => navigate("/student/dashboard", { replace: true }), 500);
     } catch (e) {
       setPinError(apiError(e, "Incorrect PIN. Try again."));
       setPin("");
@@ -76,6 +77,7 @@ export default function StudentPortal() {
 
         {!mode && (
           <div className="animate-rise">
+            <SignedOutNotice />
             <header className="mb-7">
               <h1 className="text-title font-bold text-on-backdrop">Student sign in</h1>
               <p className="text-on-backdrop/75 mt-1.5">Scan your student QR code, or enter your ID.</p>

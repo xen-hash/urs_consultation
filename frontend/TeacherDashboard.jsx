@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import {
   CheckCircle2, XCircle, Calendar, Download, Trash2, Bell,
@@ -71,7 +71,10 @@ export default function TeacherDashboard() {
   const { toasts, addToast, removeToast } = useToastState();
   const teacher = getSession("teacher");
 
-  if (!teacher) { navigate("/teacher"); return null; }
+  // Rendered redirect, not an imperative one. Calling navigate() during
+  // render pushed a history entry on every render, so swiping back re-
+  // rendered this and pushed another — the back gesture could never escape.
+  if (!teacher) return <Navigate to="/teacher" replace />;
 
   const [tab, setTab]               = useState("requests");
   const [requests, setRequests]     = useState([]);
@@ -287,7 +290,7 @@ export default function TeacherDashboard() {
       <Toast toasts={toasts} removeToast={removeToast} />
       <URSHeader subtitle="Teacher Dashboard" accent="orange"
         user={{ name: teacher.professor_name, sub: teacher.department }}
-        onLogout={() => { clearSession(); navigate("/teacher"); }} />
+        onLogout={() => { clearSession(); navigate("/teacher", { replace: true }); }} />
 
       {ticker.length > 0 && (
         <div className="bg-brand-900 border-b-2 border-accent py-3 px-5 flex items-center gap-4 overflow-hidden">

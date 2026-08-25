@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
 import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 
@@ -25,7 +26,7 @@ export default function DeanLogin() {
     try {
       const { data } = await api.post("/auth/admin/login", { username: username.trim(), password });
       setSession("admin", data.token, data.admin);
-      navigate("/dean/dashboard");
+      navigate("/dean/dashboard", { replace: true });
     } catch (e) {
       addToast(apiError(e, "Sign in failed."), "error");
       setPassword("");
@@ -75,6 +76,8 @@ export default function DeanLogin() {
             <h1 className="text-2xl font-bold text-fg tracking-tight">Administrator sign in</h1>
             <p className="text-muted-fg mt-1.5">Access the administration dashboard.</p>
           </header>
+
+          <SignedOutNotice />
 
           <div className="card space-y-4">
             <div>
