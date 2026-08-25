@@ -126,9 +126,16 @@ The deploy will fail to boot if `SECRET_KEY`, the admin password or
 3. In Vercel project settings → **Environment Variables** → add:
 
 ```
-VITE_API_BASE   = https://your-backend.onrender.com/api
-VITE_SOCKET_URL = https://your-backend.onrender.com
+VITE_API_BASE = https://your-backend.onrender.com/api
 ```
+
+That is the only one required. Socket.IO connects to the origin of that URL, so
+there is no second variable to keep in step — set `VITE_SOCKET_URL` only if the
+websocket genuinely lives on a different host.
+
+A value set here overrides the committed `frontend/.env.production`, and it does
+so per-variable rather than wholesale. `vercel.json` already carries the security
+headers, SPA rewrite and cache rules; you should not need to change it.
 
 4. Deploy → copy your Vercel URL (e.g. `https://urs-consultation.vercel.app`)
 
@@ -141,6 +148,17 @@ Go back to Render → your backend service → **Environment** → update:
 ALLOWED_ORIGINS = https://urs-consultation.vercel.app
 ```
 Then click **Manual Deploy → Deploy latest commit** to redeploy.
+
+This has to be the exact frontend origin — scheme and host, no trailing slash
+and no path. It no longer defaults to `*`, so getting it wrong means the browser
+blocks every API call with a CORS error while the backend itself looks healthy.
+Add Vercel preview URLs as extra comma-separated entries if you use them.
+
+**If the deploy fails to start**, check the Render logs for a `RuntimeError`
+naming `SECRET_KEY`, `ADMIN_PASSWORD` or `KIOSK_PASSWORD`. The app refuses to
+boot while any of them still holds a built-in default — see Step 0. The health
+check at `/api/health` means Render will report that deploy as failed rather
+than quietly marking it live.
 
 ---
 

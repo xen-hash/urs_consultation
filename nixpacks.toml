@@ -1,3 +1,8 @@
+# Nixpacks build for a deploy whose root directory is the repository root.
+# The application lives in backend/, so both the install and the start command
+# have to account for that — the start command previously ran from the root,
+# where there is no app.py.
+
 [phases.setup]
 nixPkgs = ["python311"]
 
@@ -5,4 +10,4 @@ nixPkgs = ["python311"]
 cmds = ["pip install -r requirements.txt"]
 
 [start]
-cmd = "gunicorn --worker-class gevent -w 1 --timeout 120 --bind 0.0.0.0:$PORT app:app"
+cmd = "cd backend && gunicorn --worker-class gevent -w 1 --timeout 120 --bind 0.0.0.0:$PORT app:app"

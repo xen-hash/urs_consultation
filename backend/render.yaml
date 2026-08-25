@@ -4,6 +4,12 @@ services:
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --worker-class gevent -w 1 --timeout 120 --bind 0.0.0.0:$PORT app:app
+
+    # Render polls this to decide whether a deploy came up. Without it a boot
+    # failure -- which is now a real possibility, since the app refuses to
+    # start on default secrets -- can still be marked live.
+    healthCheckPath: /api/health
+
     envVars:
       # Single Postgres connection string, e.g. from Neon or Supabase:
       #   postgresql://user:pass@ep-xyz.neon.tech/neondb?sslmode=require
@@ -32,3 +38,13 @@ services:
       # Exit code for the public kiosk display.
       - key: KIOSK_PASSWORD
         sync: false
+
+      # Optional. Defaults are in config.py.
+      #   SESSION_TTL_HOURS  how long a session token stays valid (default 12)
+      #   MAX_CONTENT_MB     largest accepted request body (default 8); profile
+      #                      photos arrive as base64, so this is the ceiling on
+      #                      one upload
+      # - key: SESSION_TTL_HOURS
+      #   value: "12"
+      # - key: MAX_CONTENT_MB
+      #   value: "8"
