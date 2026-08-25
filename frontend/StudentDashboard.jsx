@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { io } from "socket.io-client";
 import {
   Send, RefreshCw, Search, GraduationCap, BookOpen, X,
@@ -9,21 +8,13 @@ import {
 } from "lucide-react";
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Spinner } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
-import { API_BASE, SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
+import api, { apiError } from "./api.js";
+import { getSession, patchProfile, clearSession } from "./auth.js";
+import DepartmentIcon from "./ui/DepartmentIcon.jsx";
+import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
 
 let socket = null;
-
-const DEPT_ICONS = {
-  "Civil Engineering Department":       "🏗️",
-  "Computer Engineering Department":    "💻",
-  "Electronics Engineering Department": "⚡",
-  "Electrical Engineering Department":  "🔌",
-  "Mechanical Engineering Department":  "⚙️",
-  "GEC GEAS Department":                "📐",
-};
-
-
 
 // ── Keyboard layout definitions ───────────────────────────────────────────────
 // Letter mode
@@ -195,8 +186,7 @@ function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
-  const studentRaw = sessionStorage.getItem("student");
-  const student    = studentRaw ? JSON.parse(studentRaw) : null;
+  const student = getSession("student");
 
   if (!student) { navigate("/student"); return null; }
 
@@ -231,7 +221,7 @@ export default function StudentDashboard() {
 
   const fetchProfessors = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/teacher-logs`);
+      const res = await api.get(`/teacher-logs`);
       res.data.forEach(dept => dept.professors.forEach(prof => {
         if (!prevAvail.current[prof.name] && prof.status === "Available") {
           addToast(`${prof.name} is now available!`, "success");
@@ -246,7 +236,7 @@ export default function StudentDashboard() {
   const fetchInbox = useCallback(async () => {
     setLoadingInbox(true);
     try {
-      const res = await axios.get(`${API_BASE}/consultation/history/${student.student_id}?page=1&limit=10`);
+      const res = await api.get(`/consultation/history/${student.student_id}?page=1&limit=10`);
       const data = res.data?.data ?? res.data ?? [];
       setMyRequests(data);
     } catch (_) {}
@@ -279,8 +269,7 @@ export default function StudentDashboard() {
     if (hasPending) return addToast(`You already have a pending request with ${reqModal.name}. Wait for it to be resolved first.`, "warning");
     setSubmitting(true);
     try {
-      await axios.post(`${API_BASE}/consultation/request`, {
-        student_id: student.student_id, student_name: student.full_name,
+      await api.post(`/consultation/request`, {
         course: student.course, professor_name: reqModal.name,
         department: reqModal.department, purpose: reqForm.purpose, category: reqForm.category,
       });
@@ -297,16 +286,15 @@ export default function StudentDashboard() {
   const savePhotoOnly = async (photoDataUrl) => {
     setSavingProfile(true);
     try {
-      const res = await axios.post(`${API_BASE}/student/update-profile`, {
-        student_id: student.student_id, full_name: profile.full_name,
+      const res = await api.post(`/student/update-profile`, {
+        full_name: profile.full_name,
         course: profile.course, year_level: profile.year_level,
         department: profile.department, photo: photoDataUrl,
       });
       const saved = res.data.student;
       setProfile(p => ({ ...p, ...saved }));
       if (saved.photo) setProfilePhoto(saved.photo);
-      const cur = JSON.parse(sessionStorage.getItem("student") || "{}");
-      sessionStorage.setItem("student", JSON.stringify({ ...cur, ...saved }));
+      patchProfile("student", saved);
       addToast("Photo saved!", "success");
     } catch (e) { addToast("Failed to save photo.", "error"); }
     finally { setSavingProfile(false); }
@@ -315,16 +303,15 @@ export default function StudentDashboard() {
   const saveProfile = async () => {
     setSavingProfile(true);
     try {
-      const res = await axios.post(`${API_BASE}/student/update-profile`, {
-        student_id: student.student_id, full_name: profile.full_name,
+      const res = await api.post(`/student/update-profile`, {
+        full_name: profile.full_name,
         course: profile.course, year_level: profile.year_level,
         department: profile.department, photo: profilePhoto,
       });
       const saved = res.data.student;
       setProfile(p => ({ ...p, ...saved }));
       if (saved.photo) setProfilePhoto(saved.photo);
-      const cur = JSON.parse(sessionStorage.getItem("student") || "{}");
-      sessionStorage.setItem("student", JSON.stringify({ ...cur, ...saved }));
+      patchProfile("student", saved);
       addToast("Profile updated!", "success");
       setEditingProfile(false);
       } catch (e) { addToast("Failed to save profile.", "error"); }
@@ -361,7 +348,7 @@ export default function StudentDashboard() {
       <URSHeader
         subtitle="Student Dashboard"
         user={{ name: student.full_name, sub: student.student_id }}
-        onLogout={() => { sessionStorage.removeItem("student"); navigate("/student"); }}
+        onLogout={() => { clearSession(); navigate("/student"); }}
       />
 
       {/* Tab bar */}
@@ -441,7 +428,7 @@ export default function StudentDashboard() {
                 </button>
                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-4 mb-4 flex items-center gap-4">
                   <div className="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center text-2xl shrink-0">
-                    {DEPT_ICONS[selectedDept] || "🎓"}
+                    <DepartmentIcon department={selectedDept} size={26} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-display font-bold text-white leading-tight">{selectedDept}</h2>
@@ -600,7 +587,7 @@ export default function StudentDashboard() {
                         <div className="flex items-start justify-between">
                           <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center
                                          text-3xl group-hover:scale-110 transition-transform duration-200">
-                            {DEPT_ICONS[dept.department] || "🎓"}
+                            <DepartmentIcon department={dept.department} size={22} />
                           </div>
                           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
                             ${avail > 0

@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Shield, Eye, EyeOff, ArrowLeft, Lock, ArrowRight } from "lucide-react";
+import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
 import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
+import api, { apiError } from "./api.js";
+import { setSession } from "./auth.js";
 
-const DEAN_USER = "dean";
-const DEAN_PASS = "dean2024";
+// The credentials this screen used to check (`dean` / `dean2024`) were two
+// constants in this file, which meant they shipped in the JavaScript bundle and
+// anyone who opened DevTools was an administrator. Verification now happens on
+// the server against a bcrypt hash, and the response carries a signed token
+// that every admin API route re-checks.
 
 export default function DeanLogin() {
   const navigate = useNavigate();
@@ -14,105 +19,93 @@ export default function DeanLogin() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (!username || !password) return addToast("Please fill in all fields.", "warning");
+  const handleLogin = async () => {
+    if (!username || !password) return addToast("Enter your username and password.", "warning");
     setLoading(true);
-    setTimeout(() => {
-      if (username.trim() === DEAN_USER && password === DEAN_PASS) {
-        sessionStorage.setItem("dean", JSON.stringify({ username: DEAN_USER, name: "Administrator" }));
-        navigate("/dean/dashboard");
-      } else {
-        addToast("Invalid credentials.", "error");
-        setLoading(false);
-      }
-    }, 700);
+    try {
+      const { data } = await api.post("/auth/admin/login", { username: username.trim(), password });
+      setSession("admin", data.token, data.admin);
+      navigate("/dean/dashboard");
+    } catch (e) {
+      addToast(apiError(e, "Sign in failed."), "error");
+      setPassword("");
+      setLoading(false);
+    }
   };
 
+  const onEnter = e => { if (e.key === "Enter") handleLogin(); };
+
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-dvh flex bg-canvas">
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      {/* Left — dark panel */}
-      <div className="hidden lg:flex flex-col w-[420px] shrink-0 bg-hero-dean dot-pattern text-white p-10 relative overflow-hidden">
-        <div className="absolute -bottom-20 -right-20 w-72 h-72 rounded-full bg-white/3" />
-        <div className="absolute top-40 -left-10 w-40 h-40 rounded-full bg-white/3" />
-
-        <Link to="/" className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors mb-auto">
-          <ArrowLeft size={15} /> Back to Home
+      {/* Context panel — desktop only; the form is the whole page on mobile. */}
+      <aside className="hidden lg:flex flex-col w-[420px] shrink-0 bg-brand-900 text-white p-10">
+        <Link to="/" className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm mb-auto w-fit">
+          <ArrowLeft size={15} aria-hidden="true" /> Back to home
         </Link>
-
         <div className="mb-auto">
-          <div className="w-16 h-16 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center mb-8 shadow-2xl animate-float">
-            <Shield size={30} className="text-white" />
-          </div>
-          <h1 className="font-display font-black text-4xl leading-tight mb-4">
-            Dean's<br />Office
-          </h1>
-          <p className="text-white/50 text-base leading-relaxed">
-            Administrative portal for the College of Engineering. Full visibility into faculty and student consultation data.
+          <span className="icon-tile bg-white/10 text-white mb-6"><Shield size={22} aria-hidden="true" /></span>
+          <h2 className="text-3xl font-bold tracking-tight leading-tight">Administration</h2>
+          <p className="text-white/60 mt-3 leading-relaxed">
+            College of Engineering. Faculty credentials, consultation activity and reporting.
           </p>
+          <ul className="mt-8 space-y-2.5 text-sm text-white/60">
+            {["Issue and revoke Faculty ID cards",
+              "Monitor consultation activity",
+              "Review the audit trail",
+              "Export reports"].map(f => (
+              <li key={f} className="flex items-center gap-2.5">
+                <span className="w-1 h-1 rounded-full bg-white/40 shrink-0" aria-hidden="true" />{f}
+              </li>
+            ))}
+          </ul>
         </div>
+        <p className="text-white/30 text-xs">Restricted — authorised personnel only</p>
+      </aside>
 
-        <div className="space-y-3 mt-10">
-          {["View all faculty availability","Monitor consultation activity","Access student registry","Export reports & analytics"].map(f => (
-            <div key={f} className="flex items-center gap-3 text-white/50 text-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-white/30 shrink-0" />
-              {f}
-            </div>
-          ))}
-        </div>
-        <p className="text-white/15 text-xs mt-10">Restricted access — authorized personnel only</p>
-      </div>
+      <main className="flex-1 flex flex-col justify-center px-5 py-10 pt-safe pb-safe">
+        <div className="w-full max-w-sm mx-auto">
+          <Link to="/" className="lg:hidden inline-flex items-center gap-1.5 text-muted-fg hover:text-fg text-sm mb-8">
+            <ArrowLeft size={15} aria-hidden="true" /> Back
+          </Link>
 
-      {/* Right — login form */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 bg-hero dot-pattern">
-        <div className="w-full max-w-sm">
-          <div className="lg:hidden mb-6">
-            <Link to="/" className="flex items-center gap-1.5 text-gray-400 hover:text-gray-700 text-sm transition-colors">
-              <ArrowLeft size={15} /> Back
-            </Link>
-          </div>
+          <header className="mb-6">
+            <span className="icon-tile icon-tile-brand mb-4 lg:hidden"><Shield size={22} aria-hidden="true" /></span>
+            <h1 className="text-2xl font-bold text-fg tracking-tight">Administrator sign in</h1>
+            <p className="text-muted-fg mt-1.5">Access the administration dashboard.</p>
+          </header>
 
-          <div className="mb-8 animate-slide-up">
-            <div className="w-12 h-12 bg-[#1e293b] rounded-2xl flex items-center justify-center mb-5 shadow-lg">
-              <Shield size={22} className="text-white" />
-            </div>
-            <h2 className="font-display font-bold text-3xl text-white mb-1">Administrative Login</h2>
-            <p className="text-white/50">Access the Dean's dashboard and reports</p>
-          </div>
-
-          <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/30 p-6 animate-slide-up delay-100 space-y-3">
+          <div className="card space-y-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Username</label>
-              <input className="input-field" placeholder="dean"
-                value={username} onChange={e => setUsername(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleLogin()} autoFocus />
+              <label htmlFor="admin-user" className="label">Username</label>
+              <input id="admin-user" className="input" value={username} autoFocus
+                autoComplete="username" spellCheck="false"
+                onChange={e => setUsername(e.target.value)} onKeyDown={onEnter} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Password</label>
+              <label htmlFor="admin-pass" className="label">Password</label>
               <div className="relative">
-                <input className="input-field pr-11" type={showPass ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password} onChange={e => setPassword(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                <input id="admin-pass" className="input pr-12"
+                  type={showPass ? "text" : "password"} value={password}
+                  autoComplete="current-password"
+                  onChange={e => setPassword(e.target.value)} onKeyDown={onEnter} />
                 <button type="button" onClick={() => setShowPass(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  aria-label={showPass ? "Hide password" : "Show password"}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 grid place-items-center
+                             text-muted-fg hover:text-fg rounded-lg">
+                  {showPass ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
                 </button>
               </div>
             </div>
-
-            <button onClick={handleLogin} disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-[#1e293b] hover:bg-[#0f172a] text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg hover:shadow-xl active:scale-[0.97] disabled:opacity-50 mt-1">
-              {loading ? <Spinner size={4} light /> : <Lock size={15} />}
-              {loading ? "Verifying..." : "Sign In"}
-              {!loading && <ArrowRight size={15} />}
+            <button onClick={handleLogin} disabled={loading} className="btn btn-primary w-full">
+              {loading ? <Spinner size={4} light /> : null}
+              {loading ? "Verifying…" : "Sign in"}
+              {!loading && <ArrowRight size={16} aria-hidden="true" />}
             </button>
-
-
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

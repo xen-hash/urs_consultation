@@ -1,93 +1,220 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens ───────────────────────────────────────────────────────────
+   Every colour in this app used to be a raw hex literal repeated inline. These
+   are the single source of truth; tailwind.config.js maps them onto utility
+   names so components say `bg-surface` and `text-muted-fg`, never `#003366`.
+
+   Brand is URS navy rather than a generic SaaS blue — this is a university
+   system and should look like one. The neutrals are a slate ramp.
+
+   Contrast, checked against the surface each pair is used on (WCAG AA needs
+   4.5:1 for body text):
+     fg #1E293B on surface #FFFFFF ......... 14.7:1
+     muted-fg #475569 on surface #FFFFFF ....  8.0:1
+     muted-fg #475569 on canvas #F8FAFC .....  7.6:1
+     brand #003366 on surface #FFFFFF ...... 14.4:1
+     accent-fg #B45309 on surface #FFFFFF ...  4.8:1
+     danger #DC2626 on surface #FFFFFF ......  4.8:1
+   The old UI printed #FFA000 as text on white, which is 2.0:1 and unreadable
+   for anyone with low vision. That value survives only as `--accent`, a fill
+   that always carries dark text; `--accent-fg` is the darkened text variant. */
+
+:root {
+  --canvas:        248 250 252;
+  --surface:       255 255 255;
+  --surface-2:     241 245 249;
+  --fg:            30 41 59;
+  --muted-fg:      71 85 105;
+  --subtle-fg:     100 116 139;
+  --border:        226 232 240;
+  --border-strong: 203 213 225;
+
+  --brand-50:      234 241 248;
+  --brand-100:     208 224 239;
+  --brand-200:     161 193 223;
+  --brand-300:     110 155 200;
+  --brand-400:     63 115 168;
+  --brand-500:     26 78 133;
+  --brand-600:     0 51 102;  /* URS navy — the anchor */
+  --brand-700:     0 42 85;
+  --brand-800:     0 32 68;
+  --brand-900:     13 27 42;
+
+  --accent:        255 160 0;  /* fill only, always with dark text on top */
+  --accent-fg:     180 83 9;  /* the text-safe variant */
+  --accent-50:     255 247 230;
+
+  --success:       21 128 61;
+  --success-50:    220 252 231;
+  --warning-fg:    161 98 7;
+  --warning-50:    254 249 195;
+  --danger:        220 38 38;
+  --danger-50:     254 226 226;
+  --info:          29 78 216;
+  --info-50:       219 234 254;
+
+  --ring:          26 78 133;
+
+  --radius-sm: 0.5rem;
+  --radius:    0.75rem;
+  --radius-lg: 1rem;
+
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow:    0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 8px 24px -6px rgb(15 23 42 / 0.12), 0 2px 6px -2px rgb(15 23 42 / 0.06);
+}
+
 @layer base {
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    color: #1a1f36;
-    min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
+
+  html {
+    scroll-behavior: smooth;
+    /* Stops iOS from re-flowing text at its own scale in landscape. */
+    -webkit-text-size-adjust: 100%;
   }
+
+  body {
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    background: rgb(var(--canvas));
+    color: rgb(var(--fg));
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    /* Grey flash on every tap on iOS without this. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS Safari zooms the page whenever a focused field is under 16px, and it
+     does not zoom back out. Every input in this app was 14px. Desktop keeps the
+     smaller size; touch devices get 16px. */
+  input, select, textarea { font-size: 1rem; }
+  @media (pointer: fine) {
+    input, select, textarea { font-size: 0.875rem; }
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+
+  ::-webkit-scrollbar       { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--border-strong)); border-radius: 99px;
+                              border: 3px solid rgb(var(--canvas)); }
 }
 
 @layer components {
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
-           text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-200
-           shadow-lg hover:shadow-xl active:scale-[0.97] tracking-wide text-sm;
+  /* ── Buttons ── min-height 44px throughout: the iOS touch target minimum. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-semibold
+           text-sm px-4 min-h-[44px] transition-colors duration-200
+           disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap;
   }
-  .btn-orange {
-    @apply inline-flex items-center justify-center gap-2 bg-[#ff6f00] hover:bg-[#e65c00]
-           text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-200
-           shadow-lg hover:shadow-xl active:scale-[0.97] text-sm;
+  .btn-sm      { @apply min-h-[36px] px-3 text-xs rounded-md; }
+  .btn-primary { @apply bg-brand text-white hover:bg-brand-700; }
+  .btn-accent  { @apply bg-accent text-brand-900 hover:brightness-95; }
+  .btn-secondary {
+    @apply bg-surface text-fg border border-border hover:bg-surface-2;
   }
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 border-2 border-[#003366]
-           text-[#003366] hover:bg-[#003366] hover:text-white
-           font-semibold py-2.5 px-5 rounded-2xl transition-all duration-200 text-sm active:scale-[0.97];
-  }
+  .btn-ghost   { @apply text-muted-fg hover:text-fg hover:bg-surface-2; }
+  .btn-danger  { @apply bg-danger text-white hover:brightness-95; }
+
+  /* ── Surfaces ── */
   .card {
-    @apply bg-white rounded-3xl shadow-sm border border-gray-100/80 p-6;
+    @apply bg-surface border border-border rounded-xl p-5 shadow-sm;
   }
-  .input-field {
-    @apply w-full border border-gray-200 bg-gray-50 rounded-2xl px-4 py-3.5 text-sm
-           focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366]
-           focus:bg-white transition-all duration-200 placeholder:text-gray-400 font-medium;
+  .card-action {
+    @apply flex flex-col gap-2 hover:border-brand-300 hover:shadow
+           transition-all duration-200 active:scale-[0.99];
   }
-  .status-available   { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
-  .status-unavailable { @apply bg-slate-50 text-slate-500 border border-slate-200; }
-  .status-on-leave    { @apply bg-amber-50 text-amber-700 border border-amber-200; }
-  .status-in-meeting  { @apply bg-orange-50 text-orange-700 border border-orange-200; }
-  .glass {
-    @apply bg-white/10 backdrop-blur-xl border border-white/20;
+
+  .icon-tile {
+    @apply w-11 h-11 rounded-lg grid place-items-center shrink-0;
   }
+  .icon-tile-brand  { @apply bg-brand-50 text-brand; }
+  .icon-tile-accent { @apply bg-accent-50 text-accent-fg; }
+  .icon-tile-muted  { @apply bg-surface-2 text-muted-fg; }
+
+  /* ── Forms ── */
+  .label {
+    @apply block text-xs font-semibold text-muted-fg uppercase tracking-wide mb-1.5;
+  }
+  .input {
+    @apply w-full bg-surface border border-border rounded-lg px-3.5 py-2.5 text-fg
+           min-h-[44px] placeholder:text-subtle-fg
+           focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15
+           transition-colors duration-200;
+  }
+  .input-invalid { @apply border-danger focus:border-danger focus:ring-danger/15; }
+
+  .keypad-key {
+    @apply min-h-[56px] rounded-lg bg-surface-2 border border-border text-fg
+           text-xl font-semibold grid place-items-center select-none
+           active:bg-brand-50 active:border-brand-300 transition-colors duration-100;
+  }
+  .keypad-key-muted { @apply text-muted-fg text-base; }
+
+  /* ── Badges ── icon + text always; never colour alone. */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1
+           text-xs font-semibold whitespace-nowrap;
+  }
+  .badge-success { @apply bg-success-50 text-success; }
+  .badge-warning { @apply bg-warning-50 text-warning-fg; }
+  .badge-danger  { @apply bg-danger-50 text-danger; }
+  .badge-info    { @apply bg-info-50 text-info; }
+  .badge-neutral { @apply bg-surface-2 text-muted-fg; }
+  .badge-accent  { @apply bg-accent-50 text-accent-fg; }
+
+  .table-wrap { @apply w-full overflow-x-auto; }
+  .table      { @apply w-full text-sm border-collapse; }
+  .table th {
+    @apply text-left py-3 px-4 text-xs font-semibold text-muted-fg
+           uppercase tracking-wide border-b border-border bg-surface-2/60;
+  }
+  .table td       { @apply py-3 px-4 border-b border-border/70 text-fg; }
+  .table tr:last-child td { @apply border-b-0; }
+  .table tbody tr { @apply transition-colors duration-150 hover:bg-surface-2/50; }
 }
 
 @layer utilities {
-  .font-display { font-family: 'Playfair Display', serif; }
-  .font-body    { font-family: 'DM Sans', sans-serif; }
-  .dot-pattern {
-    background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
-    background-size: 24px 24px;
+  /* iOS Safari reports 100vh as the *expanded* viewport, so a 100vh column has
+     its last rows hidden behind the browser toolbar. dvh tracks the visible
+     area; the vh line is the fallback for browsers without dvh. */
+  .min-h-dvh { min-height: 100vh; min-height: 100dvh; }
+  .h-dvh     { height: 100vh;     height: 100dvh; }
+  .max-h-dvh { max-height: 100vh; max-height: 100dvh; }
+
+  /* The PWA declares a translucent status bar, so content is drawn behind the
+     notch and the home indicator unless it is inset. */
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
+  .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+
+  .animate-rise { animation: rise 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-fade { animation: fade 0.2s ease-out both; }
+  .animate-spin { animation: spin 0.7s linear infinite; }
+  .animate-shimmer { animation: shimmer 1.4s ease-in-out infinite; }
+}
+
+@keyframes rise   { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes fade   { from { opacity: 0 } to { opacity: 1 } }
+@keyframes spin   { to { transform: rotate(360deg) } }
+@keyframes shimmer { 0%, 100% { opacity: 1 } 50% { opacity: 0.45 } }
+
+/* Motion is decoration here — none of it conveys state — so it all goes. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
-}
-
-@keyframes fadeIn    { from { opacity: 0 } to { opacity: 1 } }
-@keyframes slideUp   { from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: translateY(0) } }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-12px) } to { opacity: 1; transform: translateY(0) } }
-@keyframes bounceIn  { 0% { opacity: 0; transform: scale(0.9) } 60% { transform: scale(1.03) } 100% { opacity: 1; transform: scale(1) } }
-@keyframes marquee   { from { transform: translateX(100%) } to { transform: translateX(-100%) } }
-@keyframes float     { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
-@keyframes ping-slow { 0% { transform: scale(1); opacity: 1 } 75%,100% { transform: scale(2); opacity: 0 } }
-
-.animate-fade-in    { animation: fadeIn 0.4s ease-out both }
-.animate-slide-up   { animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1) both }
-.animate-slide-down { animation: slideDown 0.4s cubic-bezier(0.16,1,0.3,1) both }
-.animate-bounce-in  { animation: bounceIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both }
-.animate-marquee    { animation: marquee 25s linear infinite }
-.animate-float      { animation: float 3s ease-in-out infinite }
-.animate-ping-slow  { animation: ping-slow 2s cubic-bezier(0,0,0.2,1) infinite }
-.animate-spin       { animation: spin 1s linear infinite }
-
-.delay-100 { animation-delay: 0.1s }
-.delay-200 { animation-delay: 0.2s }
-.delay-300 { animation-delay: 0.3s }
-.delay-400 { animation-delay: 0.4s }
-
-::-webkit-scrollbar       { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
-
-@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
-/* ── Hero backgrounds used by login pages ── */
-.bg-hero {
-  background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 40%, #0f2a50 70%, #0a1628 100%);
-}
-.bg-hero-dean {
-  background: linear-gradient(160deg, #0d1b2a 0%, #1a2a40 50%, #0d2137 80%, #091520 100%);
 }

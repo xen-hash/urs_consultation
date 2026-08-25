@@ -1,145 +1,82 @@
 import { Link } from "react-router-dom";
-import URSBackground from "./URSBackground.jsx";
 import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Monitor } from "lucide-react";
 import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
+import ursLogo from "./URS_LOGO.png";
+
+const PORTALS = [
+  {
+    to: "/student", icon: GraduationCap, title: "Student",
+    description: "Check faculty availability and request a consultation.",
+    cta: "Sign in or register",
+  },
+  {
+    to: "/teacher", icon: BookOpen, title: "Faculty",
+    description: "Manage your schedule, availability and incoming requests.",
+    cta: "Sign in",
+  },
+  {
+    to: "/dean", icon: Shield, title: "Administration",
+    description: "Faculty credentials, consultation activity and reporting.",
+    cta: "Administrator sign in",
+  },
+];
 
 export default function LandingPage() {
   const online = useOnlineStatus();
 
   return (
-    <URSBackground>
-
-      {/* ── Glassmorphism Navbar ── */}
-      <nav className="sticky top-0 z-30 flex items-center justify-between px-6 sm:px-10 py-4
-                      glass border-b border-white/15 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-md">
-            <span className="text-[#003366] font-display font-black text-base leading-none">U</span>
+    <div className="min-h-dvh bg-canvas flex flex-col">
+      <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-6xl mx-auto w-full">
+          <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm text-fg truncate">University of Rizal System</p>
+            <p className="text-xs text-muted-fg truncate">College of Engineering</p>
           </div>
-          <div>
-            <p className="text-white font-display font-bold text-sm leading-tight">University of Rizal System</p>
-            <p className="text-white/40 text-xs">College of Engineering</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-white/50 text-xs">
-            {online ? (
-              <>
-                <Wifi size={12} className="text-emerald-400" />
-                <span className="text-emerald-400 font-semibold">Live</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={12} className="text-amber-400" />
-                <span className="text-amber-400 font-semibold">Offline</span>
-              </>
-            )}
+          <span className={`badge ${online ? "badge-success" : "badge-warning"} hidden xs:inline-flex`}>
+            {online ? <Wifi size={13} aria-hidden="true" /> : <WifiOff size={13} aria-hidden="true" />}
+            {online ? "Online" : "Offline"}
           </span>
           <InstallAppButton />
-          <Link to="/kiosk"
-            className="flex items-center gap-1.5 text-white/60 hover:text-white text-sm
-                       bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-xl transition-all">
-            Public Kiosk →
-          </Link>
         </div>
       </nav>
 
-      {/* ── Hero section ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
-
-        <div className="animate-slide-up">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full
-                          px-4 py-1.5 text-white/60 text-xs font-medium mb-8 backdrop-blur-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-            Faculty Consultation Management System
-          </div>
-
-          <h1 className="font-display font-black text-white text-4xl sm:text-6xl leading-[1.1] tracking-tight mb-4 max-w-2xl mx-auto">
-            Connect with Your<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffa000] to-[#ffcc02]">
-              Faculty Anytime
-            </span>
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-16 pb-safe">
+        <header className="max-w-2xl animate-rise">
+          <h1 className="text-display font-bold text-fg">
+            Faculty consultation, without the guesswork
           </h1>
-
-          <p className="text-white/50 text-base sm:text-lg max-w-md mx-auto leading-relaxed mb-12">
-            Real-time availability, instant consultation requests, and seamless faculty-student communication.
+          <p className="text-muted-fg mt-3 text-base sm:text-lg leading-relaxed">
+            Live faculty availability, consultation requests and scheduling for the
+            URS College of Engineering.
           </p>
+        </header>
+
+        <div className="grid gap-3 sm:grid-cols-3 mt-10 animate-rise">
+          {PORTALS.map(({ to, icon: Icon, title, description, cta }) => (
+            <Link key={to} to={to} className="card card-action group">
+              <span className="icon-tile icon-tile-brand"><Icon size={22} aria-hidden="true" /></span>
+              <span className="font-semibold text-fg text-lg">{title}</span>
+              <span className="text-sm text-muted-fg grow">{description}</span>
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand mt-1">
+                {cta}
+                <ArrowRight size={15} aria-hidden="true"
+                  className="transition-transform duration-200 group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          ))}
         </div>
 
-        {/* ── Three main portal cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl animate-slide-up delay-100">
-
-          {/* Student Portal */}
-          <Link to="/student"
-            className="group relative overflow-hidden bg-white rounded-3xl p-7 text-left
-                       hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 active:scale-[0.98]">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#003366] to-[#0066cc] rounded-t-3xl" />
-            <div className="w-12 h-12 bg-[#003366] rounded-2xl flex items-center justify-center mb-5
-                           group-hover:scale-110 transition-transform duration-300 shadow-lg">
-              <GraduationCap size={24} className="text-white" />
-            </div>
-            <h2 className="font-display font-bold text-xl text-[#003366] mb-1">Student Portal</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-5">
-              Check faculty availability and request consultations in real-time.
-            </p>
-            <div className="flex items-center gap-2 text-[#003366] text-sm font-semibold group-hover:gap-3 transition-all">
-              Login or Register <ArrowRight size={15} />
-            </div>
-          </Link>
-
-          {/* Teacher Portal */}
-          <Link to="/teacher"
-            className="group relative overflow-hidden bg-white rounded-3xl p-7 text-left
-                       hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 active:scale-[0.98]">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff6f00] to-[#ffaa00] rounded-t-3xl" />
-            <div className="w-12 h-12 bg-[#ff6f00] rounded-2xl flex items-center justify-center mb-5
-                           group-hover:scale-110 transition-transform duration-300 shadow-lg">
-              <BookOpen size={24} className="text-white" />
-            </div>
-            <h2 className="font-display font-bold text-xl text-gray-900 mb-1">Teacher Portal</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-5">
-              Manage your schedule, availability, and incoming consultation requests.
-            </p>
-            <div className="flex items-center gap-2 text-[#ff6f00] text-sm font-semibold group-hover:gap-3 transition-all">
-              Select Your Name <ArrowRight size={15} />
-            </div>
-          </Link>
-
-          {/* Dean's Office Portal */}
-          <Link to="/dean"
-            className="group relative overflow-hidden bg-white rounded-3xl p-7 text-left
-                       hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 active:scale-[0.98]">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#1e293b] to-[#475569] rounded-t-3xl" />
-            <div className="w-12 h-12 bg-[#1e293b] rounded-2xl flex items-center justify-center mb-5
-                           group-hover:scale-110 transition-transform duration-300 shadow-lg">
-              <Shield size={24} className="text-white" />
-            </div>
-            <h2 className="font-display font-bold text-xl text-gray-900 mb-1">Dean's Office</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-5">
-              Administrative access to faculty data, reports, and consultation analytics.
-            </p>
-            <div className="flex items-center gap-2 text-[#1e293b] text-sm font-semibold group-hover:gap-3 transition-all">
-              Admin Login <ArrowRight size={15} />
-            </div>
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <Link to="/kiosk" className="btn btn-secondary">
+            <Monitor size={16} aria-hidden="true" /> Open public kiosk display
           </Link>
         </div>
 
-        {/* ── Small footer link for Kiosk only ── */}
-        <div className="flex items-center gap-3 mt-6 animate-fade-in delay-300">
-          <Link to="/kiosk"
-            className="flex items-center gap-2 text-white/40 hover:text-white/70 text-xs
-                       bg-white/8 hover:bg-white/12 border border-white/10 hover:border-white/20
-                       px-4 py-2 rounded-xl transition-all">
-            <Monitor size={13} /> Public Kiosk
-          </Link>
-        </div>
-
-        <p className="text-white/20 text-xs mt-6 animate-fade-in delay-400">
+        <p className="text-xs text-subtle-fg mt-12">
           URS College of Engineering · Faculty Consultation System
         </p>
-      </div>
-    </URSBackground>
+      </main>
+    </div>
   );
 }
-

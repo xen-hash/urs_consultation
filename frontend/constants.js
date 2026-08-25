@@ -51,6 +51,18 @@ export const PROFESSOR_LIST = {
   ]
 };
 
+// Department display metadata. The icon is a lucide component name, resolved by
+// DepartmentIcon in ui/DepartmentIcon.jsx — these used to be emoji duplicated
+// across TeacherPortal and StudentDashboard.
+export const DEPARTMENT_META = {
+  "Civil Engineering Department":       { short: "Civil",      icon: "HardHat" },
+  "Computer Engineering Department":    { short: "Computer",   icon: "Cpu" },
+  "Electronics Engineering Department": { short: "Electronics", icon: "RadioTower" },
+  "Electrical Engineering Department":  { short: "Electrical", icon: "Zap" },
+  "Mechanical Engineering Department":  { short: "Mechanical", icon: "Cog" },
+  "GEC GEAS Department":                { short: "GEC GEAS",   icon: "Ruler" },
+};
+
 export const CONSULTATION_CATEGORIES = ["Academic","Grades","Project","Schedule","Thesis","Other"];
 
 export const STATUS_COLORS = {
@@ -70,6 +82,4 @@ export const TIME_OPTIONS = [
 ];
 
 export const YEAR_LEVELS = ["1st Year","2nd Year","3rd Year","4th Year","5th Year","Graduate"];
-
-export const KIOSK_PASSWORD = "admin123";
 

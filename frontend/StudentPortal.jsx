@@ -1,476 +1,220 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
-import { GraduationCap, QrCode, Hash, ArrowRight, UserPlus, Delete, ChevronLeft, Lock, ShieldCheck } from "lucide-react";
+import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, UserPlus } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner } from "./SharedUI.jsx";
-import URSBackground from "./URSBackground.jsx";
-import { API_BASE } from "./constants.js";
+import { Toast, useToastState, Spinner, Button, Alert } from "./SharedUI.jsx";
+import api, { apiError } from "./api.js";
+import { setSession } from "./auth.js";
 import ursLogo from "./URS_LOGO.png";
 
-/* ── Shared styles ─────────────────────────────────────────────────── */
-const PIN_STYLES = `
-  @keyframes shake {
-    0%,100%{transform:translateX(0)}
-    20%{transform:translateX(-8px)} 40%{transform:translateX(8px)}
-    60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
-  }
-  .pin-shake { animation: shake 0.5s ease; }
-  @keyframes popIn { from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
-  .pin-dot-filled { animation: popIn 0.15s ease; }
-`;
-
-/* ── Reusable PIN dots display ─────────────────────────────────────── */
-function PinDots({ count, shake }) {
-  return (
-    <div className={`flex justify-center gap-4 mb-5 ${shake ? "pin-shake" : ""}`}>
-      {[0,1,2,3].map(i => (
-        <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all duration-200
-          ${i < count ? "bg-[#ffa000] border-[#ffa000] pin-dot-filled scale-110" : "bg-transparent border-white/40"}`} />
-      ))}
-    </div>
-  );
-}
-
-/* ── Reusable Number Pad ───────────────────────────────────────────── */
-function NumPad({ onKey, onDelete, onSubmit, disabled }) {
-  return (
-    <>
-      <div className="grid grid-cols-3 gap-3 mb-3">
-        {[1,2,3,4,5,6,7,8,9].map(n => (
-          <button key={n} onClick={() => onKey(String(n))} disabled={disabled}
-            className="h-14 bg-white/15 hover:bg-white/25 active:scale-95 active:bg-white/30
-                       text-white font-bold text-xl rounded-2xl transition-all border border-white/10
-                       hover:border-white/30 shadow disabled:opacity-40">
-            {n}
-          </button>
-        ))}
-        <div />
-        <button onClick={() => onKey("0")} disabled={disabled}
-          className="h-14 bg-white/15 hover:bg-white/25 active:scale-95
-                     text-white font-bold text-xl rounded-2xl transition-all border border-white/10
-                     hover:border-white/30 shadow disabled:opacity-40">
-          0
-        </button>
-        <button onClick={onDelete} disabled={disabled}
-          className="h-14 bg-white/10 hover:bg-red-500/30 active:scale-95
-                     text-white/60 hover:text-white rounded-2xl transition-all border border-white/10
-                     flex items-center justify-center disabled:opacity-40">
-          <Delete size={20} />
-        </button>
-      </div>
-    </>
-  );
-}
-
-/* ── PIN Entry (for students who already have a PIN) ───────────────── */
-function PinEnter({ studentName, onSuccess, onBack, loading, error }) {
-  const [pin, setPin] = useState("");
-  const [shake, setShake] = useState(false);
-
-  useEffect(() => {
-    if (error) {
-      setShake(true);
-      setPin("");
-      const t = setTimeout(() => setShake(false), 600);
-      return () => clearTimeout(t);
-    }
-  }, [error]);
-
-  return (
-    <div className="animate-slide-up">
-      <style>{PIN_STYLES}</style>
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-6">
-        <div className="text-center mb-5">
-          <div className="w-14 h-14 bg-[#003366] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-            <GraduationCap size={26} className="text-white" />
-          </div>
-          <p className="text-white font-display font-bold text-lg">Welcome back!</p>
-          <p className="text-white/60 text-sm mt-0.5">{studentName}</p>
-          <p className="text-white/40 text-xs mt-1">Enter your 4-digit PIN</p>
-        </div>
-
-        <PinDots count={pin.length} shake={shake} />
-        {error && <p className="text-red-400 text-xs text-center mb-4 font-semibold">{error}</p>}
-
-        <NumPad
-          onKey={d => { if (pin.length < 4) setPin(p => p + d); }}
-          onDelete={() => setPin(p => p.slice(0, -1))}
-          disabled={loading}
-        />
-
-        <button onClick={() => pin.length === 4 && onSuccess(pin)}
-          disabled={pin.length < 4 || loading}
-          className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
-                     text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg
-                     disabled:opacity-40 active:scale-[0.98]">
-          {loading ? <Spinner size={4} light /> : <ArrowRight size={16} />}
-          {loading ? "Verifying..." : "Confirm PIN"}
-        </button>
-
-        <button onClick={onBack}
-          className="w-full mt-3 flex items-center justify-center gap-1.5
-                     text-white/40 hover:text-white text-sm py-2 transition-colors">
-          <ChevronLeft size={14} /> Use a different account
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Set PIN First (for existing students with no PIN) ─────────────── */
-function SetPinFirst({ studentName, studentId, onDone, onBack }) {
-  const [step, setStep]   = useState("set");
-  const [pin, setPin]     = useState("");
-  const [first, setFirst] = useState("");
-  const [shake, setShake] = useState(false);
-  const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const { addToast } = useToastState?.() || { addToast: () => {} };
-
-  const triggerShake = () => {
-    setShake(true);
-    setTimeout(() => setShake(false), 600);
-  };
-
-  const handleNext = async () => {
-    if (pin.length < 4) return;
-    if (step === "set") {
-      setFirst(pin); setPin(""); setStep("confirm"); setError(null);
-      return;
-    }
-    if (pin !== first) {
-      setError("PINs do not match. Try again.");
-      setPin(""); triggerShake(); return;
-    }
-    setSaving(true);
-    try {
-      await axios.post(`${API_BASE}/student/set-pin`, { student_id: studentId, pin });
-      const res = await axios.post(`${API_BASE}/auth/student/login`, { student_id: studentId, pin });
-      onDone(res.data.student);
-    } catch (e) {
-      setError(e.response?.data?.error || "Failed to set PIN. Try again.");
-      setPin(""); triggerShake();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="animate-slide-up">
-      <style>{PIN_STYLES}</style>
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-6">
-        <div className="text-center mb-5">
-          <div className="w-14 h-14 bg-[#ffa000] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-            <Lock size={24} className="text-white" />
-          </div>
-          <p className="text-white font-display font-bold text-lg">
-            {step === "set" ? "Create Your PIN" : "Confirm PIN"}
-          </p>
-          <p className="text-white/60 text-sm mt-0.5">{studentName}</p>
-          <p className="text-white/40 text-xs mt-1">
-            {step === "set"
-              ? "You don't have a PIN yet — set one now to secure your account"
-              : "Re-enter your PIN to confirm"}
-          </p>
-        </div>
-        <div className="flex items-center justify-center gap-2 mb-5">
-          <div className="w-2 h-2 rounded-full bg-[#ffa000]" />
-          <div className={`w-2 h-2 rounded-full transition-colors ${step === "confirm" ? "bg-[#ffa000]" : "bg-white/20"}`} />
-          <p className="text-white/30 text-[10px] ml-1">{step === "set" ? "Step 1 of 2" : "Step 2 of 2"}</p>
-        </div>
-        <PinDots count={pin.length} shake={shake} />
-        {error && <p className="text-red-400 text-xs text-center mb-4 font-semibold">{error}</p>}
-        <NumPad
-          onKey={d => { if (pin.length < 4) setPin(p => p + d); }}
-          onDelete={() => setPin(p => p.slice(0, -1))}
-          disabled={saving}
-        />
-        <button onClick={handleNext} disabled={pin.length < 4 || saving}
-          className="w-full flex items-center justify-center gap-2 bg-[#ffa000] hover:bg-[#e69000]
-                     text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg
-                     disabled:opacity-40 active:scale-[0.98]">
-          {saving ? <Spinner size={4} light /> : step === "set" ? <ArrowRight size={16} /> : <ShieldCheck size={16} />}
-          {saving ? "Setting PIN..." : step === "set" ? "Next — Confirm PIN" : "Set PIN & Log In"}
-        </button>
-        {step === "confirm" && (
-          <button onClick={() => { setStep("set"); setPin(""); setFirst(""); setError(null); }}
-            className="w-full mt-2 text-white/40 hover:text-white text-xs py-2 transition-colors text-center">
-            ← Change PIN
-          </button>
-        )}
-        <button onClick={onBack}
-          className="w-full mt-2 flex items-center justify-center gap-1.5
-                     text-white/30 hover:text-white text-xs py-2 transition-colors">
-          <ChevronLeft size={13} /> Use a different account
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Keyboard layout defs ──────────────────────────────────────────── */
-const L_ROW1 = ["q","w","e","r","t","y","u","i","o","p"];
-const L_ROW2 = ["a","s","d","f","g","h","j","k","l"];
-const L_ROW3 = ["z","x","c","v","b","n","m"];
-const N_ROW1 = ["1","2","3","4","5","6","7","8","9","0"];
-const N_ROW2 = ["-","/",":",";","(",")","%","@",'"',"'"];
-const N_ROW3 = [".",",","?","!","#","&","_"];
-
-function KbKey({ label, icon, onPress, accent, danger, dark, narrow, cls = "" }) {
-  const base =
-    "flex items-center justify-center select-none rounded-[12px] border-b-[4px] " +
-    "text-[17px] font-bold cursor-pointer touch-none active:border-b-0 active:translate-y-[4px] " +
-    "transition-transform duration-75 h-[58px] ";
-  const color = accent ? "bg-[#003366] border-[#001f44] text-white "
-    : danger  ? "bg-[#c0392b] border-[#922b21] text-white "
-    : dark    ? "bg-[#151f2e] border-[#0a1018] text-white/50 "
-    :           "bg-[#2c3e52] border-[#1a2535] text-white ";
-  const width = narrow ? "w-[46px] shrink-0 " : "flex-1 ";
-  return (
-    <button onPointerDown={e => { e.preventDefault(); onPress(); }}
-      className={base + color + width + cls}>
-      {icon || label}
-    </button>
-  );
-}
-
-
-/* ── Main Portal ───────────────────────────────────────────────────── */
 export default function StudentPortal() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
 
-  const [mode, setMode]             = useState(null);
-  const [studentId, setStudentId]   = useState("");
-  const [loading, setLoading]       = useState(false);
-  const [pinLoading, setPinLoading] = useState(false);
-  const [pinError, setPinError]     = useState(null);
-  const [pendingStudent, setPendingStudent] = useState(null);
+  const [mode, setMode] = useState(null);   // null | qr | manual | pin | setpin
+  const [studentId, setStudentId] = useState("");
+  const [pending, setPending] = useState(null);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const home = () => { setMode(null); setStudentId(""); setPending(null); setPin(""); setPinError(null); };
 
   const findStudent = async (id) => {
     const sid = (id || studentId).trim();
-    if (!sid) return addToast("Please enter your Student ID.", "warning");
+    if (!sid) return addToast("Enter your Student ID.", "warning");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/auth/student/find`, { student_id: sid });
-      setPendingStudent(res.data);
-      setPinError(null);
-      setMode(res.data.has_pin ? "pin" : "setpin");
+      const { data } = await api.post("/auth/student/find", { student_id: sid });
+      setPending(data);
+      setPin(""); setPinError(null);
+      setMode(data.has_pin ? "pin" : "setpin");
     } catch (e) {
-      addToast(e.response?.data?.error || "Student not found. Please register first.", "error");
+      addToast(apiError(e, "Student not found. Please register first."), "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const verifyPin = async (pin) => {
-    setPinLoading(true); setPinError(null);
+  const submitPin = async () => {
+    setLoading(true); setPinError(null);
     try {
-      const res = await axios.post(`${API_BASE}/auth/student/login`, {
-        student_id: pendingStudent.student_id, pin
+      const { data } = await api.post("/auth/student/login", {
+        student_id: pending.student_id, pin,
       });
-      doLogin(res.data.student);
+      setSession("student", data.token, data.student);
+      addToast(`Welcome, ${data.student.full_name}!`, "success");
+      setTimeout(() => navigate("/student/dashboard"), 500);
     } catch (e) {
-      setPinError(e.response?.data?.error || "Incorrect PIN. Try again.");
-      setPinLoading(false);
+      setPinError(apiError(e, "Incorrect PIN. Try again."));
+      setPin("");
+      setLoading(false);
     }
   };
 
-  const doLogin = (student) => {
-    sessionStorage.removeItem("teacher"); // clear any teacher session
-    sessionStorage.setItem("student", JSON.stringify(student));
-    addToast("Welcome, " + student.full_name + "!", "success");
-    setTimeout(() => navigate("/student/dashboard"), 500);
-  };
-
-  const resetToHome = () => {
-    setMode(null); setStudentId(""); setPendingStudent(null);
-  };
-
   return (
-    <URSBackground>
+    <div className="min-h-dvh bg-canvas flex flex-col">
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      {/* Nav */}
-      <nav className="sticky top-0 z-30 bg-white/10 backdrop-blur-xl border-b border-white/15 shadow-lg">
-        <div className="flex items-center px-6 sm:px-10 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md overflow-hidden">
-              <img src={ursLogo} alt="URS" className="w-full h-full object-contain p-0.5"
-                onError={e => { e.target.style.display="none"; e.target.nextSibling.style.display="flex"; }} />
-              <span className="text-[#003366] font-display font-black text-lg leading-none hidden items-center justify-center">U</span>
-            </div>
-            <div>
-              <p className="text-white font-display font-bold text-sm leading-tight">University of Rizal System</p>
-              <p className="text-white/40 text-xs">Student Portal — College of Engineering</p>
-            </div>
+      <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
+          <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm text-fg truncate">University of Rizal System</p>
+            <p className="text-xs text-muted-fg truncate">Student Portal</p>
           </div>
+          {mode && (
+            <button onClick={home} className="btn btn-ghost btn-sm shrink-0">
+              <ArrowLeft size={15} aria-hidden="true" /> Back
+            </button>
+          )}
         </div>
       </nav>
 
-      {/* Page body — shifts up when keyboard open */}
-      <div
-        className="flex-1 flex items-center justify-center px-4 transition-all duration-300"
-        style={{ paddingTop: "40px", paddingBottom: "40px" }}>
-        <div className="w-full max-w-sm">
+      <main className="flex-1 w-full max-w-sm mx-auto px-4 py-8 sm:py-12 pb-safe">
 
+        {!mode && (
+          <div className="animate-rise">
+            <header className="mb-7">
+              <h1 className="text-title font-bold text-fg">Student sign in</h1>
+              <p className="text-muted-fg mt-1.5">Scan your student QR code, or enter your ID.</p>
+            </header>
 
-          {/* QR Scan */}
-          {mode === "qr" && (
-            <div className="animate-slide-up">
-              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-2xl">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 bg-[#003366] rounded-xl flex items-center justify-center">
-                    <QrCode size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-white">Scan QR Code</h2>
-                    <p className="text-white/50 text-xs">Hold your student QR code to the camera</p>
-                  </div>
-                </div>
-                {loading
-                  ? <div className="flex justify-center py-8"><Spinner size={10} light /></div>
-                  : <QRScanner onScan={val => findStudent(val)} onError={msg => addToast(msg, "error")} />
-                }
-                <button onClick={resetToHome} className="w-full mt-4 text-white/40 hover:text-white text-sm py-2 transition-colors">
-                  ← Back
-                </button>
-              </div>
+            <div className="space-y-3">
+              <button onClick={() => setMode("qr")} className="card card-action w-full text-left">
+                <span className="icon-tile icon-tile-brand"><QrCode size={22} aria-hidden="true" /></span>
+                <span className="font-semibold text-fg">Scan QR code</span>
+                <span className="text-sm text-muted-fg">Use the QR from your registration.</span>
+              </button>
+              <button onClick={() => setMode("manual")} className="card card-action w-full text-left">
+                <span className="icon-tile icon-tile-accent"><Keyboard size={22} aria-hidden="true" /></span>
+                <span className="font-semibold text-fg">Enter Student ID</span>
+                <span className="text-sm text-muted-fg">Type your ID, then your PIN.</span>
+              </button>
             </div>
-          )}
 
-          {mode === "manual" && (
-            <div className="animate-slide-up">
-              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-2xl">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 bg-[#003366] rounded-xl flex items-center justify-center">
-                    <Hash size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-white">Enter Student ID</h2>
-                    <p className="text-white/50 text-xs">Type your ID number to continue</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 bg-white/15 border border-white/25 rounded-2xl px-4 py-3.5 focus-within:bg-white/25 focus-within:border-white transition-all">
-                    <Hash size={15} className="text-white/50 shrink-0" />
-                    <input
-                      type="text"
-                      autoFocus
-                      value={studentId}
-                      onChange={e => setStudentId(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && findStudent()}
-                      placeholder="M2022-0247"
-                      maxLength={40}
-                      className="flex-1 bg-transparent text-white placeholder:text-white/30 font-mono tracking-wider text-sm focus:outline-none"
-                    />
-                    {studentId.length > 0 && (
-                      <button onPointerDown={e => { e.preventDefault(); setStudentId(""); }}
-                        className="text-white/40 hover:text-white transition-colors shrink-0 text-xs">✕</button>
-                    )}
-                  </div>
-
-                  <button onClick={() => findStudent()} disabled={loading || !studentId.trim()}
-                    className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080]
-                               text-white font-semibold py-3.5 rounded-2xl transition-all shadow-lg
-                               disabled:opacity-60 active:scale-[0.98]">
-                    {loading ? <Spinner size={4} light /> : <ArrowRight size={16} />}
-                    {loading ? "Finding account..." : "Continue"}
-                  </button>
-                </div>
-
-                <button onClick={resetToHome} className="w-full mt-4 text-white/40 hover:text-white text-sm py-2 transition-colors">
-                  ← Back
-                </button>
-                <p className="text-center text-sm text-white/40 mt-2">
-                  Not registered?{" "}
-                  <Link to="/student/register" className="text-white/70 hover:text-white underline">Create account</Link>
+            <div className="card mt-6 flex items-start gap-3">
+              <span className="icon-tile icon-tile-muted shrink-0"><UserPlus size={20} aria-hidden="true" /></span>
+              <div className="text-sm min-w-0">
+                <p className="font-semibold text-fg">New here?</p>
+                <p className="text-muted-fg mt-0.5">
+                  <Link to="/student/register" className="text-brand font-semibold underline underline-offset-2">
+                    Register your student account
+                  </Link>{" "}
+                  to request consultations.
                 </p>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* PIN Entry */}
-          {mode === "pin" && pendingStudent && (
-            <PinEnter
-              studentName={pendingStudent.full_name}
-              onSuccess={verifyPin}
-              onBack={resetToHome}
-              loading={pinLoading}
-              error={pinError}
-            />
-          )}
-
-          {/* Set PIN First */}
-          {mode === "setpin" && pendingStudent && (
-            <SetPinFirst
-              studentName={pendingStudent.full_name}
-              studentId={pendingStudent.student_id}
-              onDone={doLogin}
-              onBack={resetToHome}
-            />
-          )}
-
-          {/* Home */}
-          {!mode && (
-            <div className="animate-slide-up">
-              <div className="text-center mb-7">
-                <div className="w-16 h-16 bg-white/15 backdrop-blur-sm border border-white/25 rounded-3xl
-                               flex items-center justify-center mx-auto mb-4 shadow-xl">
-                  <GraduationCap size={30} className="text-white" />
-                </div>
-                <h1 className="font-display font-black text-3xl text-white mb-1">Student Login</h1>
-                <p className="text-white/50 text-sm">Sign in to access faculty consultations</p>
-              </div>
-              <div className="space-y-3">
-                <button onClick={() => setMode("qr")}
-                  className="w-full flex items-center gap-4 p-5 bg-[#003366] hover:bg-[#004080]
-                             text-white rounded-2xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98] group">
-                  <div className="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <QrCode size={22} />
-                  </div>
-                  <div className="text-left flex-1">
-                    <p className="font-semibold">Scan QR Code</p>
-                    <p className="text-white/50 text-xs mt-0.5">Use your saved student QR code</p>
-                  </div>
-                  <ArrowRight size={16} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                </button>
-
-                <button onClick={() => setMode("manual")}
-                  className="w-full flex items-center gap-4 p-5 bg-white/10 hover:bg-white/20
-                             border border-white/20 hover:border-white/40 text-white rounded-2xl
-                             transition-all active:scale-[0.98] group">
-                  <div className="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <Hash size={20} />
-                  </div>
-                  <div className="text-left flex-1">
-                    <p className="font-semibold">Enter Student ID</p>
-                    <p className="text-white/50 text-xs mt-0.5">Type your ID number manually</p>
-                  </div>
-                  <ArrowRight size={16} className="text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                </button>
-
-
-                <Link to="/student/register"
-                  className="w-full flex items-center justify-between p-4 bg-white/8 hover:bg-white/15
-                             border border-white/15 hover:border-white/30 rounded-2xl transition-all group">
-                  <div>
-                    <p className="text-white font-semibold text-sm">New student?</p>
-                    <p className="text-white/40 text-xs">Create account & get your QR code</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white text-[#003366] text-xs font-bold px-3 py-1.5 rounded-xl group-hover:bg-blue-50 transition-colors">
-                    <UserPlus size={13} /> Register
-                  </div>
-                </Link>
-              </div>
+        {mode === "qr" && (
+          <section className="animate-rise" aria-labelledby="s-scan">
+            <header className="mb-6">
+              <h1 id="s-scan" className="text-title font-bold text-fg">Scan your QR code</h1>
+              <p className="text-muted-fg mt-1.5">Hold it inside the frame.</p>
+            </header>
+            <div className="card">
+              {loading
+                ? <div className="flex justify-center py-10"><Spinner size={9} /></div>
+                : <QRScanner onScan={findStudent} onError={msg => addToast(msg, "error")} />}
             </div>
-          )}
+          </section>
+        )}
 
+        {mode === "manual" && (
+          <section className="animate-rise" aria-labelledby="s-id">
+            <header className="mb-6">
+              <h1 id="s-id" className="text-title font-bold text-fg">Enter your Student ID</h1>
+            </header>
+            <div className="card space-y-4">
+              <div>
+                <label htmlFor="student-id" className="label">Student ID</label>
+                <input id="student-id" className="input font-mono tracking-wide" autoFocus
+                  value={studentId} placeholder="e.g. 21-00123"
+                  autoCapitalize="characters" spellCheck="false"
+                  onChange={e => setStudentId(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && findStudent()} />
+              </div>
+              <Button variant="primary" className="w-full" loading={loading}
+                onClick={() => findStudent()} disabled={!studentId.trim()}>
+                Continue {!loading && <ArrowRight size={16} aria-hidden="true" />}
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {(mode === "pin" || mode === "setpin") && pending && (
+          <StudentPinStep
+            student={pending}
+            setting={mode === "setpin"}
+            pin={pin}
+            onPin={v => { setPin(v); setPinError(null); }}
+            error={pinError}
+            loading={loading}
+            onSubmit={submitPin}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* A student with no PIN is a legacy account from before PINs existed. They log
+   in on ID alone this once — the server still allows it — and the wording says
+   so plainly rather than pretending a PIN was checked. */
+
+function StudentPinStep({ student, setting, pin, onPin, error, loading, onSubmit }) {
+  const press = fn => e => { e.preventDefault(); fn(); };
+  const digit = n => press(() => pin.length < 4 && onPin(pin + n));
+
+  return (
+    <section className="animate-rise" aria-labelledby="s-pin">
+      <header className="mb-6 text-center">
+        <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
+          {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}
+        </span>
+        <h1 id="s-pin" className="text-title font-bold text-fg">
+          Hello, {student.full_name?.split(" ")[0] || "there"}
+        </h1>
+        <p className="text-muted-fg mt-1.5">
+          {setting ? "This account has no PIN yet — signing in will let you set one."
+                   : "Enter your 4-digit PIN."}
+        </p>
+      </header>
+
+      <div className="card space-y-5">
+        {error && <Alert tone="danger">{error}</Alert>}
+
+        <div className="flex gap-3 justify-center" role="status" aria-live="polite"
+          aria-label={`${pin.length} of 4 digits entered`}>
+          {[0, 1, 2, 3].map(i => (
+            <span key={i}
+              className={`w-12 h-14 rounded-lg border flex items-center justify-center text-2xl
+                ${pin[i] ? "border-brand bg-brand-50 text-brand" : "border-border bg-canvas"}`}>
+              {pin[i] ? "•" : ""}
+            </span>
+          ))}
         </div>
-      </div>
 
-    </URSBackground>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+            <button key={n} onPointerDown={digit(n)} className="keypad-key" aria-label={`Digit ${n}`}>{n}</button>
+          ))}
+          <button onPointerDown={press(() => onPin(pin.slice(0, -1)))}
+            className="keypad-key keypad-key-muted" aria-label="Delete last digit">
+            <Delete size={20} aria-hidden="true" />
+          </button>
+          <button onPointerDown={digit(0)} className="keypad-key" aria-label="Digit 0">0</button>
+          <button onPointerDown={press(() => onPin(""))}
+            className="keypad-key keypad-key-muted text-xs" aria-label="Clear PIN">CLEAR</button>
+        </div>
+
+        <Button variant="primary" className="w-full" loading={loading}
+          onClick={onSubmit} disabled={!setting && pin.length < 4}>
+          {loading ? "Signing in…" : "Sign in"}
+        </Button>
+      </div>
+    </section>
   );
 }

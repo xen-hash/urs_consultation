@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { io } from "socket.io-client";
 import {
   CheckCircle2, XCircle, Calendar, Download, Trash2, Bell,
@@ -10,7 +9,9 @@ import {
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
-import { API_BASE, SOCKET_URL } from "./constants.js";
+import api, { apiError } from "./api.js";
+import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
+import { SOCKET_URL } from "./constants.js";
 import QRCodeLib from "qrcode";
 
 let socket = null;
@@ -66,8 +67,7 @@ function getFirstName(fullName) {
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
-  const teacherRaw = sessionStorage.getItem("teacher");
-  const teacher = teacherRaw ? JSON.parse(teacherRaw) : null;
+  const teacher = getSession("teacher");
 
   if (!teacher) { navigate("/teacher"); return null; }
 
@@ -78,7 +78,6 @@ export default function TeacherDashboard() {
   const [myStatus, setMyStatus]     = useState("Auto (use schedule)");
   const [mySchedule, setMySchedule] = useState(null);
   const [savingStatus, setSavingStatus] = useState(false);
-  const [clearModal, setClearModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [apptModal, setApptModal]   = useState(null);
   const [apptForm, setApptForm]     = useState({ date:"", time:"", notes:"" });
@@ -107,7 +106,7 @@ export default function TeacherDashboard() {
   const fetchRequests = useCallback(async () => {
     if (!teacher) return;
     try {
-      const res = await axios.get(`${API_BASE}/teacher/requests/${teacher.employee_id}`);
+      const res = await api.get(`/teacher/requests/${teacher.employee_id}`);
       const reqs = res.data || [];
       const unseenPending = reqs.filter(r => r.status === "pending" && !_teacherSeenIds.has(r.id));
       unseenPending.forEach((req, i) => {
@@ -129,7 +128,7 @@ export default function TeacherDashboard() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/teacher/profile/${teacher.employee_id}`);
+      const res = await api.get(`/teacher/profile/${teacher.employee_id}`);
       if (res.data.photo) setProfilePhoto(res.data.photo);
     } catch(_){}
   }, [teacher]);
@@ -148,7 +147,9 @@ export default function TeacherDashboard() {
       socket.on("new_request", fetchRequests);
     } catch(e) { console.warn("Socket unavailable"); }
 
-    QRCodeLib.toDataURL(teacher.employee_id, { width:400, margin:2, color:{dark:"#000000",light:"#ffffff"} })
+    // Intentionally encodes nothing scannable: a working faculty QR is issued by
+    // the admin office and is a random serial, not this employee ID.
+    Promise.resolve(null)
       .then(url => setTeacherQR(url.split(",")[1])).catch(()=>{});
 
     return () => { clearInterval(iv); socket?.disconnect(); };
@@ -156,7 +157,7 @@ export default function TeacherDashboard() {
 
   const handleDone = async (id) => {
     const req = requests.find(r => r.id === id);
-    await axios.post(`${API_BASE}/teacher/requests/${id}/done`);
+    await api.post(`/teacher/requests/${id}/done`);
     socket?.emit("broadcast_request_done",{request_id:id,professor_name:teacher.professor_name});
     setRequests(p=>p.filter(r=>r.id!==id));
     setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
@@ -167,14 +168,14 @@ export default function TeacherDashboard() {
 
   const handleDecline = async (id) => {
     _teacherSeenIds.delete(id);
-    await axios.post(`${API_BASE}/teacher/requests/${id}/decline`);
+    await api.post(`/teacher/requests/${id}/decline`);
     setRequests(p=>p.filter(r=>r.id!==id));
     setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
     addToast("Request declined.","info");
   };
 
   const handleSaveSchedule = async (schedule) => {
-    await axios.post(`${API_BASE}/teacher/save-schedule`,{employee_id:teacher.employee_id,weekly_schedule:schedule});
+    await api.post(`/teacher/save-schedule`,{ weekly_schedule: schedule });
     setMySchedule(schedule);
     socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:"Auto",weeklySchedule:schedule});
     addToast("Schedule saved!","success");
@@ -182,7 +183,7 @@ export default function TeacherDashboard() {
 
   const handleSaveStatus = async () => {
     setSavingStatus(true);
-    await axios.post(`${API_BASE}/teacher/save-manual-status`,{employee_id:teacher.employee_id,manual_status:myStatus});
+    await api.post(`/teacher/save-manual-status`,{ manual_status: myStatus });
     socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:myStatus});
     addToast(`Status updated: ${myStatus}`,"success");
     setSavingStatus(false);
@@ -192,7 +193,7 @@ export default function TeacherDashboard() {
     if (!apptForm.date || !apptForm.time) return addToast("Date and time required.","warning");
     setSavingAppt(true);
     try {
-      await axios.post(`${API_BASE}/teacher/requests/${apptModal.id}/appoint`, {
+      await api.post(`/teacher/requests/${apptModal.id}/appoint`, {
         appointment_date: apptForm.date,
         appointment_time: apptForm.time,
         appointment_notes: apptForm.notes
@@ -208,9 +209,9 @@ export default function TeacherDashboard() {
     if (!newName.trim() || newName.trim()===teacher.professor_name) return addToast("Enter a different name.","warning");
     setSavingName(true);
     try {
-      await axios.post(`${API_BASE}/teacher/update-name`,{employee_id:teacher.employee_id,new_name:newName.trim()});
+      await api.post(`/teacher/update-name`,{ new_name: newName.trim() });
       const updated = {...teacher, professor_name:newName.trim()};
-      sessionStorage.setItem("teacher",JSON.stringify(updated));
+      patchProfile("teacher", updated);
       addToast("Name updated!","success");
       setEditName(false);
       setTimeout(()=>window.location.reload(),800);
@@ -222,9 +223,8 @@ export default function TeacherDashboard() {
     setProfilePhoto(dataUrl);
     setShowCamera(false);
     try {
-      await axios.post(`${API_BASE}/teacher/update-photo`, { employee_id: teacher.employee_id, photo: dataUrl });
-      const current = JSON.parse(sessionStorage.getItem("teacher") || "{}");
-      sessionStorage.setItem("teacher", JSON.stringify({ ...current, photo: dataUrl }));
+      await api.post(`/teacher/update-photo`, { photo: dataUrl });
+      patchProfile("teacher", { photo: dataUrl });
       addToast("Photo saved!", "success");
     } catch(_) { addToast("Failed to save photo.", "error"); }
   };
@@ -236,9 +236,9 @@ export default function TeacherDashboard() {
       return addToast("PINs do not match.", "warning");
     setSavingPin(true);
     try {
-      await axios.post(`${API_BASE}/auth/teacher/set-pin`, { employee_id: teacher.employee_id, pin: pinForm.pin });
+      await api.post(`/auth/teacher/set-pin`, { pin: pinForm.pin, current_pin: pinForm.currentPin || undefined });
       const updated = { ...teacher, has_pin: true };
-      sessionStorage.setItem("teacher", JSON.stringify(updated));
+      patchProfile("teacher", updated);
       setHasPin(true);
       setSettingPin(false);
       setPinForm({ pin: '', confirm: '' });
@@ -251,7 +251,7 @@ export default function TeacherDashboard() {
     if (!window.confirm("Reset today\'s consultation count? This will archive all today\'s requests and start a fresh session.")) return;
     setResettingSession(true);
     try {
-      await axios.post(`${API_BASE}/teacher/reset-daily-count`, { employee_id: teacher.employee_id });
+      await api.post("/teacher/reset-daily-count");
       setRequests([]);
       setAccepted(new Set());
       addToast("Session reset! You can now accept a new batch of consultations.", "success");
@@ -277,7 +277,7 @@ export default function TeacherDashboard() {
       <Toast toasts={toasts} removeToast={removeToast} />
       <URSHeader subtitle="Teacher Dashboard" accent="orange"
         user={{ name: teacher.professor_name, sub: teacher.department }}
-        onLogout={() => { sessionStorage.removeItem("teacher"); navigate("/teacher"); }} />
+        onLogout={() => { clearSession(); navigate("/teacher"); }} />
 
       {ticker.length > 0 && (
         <div className="bg-[#001a33] border-b-2 border-[#ffa000] py-3 px-5 flex items-center gap-4 overflow-hidden">
@@ -470,25 +470,6 @@ export default function TeacherDashboard() {
                 <button onClick={()=>setSchedModal(true)}
                   className="w-full flex items-center justify-center gap-2 border-2 border-[#003366] text-[#003366] hover:bg-[#003366] hover:text-white font-semibold py-2.5 px-5 rounded-2xl transition-all text-sm">
                   <Calendar size={14}/> Edit Weekly Schedule
-                </button>
-              </div>
-            </div>
-            <div className="bg-white/95 rounded-3xl border border-white/30 shadow-xl p-7">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-[#003366] rounded-xl flex items-center justify-center"><Download size={20} className="text-white"/></div>
-                <h3 className="font-display font-bold text-xl text-[#003366]">Admin Tools</h3>
-              </div>
-              <div className="space-y-2">
-                {[["today","Export Today","bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"],
-                  ["all","Export All Records","bg-blue-50 hover:bg-blue-100 text-[#003366] border-blue-200"]].map(([t,l,cls])=>(
-                  <button key={t} onClick={()=>window.open(`${API_BASE}/export?type=${t}`,"_blank")}
-                    className={`w-full flex items-center gap-2.5 text-sm ${cls} border font-semibold px-4 py-2.5 rounded-2xl transition-all`}>
-                    <Download size={14}/>{l}
-                  </button>
-                ))}
-                <button onClick={()=>setClearModal(true)}
-                  className="w-full flex items-center gap-2.5 text-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-semibold px-4 py-2.5 rounded-2xl transition-all">
-                  <Trash2 size={14}/> Clear All Logs
                 </button>
               </div>
             </div>
@@ -710,16 +691,6 @@ export default function TeacherDashboard() {
 
       <ScheduleModal open={schedModal} onClose={()=>setSchedModal(false)} onSave={handleSaveSchedule} initial={mySchedule}/>
 
-      <Modal open={clearModal} onClose={()=>setClearModal(false)} title="Clear All Logs?">
-        <p className="text-gray-500 text-sm mb-5">This permanently deletes all teacher logs and consultation records.</p>
-        <div className="flex gap-2">
-          <button onClick={()=>setClearModal(false)} className="flex-1 border-2 border-[#003366] text-[#003366] hover:bg-[#003366] hover:text-white font-semibold py-2.5 px-5 rounded-2xl transition-all text-sm">Cancel</button>
-          <button onClick={async()=>{await axios.post(`${API_BASE}/teacher/clear-logs`);setRequests([]);addToast("Logs cleared.","success");setClearModal(false);}}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-2xl text-sm transition-all">
-            Yes, Clear All
-          </button>
-        </div>
-      </Modal>
     </PageWrapper>
   );
 }
