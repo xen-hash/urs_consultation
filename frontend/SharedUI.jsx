@@ -13,6 +13,7 @@ export {
   Button, IconButton, Card, CardHeader, StatusBadge, RequestBadge, Badge,
   Spinner, Skeleton, SkeletonRows, EmptyState, Alert, Modal, ConfirmModal,
   Drawer, Tabs, Pagination, Toast, useToastState, useScrollLock,
+  ConfirmMark, useConfirmed,
 } from "./ui/index.jsx";
 
 /** Top bar for a signed-in area. `pt-safe` keeps it clear of the iOS notch —

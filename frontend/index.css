@@ -266,3 +266,37 @@
 
   @page { margin: 12mm; }
 }
+
+/* ── Confirmation ─────────────────────────────────────────────────────────────
+   A success toast that simply appears is easy to miss — it arrives in the same
+   corner as everything else and reads as more text. The check draws itself, so
+   the eye catches the movement and knows the action landed without reading.
+
+   The ring pulse is one shot, not a loop: it marks a moment rather than
+   demanding attention indefinitely. */
+
+@keyframes check-draw {
+  from { stroke-dashoffset: 24; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes confirm-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  55%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes confirm-ring {
+  from { transform: scale(0.7); opacity: 0.55; }
+  to   { transform: scale(1.9); opacity: 0; }
+}
+
+.confirm-mark        { animation: confirm-pop 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.confirm-mark path   { stroke-dasharray: 24; animation: check-draw 0.34s ease-out 0.12s both; }
+.confirm-ring        { animation: confirm-ring 0.6s ease-out 0.08s both; }
+
+/* Reduced motion already flattens durations globally, but the check must not
+   be left mid-draw with part of the tick missing. */
+@media (prefers-reduced-motion: reduce) {
+  .confirm-mark path { stroke-dashoffset: 0 !important; }
+}

@@ -16,8 +16,19 @@ import {
 
 export function Button({
   variant = "secondary", size = "md", icon: Icon, children,
-  className = "", loading = false, disabled, ...rest
+  className = "", loading = false, confirmed = false, disabled, ...rest
 }) {
+  // `confirmed` swaps the icon for a drawn check for a moment after the action
+  // lands, so the confirmation appears where the press happened rather than
+  // only in a corner of the screen.
+  const glyph = loading
+    ? <Spinner size={4} light={variant === "primary" || variant === "danger"} />
+    : confirmed
+    ? <ConfirmMark size={size === "sm" ? 14 : 16} ring={false} />
+    : Icon
+    ? <Icon size={size === "sm" ? 14 : 16} aria-hidden="true" />
+    : null;
+
   return (
     <button
       className={`btn btn-${variant} ${size === "sm" ? "btn-sm" : ""} ${className}`}
@@ -25,11 +36,23 @@ export function Button({
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <Spinner size={4} light={variant === "primary" || variant === "danger"} />
-               : Icon ? <Icon size={size === "sm" ? 14 : 16} aria-hidden="true" /> : null}
+      {glyph}
       {children}
     </button>
   );
+}
+
+/** Tracks a short-lived "just succeeded" flag for the Button above. */
+export function useConfirmed(ms = 1600) {
+  const [confirmed, setConfirmed] = useState(false);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const confirm = () => {
+    setConfirmed(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setConfirmed(false), ms);
+  };
+  return [confirmed, confirm];
 }
 
 /** Icon-only button. Always needs a label — the icon alone tells a screen
@@ -115,6 +138,38 @@ export function Badge({ children, tone = "neutral", icon: Icon }) {
   return (
     <span className={`badge badge-${tone}`}>
       {Icon && <Icon size={13} aria-hidden="true" />}{children}
+    </span>
+  );
+}
+
+/* ── Confirmation ─────────────────────────────────────────────────────────── */
+
+/**
+ * A check that draws itself, for the moment an action completes.
+ *
+ * Success used to look identical to every other toast — same corner, same
+ * shape, just different words — so a completed action was something you had to
+ * read to notice. The stroke animating in is caught peripherally, which is the
+ * point: confirmation should not require reading.
+ */
+export function ConfirmMark({ size = 18, ring = true }) {
+  return (
+    <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
+      {ring && (
+        <span
+          aria-hidden="true"
+          className="confirm-ring absolute inset-0 rounded-full border-2 border-current"
+        />
+      )}
+      <svg
+        className="confirm-mark relative"
+        width={size} height={size} viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M20 6 9 17l-5-5" />
+      </svg>
     </span>
   );
 }
@@ -210,7 +265,7 @@ export function useScrollLock(active) {
 
 /* ── Modal ────────────────────────────────────────────────────────────────── */
 
-export function Modal({ open, onClose, title, description, children, footer, size = "md" }) {
+export function Modal({ open, onClose, title, description, children, footer, size = "md", label }) {
   useScrollLock(open);
   const panelRef = useRef(null);
 
@@ -233,7 +288,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={label || (typeof title === "string" ? title : undefined)}
         tabIndex={-1}
         className={`relative bg-surface w-full ${sizes[size]} shadow-lg animate-rise
                     rounded-t-xl sm:rounded-xl flex flex-col max-h-[92dvh] focus:outline-none`}
@@ -383,7 +438,7 @@ export function useToastState() {
 }
 
 const TOAST_TONE = {
-  success: { cls: "bg-success-50 text-success border-success/20",  icon: CheckCircle2 },
+  success: { cls: "bg-success-50 text-success border-success/20",  icon: CheckCircle2, confirm: true },
   error:   { cls: "bg-danger-50 text-danger border-danger/20",     icon: XCircle },
   warning: { cls: "bg-warning-50 text-warning-fg border-warning-fg/20", icon: AlertTriangle },
   info:    { cls: "bg-surface text-fg border-border",              icon: Inbox },
@@ -410,7 +465,9 @@ export function Toast({ toasts, removeToast }) {
               className={`pointer-events-auto flex items-start gap-2.5 rounded-lg border
                           px-3.5 py-3 text-sm shadow-lg animate-rise cursor-pointer ${tone.cls}`}
             >
-              <Icon size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+              {tone.confirm
+                ? <span className="mt-0.5"><ConfirmMark size={16} /></span>
+                : <Icon size={16} className="shrink-0 mt-0.5" aria-hidden="true" />}
               <span className="min-w-0 font-medium">{t.message}</span>
             </div>
           );

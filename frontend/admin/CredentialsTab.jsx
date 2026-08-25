@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import {
   Card, Button, Badge, Modal, ConfirmModal, EmptyState, SkeletonRows, Alert, IconButton,
+  ConfirmMark,
 } from "../SharedUI.jsx";
 import { shortDepartment } from "../ui/DepartmentIcon.jsx";
 import { useDebounced } from "./hooks.js";
@@ -130,16 +131,18 @@ export default function CredentialsTab({ addToast }) {
             <ul className="sm:hidden divide-y divide-border">
               {rows.map(t => (
                 <li key={t.employee_id} className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-fg truncate">{t.professor_name}</p>
-                      <p className="text-xs text-muted-fg mt-0.5">
-                        <span className="font-mono">{t.employee_id}</span> · {shortDepartment(t.department)}
-                      </p>
-                    </div>
+                  <p className="font-semibold text-fg">{t.professor_name}</p>
+                  <p className="text-xs text-muted-fg mt-0.5">
+                    <span className="font-mono">{t.employee_id}</span> · {shortDepartment(t.department)}
+                  </p>
+                  <div className="mt-2">
                     <StateBadges teacher={t} />
                   </div>
-                  <RowActions teacher={t} onPick={(action) => setConfirm({ action, teacher: t })} />
+                  {/* A rule between what the row says and what the row does, so
+                      the status line is not read as another control. */}
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <RowActions teacher={t} onPick={(action) => setConfirm({ action, teacher: t })} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -201,18 +204,48 @@ export default function CredentialsTab({ addToast }) {
   );
 }
 
+/**
+ * Credential state for one faculty member.
+ *
+ * These were filled pills sitting inline with the row's buttons, at the same
+ * size and roundness — "No card" looked like something you press to fix it.
+ * Status now reads as status: no fill, no border, muted label with a coloured
+ * icon carrying the meaning, and laid out as a metadata line separated from the
+ * actions.
+ */
 function StateBadges({ teacher }) {
   if (teacher.active === false) {
-    return <Badge tone="danger" icon={CircleSlash}>Deactivated</Badge>;
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-danger">
+        <CircleSlash size={14} aria-hidden="true" />
+        Deactivated
+      </span>
+    );
   }
+
+  const states = [
+    {
+      ok: teacher.has_qr,
+      icon: teacher.has_qr ? CheckCircle2 : QrCode,
+      label: teacher.has_qr ? "Card active" : "No card yet",
+    },
+    {
+      ok: teacher.has_pin,
+      icon: teacher.has_pin ? CheckCircle2 : Clock,
+      label: teacher.has_pin ? "PIN set" : "No PIN yet",
+    },
+  ];
+
   return (
-    <div className="flex flex-wrap gap-1.5 justify-end sm:justify-start">
-      <Badge tone={teacher.has_qr ? "success" : "neutral"} icon={teacher.has_qr ? CheckCircle2 : QrCode}>
-        {teacher.has_qr ? "Card active" : "No card"}
-      </Badge>
-      <Badge tone={teacher.has_pin ? "success" : "warning"} icon={teacher.has_pin ? CheckCircle2 : Clock}>
-        {teacher.has_pin ? "PIN set" : "No PIN"}
-      </Badge>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {states.map(s => (
+        <span key={s.label}
+          className={`inline-flex items-center gap-1.5 text-xs font-medium
+            ${s.ok ? "text-success" : "text-muted-fg"}`}>
+          <s.icon size={14} aria-hidden="true" className="shrink-0" />
+          {s.label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -220,7 +253,7 @@ function StateBadges({ teacher }) {
 function RowActions({ teacher, onPick, compact = false }) {
   const off = teacher.active === false;
   return (
-    <div className={`flex flex-wrap gap-1.5 ${compact ? "justify-end" : "mt-3"}`}>
+    <div className={`flex flex-wrap gap-1.5 ${compact ? "justify-end" : ""}`}>
       {!off && (
         <>
           <Button size="sm" variant="primary" icon={QrCode} onClick={() => onPick("issue")}>
@@ -255,7 +288,13 @@ function IssuedCardModal({ card, onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="Faculty ID issued"
+      title={
+        <span className="inline-flex items-center gap-2">
+          <span className="text-success"><ConfirmMark size={17} /></span>
+          Faculty ID issued
+        </span>
+      }
+      label="Faculty ID issued"
       description={card.professor_name}
       size="md"
       footer={

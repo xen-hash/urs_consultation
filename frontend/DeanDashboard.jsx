@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, BookOpen, GraduationCap, ClipboardList, UserPlus,
-  QrCode, ScrollText, Menu, LogOut, Shield, Download, RefreshCw,
+  QrCode, ScrollText, LogOut, Shield, Download, RefreshCw,
   Volume2, VolumeX, X,
 } from "lucide-react";
-import { Toast, useToastState, Drawer, IconButton, Button } from "./SharedUI.jsx";
+import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
+import MoreSheet from "./ui/MoreSheet.jsx";
 import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
@@ -40,7 +41,7 @@ export default function DeanDashboard() {
   const admin = getSession("admin");
 
   const [tab, setTab] = useState("overview");
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [muted, setMutedState] = useState(true);
 
   const { stats, loading: statsLoading, reload: reloadStats } = useStats();
@@ -93,7 +94,7 @@ export default function DeanDashboard() {
     <NavContents
       tab={tab}
       pending={stats?.pending}
-      onPick={id => { setTab(id); setDrawerOpen(false); }}
+      onPick={id => setTab(id)}
       onExport={exportData}
       muted={muted}
       onToggleMute={() => setMutedState(m => !m)}
@@ -111,22 +112,9 @@ export default function DeanDashboard() {
         {nav}
       </aside>
 
-      {/* Mobile drawer. `mobileSidebarOpen` used to control only the dark
-          backdrop and never the panel, so the hamburger appeared to do nothing. */}
-      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} label="Dashboard navigation">
-        {nav}
-      </Drawer>
-
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
           <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5">
-            <button
-              onClick={() => setDrawerOpen(true)}
-              aria-label="Open navigation"
-              className="lg:hidden w-11 h-11 grid place-items-center rounded-lg text-muted-fg hover:bg-surface-2"
-            >
-              <Menu size={20} aria-hidden="true" />
-            </button>
             <div className="min-w-0 flex-1">
               <h1 className="font-semibold text-fg truncate">
                 {TABS.find(t => t.id === tab)?.label}
@@ -173,7 +161,32 @@ export default function DeanDashboard() {
           items={NAV_TABS}
           active={tab}
           onSelect={setTab}
-          onMore={() => setDrawerOpen(true)}
+          onMore={() => setSheetOpen(true)}
+        />
+
+        <MoreSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          items={NAV_TABS.slice(4)}
+          active={tab}
+          onSelect={setTab}
+          footer={
+            <div className="space-y-0.5">
+              {[["today", "Export today"], ["all", "Export all records"]].map(([type, label]) => (
+                <button key={type}
+                  onClick={() => { exportData(type); setSheetOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
+                             text-muted-fg hover:bg-surface-2 transition-colors">
+                  <Download size={17} aria-hidden="true" className="shrink-0" />{label}
+                </button>
+              ))}
+              <button onClick={signOut}
+                className="w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
+                           text-danger hover:bg-danger-50 transition-colors">
+                <LogOut size={17} aria-hidden="true" className="shrink-0" />Sign out
+              </button>
+            </div>
+          }
         />
       </div>
     </div>
