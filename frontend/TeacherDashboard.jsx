@@ -4,9 +4,10 @@ import { io } from "socket.io-client";
 import {
   CheckCircle2, XCircle, Calendar, Download, Trash2, Bell,
   RefreshCw, ClipboardList, Sliders, BookOpen, Clock,
-  Pencil, X, Check, User, Camera, CalendarCheck, FileText
+  Pencil, X, Check, User, Camera, CalendarCheck, FileText,
+  RotateCcw, AlertTriangle
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, useScrollLock } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -115,7 +116,7 @@ export default function TeacherDashboard() {
           ding();
           const msg = `New request from ${getFirstName(req.student_name)}`;
           setTicker(t => [msg,...t].slice(0,5));
-          addToast(`📬 ${msg} — ${req.category}`,"info");
+          addToast(`${msg} — ${req.category}`,"info");
         }
         setTimeout(() => {
           piperSpeak(`Paging ${getFirstName(teacher.professor_name)}, ${getFirstName(req.student_name)} is requesting.`);
@@ -132,6 +133,10 @@ export default function TeacherDashboard() {
       if (res.data.photo) setProfilePhoto(res.data.photo);
     } catch(_){}
   }, [teacher]);
+
+  // The appointment sheet is a hand-rolled overlay rather than the shared
+  // Modal, so it needs the scroll lock applied explicitly.
+  useScrollLock(!!apptModal);
 
   useEffect(() => {
     fetchRequests(); fetchProfile();
@@ -280,25 +285,25 @@ export default function TeacherDashboard() {
         onLogout={() => { clearSession(); navigate("/teacher"); }} />
 
       {ticker.length > 0 && (
-        <div className="bg-[#001a33] border-b-2 border-[#ffa000] py-3 px-5 flex items-center gap-4 overflow-hidden">
-          <div className="flex items-center gap-2 shrink-0 bg-[#ffa000] px-3 py-1 rounded-full">
-            <Bell size={16} className="text-white animate-bounce" />
-            <span className="text-white text-xs font-black uppercase tracking-widest">New Request</span>
+        <div className="bg-brand-900 border-b-2 border-accent py-3 px-5 flex items-center gap-4 overflow-hidden">
+          <div className="flex items-center gap-2 shrink-0 bg-accent px-3 py-1 rounded-full">
+            <Bell size={16} className="text-fg animate-bounce" />
+            <span className="text-fg text-xs font-black uppercase tracking-widest">New Request</span>
           </div>
-          <p className="animate-marquee whitespace-nowrap font-black text-[#ffa000] text-lg tracking-wide drop-shadow-lg">
-            {ticker.join("   ✦   ")}
+          <p className="whitespace-nowrap font-black text-accent-fg text-lg tracking-wide drop-shadow-lg">
+            {ticker.join("   ·   ")}
           </p>
         </div>
       )}
 
-      <div className="bg-white/5 backdrop-blur-sm border-b border-white/10">
+      <div className="bg-surface-2 border-b border-border">
         <div className="max-w-5xl mx-auto px-4 flex gap-1 pt-2">
           {TABS.map(t => (
             <button key={t.id} onClick={()=>setTab(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-semibold transition-all
-                ${tab===t.id?"bg-white/15 text-white border-b-2 border-[#ffa000]":"text-white/50 hover:text-white/80"}`}>
+ ${tab===t.id?"bg-surface-2 text-fg border-b-2 border-accent":"text-muted-fg hover:text-muted-fg"}`}>
               {t.icon}{t.label}
-              {t.badge>0 && <span className="bg-[#ff6f00] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{t.badge}</span>}
+              {t.badge>0 && <span className="bg-accent text-fg text-[10px] font-bold px-1.5 py-0.5 rounded-full">{t.badge}</span>}
             </button>
           ))}
         </div>
@@ -308,41 +313,41 @@ export default function TeacherDashboard() {
 
         {/* ── REQUESTS TAB ── */}
         {tab==="requests" && (
-          <div className="space-y-3 animate-slide-up">
+          <div className="space-y-3 animate-rise">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="font-display font-bold text-xl text-white">Consultation Requests</h2>
+              <h2 className="font-semibold text-xl text-fg">Consultation Requests</h2>
               <button onClick={async()=>{setRefreshing(true);await fetchRequests();setRefreshing(false);}}
-                className="flex items-center gap-1.5 text-white/50 hover:text-white text-xs bg-white/10 px-3 py-2 rounded-xl border border-white/20 transition-all">
+                className="flex items-center gap-1.5 text-muted-fg hover:text-fg text-xs bg-surface-2 px-3 py-2 rounded-xl border border-border transition-all">
                 <RefreshCw size={12} className={refreshing?"animate-spin":""}/> Refresh
               </button>
             </div>
 
             {/* Consultation Limit Banner */}
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-3 flex-wrap">
-              <span className="text-white/70 text-sm font-semibold">Daily Limit:</span>
+            <div className="card rounded-lg px-4 py-3 flex items-center gap-3 flex-wrap">
+              <span className="text-muted-fg text-sm font-semibold">Daily Limit:</span>
               <input type="number" min={1} max={100} value={consultLimit}
                 onChange={e => setConsultLimit(Math.max(1, parseInt(e.target.value)||1))}
-                className="w-16 text-center bg-white/20 border border-white/30 text-white font-bold text-sm rounded-xl px-2 py-1 focus:outline-none" />
-              <span className="text-white/50 text-xs">consultations max</span>
+                className="w-16 text-center bg-surface-2 border border-border text-fg font-bold text-sm rounded-xl px-2 py-1 focus:outline-none" />
+              <span className="text-muted-fg text-xs">consultations max</span>
               <span className={`ml-auto text-xs font-bold px-3 py-1 rounded-full ${accepted.size >= consultLimit ? "bg-red-500/20 text-red-300 border border-red-400/30" : "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"}`}>
                 {accepted.size}/{consultLimit} accepted
               </span>
               {accepted.size > 0 && (
-                <button onClick={() => setAccepted(new Set())} className="text-xs text-white/40 hover:text-white bg-white/10 px-2 py-1 rounded-lg">Reset</button>
+                <button onClick={() => setAccepted(new Set())} className="text-xs text-muted-fg hover:text-fg bg-surface-2 px-2 py-1 rounded-lg">Reset</button>
               )}
               <button onClick={handleResetSession} disabled={resettingSession}
                 title="Archive today's consultations and start a new session"
-                className="flex items-center gap-1.5 text-xs font-semibold bg-white/10 hover:bg-[#ffa000]/20 border border-white/20 hover:border-[#ffa000]/40 text-white/60 hover:text-[#ffa000] px-3 py-1.5 rounded-xl transition-all disabled:opacity-40">
-                {resettingSession ? <Spinner size={3} light /> : "🔄"}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-surface-2 hover:bg-accent/20 border border-border hover:border-accent/40 text-muted-fg hover:text-accent-fg px-3 py-1.5 rounded-xl transition-all disabled:opacity-40">
+                {resettingSession ? <Spinner size={3} light /> : <RotateCcw size={14} aria-hidden="true" />}
                 {resettingSession ? "Resetting..." : "New Session"}
               </button>
             </div>
 
             {requests.length===0 ? (
-              <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-10 text-center">
-                <ClipboardList size={40} className="text-white/20 mx-auto mb-3"/>
-                <p className="text-white/50 font-semibold">No pending requests</p>
-                <p className="text-white/30 text-sm mt-1">Student requests will appear here automatically</p>
+              <div className="card rounded-xl p-10 text-center">
+                <ClipboardList size={40} className="text-subtle-fg mx-auto mb-3"/>
+                <p className="text-muted-fg font-semibold">No pending requests</p>
+                <p className="text-muted-fg text-sm mt-1">Student requests will appear here automatically</p>
               </div>
             ) : (() => {
               const pagedReqs = requests.slice((reqPage-1)*REQ_PAGE_SIZE, reqPage*REQ_PAGE_SIZE);
@@ -352,12 +357,12 @@ export default function TeacherDashboard() {
               const isAccepted = accepted.has(req.id);
               const isFull = accepted.size >= consultLimit && !isAccepted;
               return (
-              <div key={req.id} className="bg-white/95 rounded-3xl border border-white/30 shadow-xl p-6 hover:shadow-2xl transition-all">
+              <div key={req.id} className="bg-surface rounded-xl border border-border shadow-xl p-6 hover:shadow-2xl transition-all">
                 <div className="flex items-start gap-5">
-                  <div className="w-16 h-16 bg-[#003366] rounded-2xl overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
+                  <div className="w-16 h-16 bg-brand rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
                     {req.student_photo
                       ? <img src={req.student_photo} alt={req.student_name} className="w-full h-full object-cover"/>
-                      : <span className="text-white font-display font-bold text-2xl">{req.student_name?.[0]||"S"}</span>}
+                      : <span className="text-fg font-semibold text-2xl">{req.student_name?.[0]||"S"}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -375,8 +380,8 @@ export default function TeacherDashboard() {
                     </div>
                     <p className="text-gray-700 text-base mt-3 bg-gray-50 rounded-xl px-4 py-3 italic font-medium">"{req.purpose}"</p>
                     {req.appointment_date && (
-                      <div className="mt-3 flex items-center gap-2 bg-[#ffa000]/10 border border-[#ffa000]/20 rounded-xl px-4 py-2.5">
-                        <CalendarCheck size={16} className="text-[#ffa000]"/>
+                      <div className="mt-3 flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-xl px-4 py-2.5">
+                        <CalendarCheck size={16} className="text-accent-fg"/>
                         <p className="text-sm text-gray-700 font-semibold">
                           Appointment: {new Date(req.appointment_date).toLocaleDateString("en-PH",{month:"short",day:"numeric"})} at {formatTime(req.appointment_time)}
                         </p>
@@ -385,7 +390,7 @@ export default function TeacherDashboard() {
                     )}
                     {isFull && (
                       <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-center">
-                        <p className="text-red-600 text-xs font-semibold">⚠️ Daily limit reached. Decline a request or increase the limit.</p>
+                        <p className="text-danger text-xs font-semibold flex items-center gap-1.5"><AlertTriangle size={13} aria-hidden="true" /> Daily limit reached. Decline a request or increase the limit.</p>
                       </div>
                     )}
                     <div className="flex gap-3 mt-4 flex-wrap">
@@ -400,25 +405,25 @@ export default function TeacherDashboard() {
                           }
                         }}
                         className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all
-                          ${isAccepted
-                            ? "bg-emerald-600 text-white cursor-default"
-                            : isFull
-                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                            : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200 active:scale-95"}`}>
-                        <CheckCircle2 size={15}/> {isAccepted ? "✓ Accepted" : "Accept"}
+ ${isAccepted
+ ? "bg-emerald-600 text-fg cursor-default"
+ : isFull
+ ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+ : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200 active:scale-95"}`}>
+                        <CheckCircle2 size={15}/> {isAccepted ? "Accepted" : "Accept"}
                       </button>
                       {req.appointment_date ? (
-                        <div className="flex items-center gap-2 bg-[#ffa000]/20 border border-[#ffa000]/40 text-[#cc7a00] text-sm font-semibold px-5 py-2.5 rounded-xl">
-                          <CalendarCheck size={15}/> Appointment Set ✓
+                        <div className="flex items-center gap-2 bg-accent/20 border border-accent/40 text-[var(--accent-fg)] text-sm font-semibold px-5 py-2.5 rounded-xl">
+                          <CalendarCheck size={15}/> Appointment set
                         </div>
                       ) : (
                         <button onClick={() => { setApptModal(req); setApptForm({date:"",time:"",notes:""}); }}
-                          className="flex items-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
+                          className="flex items-center gap-2 bg-accent hover:bg-accent text-fg text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
                           <CalendarCheck size={15}/> Set Appointment
                         </button>
                       )}
                       <button onClick={()=>handleDone(req.id)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-fg text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
                         <CheckCircle2 size={15}/> Mark Done
                       </button>
                       <button onClick={()=>handleDecline(req.id)}
@@ -433,14 +438,14 @@ export default function TeacherDashboard() {
             })}
                 {/* Requests Pagination */}
                 {reqTotalPages > 1 && (
-                  <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
-                    <p className="text-white/40 text-xs">{((reqPage-1)*REQ_PAGE_SIZE)+1}–{Math.min(reqPage*REQ_PAGE_SIZE,requests.length)} of {requests.length}</p>
+                  <div className="flex items-center justify-between mt-2 pt-3 border-t border-border">
+                    <p className="text-muted-fg text-xs">{((reqPage-1)*REQ_PAGE_SIZE)+1}–{Math.min(reqPage*REQ_PAGE_SIZE,requests.length)} of {requests.length}</p>
                     <div className="flex gap-2">
                       <button onClick={()=>setReqPage(p=>Math.max(1,p-1))} disabled={reqPage===1}
-                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">← Prev</button>
-                      <span className="px-2 py-1.5 text-xs text-white/40">{reqPage}/{reqTotalPages}</span>
+                        className="px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-xl text-muted-fg hover:text-fg disabled:opacity-30 transition-all">← Prev</button>
+                      <span className="px-2 py-1.5 text-xs text-muted-fg">{reqPage}/{reqTotalPages}</span>
                       <button onClick={()=>setReqPage(p=>Math.min(reqTotalPages,p+1))} disabled={reqPage===reqTotalPages}
-                        className="px-3 py-1.5 text-xs font-semibold bg-white/10 border border-white/20 rounded-xl text-white/60 hover:text-white disabled:opacity-30 transition-all">Next →</button>
+                        className="px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-xl text-muted-fg hover:text-fg disabled:opacity-30 transition-all">Next →</button>
                     </div>
                   </div>
                 )}
@@ -451,24 +456,24 @@ export default function TeacherDashboard() {
 
         {/* ── STATUS TAB ── */}
         {tab==="status" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-slide-up">
-            <div className="bg-white/95 rounded-3xl border border-white/30 shadow-xl p-7">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-rise">
+            <div className="bg-surface rounded-xl border border-border shadow-xl p-7">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-[#ff6f00] rounded-xl flex items-center justify-center"><Sliders size={20} className="text-white"/></div>
-                <h3 className="font-display font-bold text-xl text-[#003366]">My Availability Status</h3>
+                <div className="w-11 h-11 bg-accent rounded-xl flex items-center justify-center"><Sliders size={20} className="text-fg"/></div>
+                <h3 className="font-semibold text-xl text-brand">My Availability Status</h3>
               </div>
               <select value={myStatus} onChange={e=>setMyStatus(e.target.value)}
-                className={`w-full border rounded-2xl px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-[#003366]/20 mb-3 ${STATUS_STYLES[myStatus]||"border-gray-200 bg-gray-50"}`}>
+                className={`w-full border rounded-lg px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-brand/20 mb-3 ${STATUS_STYLES[myStatus]||"border-gray-200 bg-gray-50"}`}>
                 {MANUAL_OPTIONS.map(o=><option key={o}>{o}</option>)}
               </select>
               <button onClick={handleSaveStatus} disabled={savingStatus}
-                className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080] text-white font-semibold py-3 rounded-2xl transition-all text-sm disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                 {savingStatus?<Spinner size={4} light/>:<Sliders size={14}/>}
                 {savingStatus?"Saving...":"Update Status"}
               </button>
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <button onClick={()=>setSchedModal(true)}
-                  className="w-full flex items-center justify-center gap-2 border-2 border-[#003366] text-[#003366] hover:bg-[#003366] hover:text-white font-semibold py-2.5 px-5 rounded-2xl transition-all text-sm">
+                  className="w-full flex items-center justify-center gap-2 border-2 border-brand text-brand hover:bg-brand hover:text-fg font-semibold py-2.5 px-5 rounded-lg transition-all text-sm">
                   <Calendar size={14}/> Edit Weekly Schedule
                 </button>
               </div>
@@ -478,29 +483,29 @@ export default function TeacherDashboard() {
 
         {/* ── PROFILE TAB ── */}
         {tab==="profile" && (
-          <div className="animate-slide-up max-w-2xl mx-auto space-y-5">
+          <div className="animate-rise max-w-2xl mx-auto space-y-5">
             <div className="mb-2">
-              <h2 className="font-display font-bold text-3xl text-white">My Profile & Faculty ID</h2>
-              <p className="text-white/50 text-base mt-1">Update your name, photo, and download your Faculty ID</p>
+              <h2 className="font-semibold text-3xl text-fg">My Profile & Faculty ID</h2>
+              <p className="text-muted-fg text-base mt-1">Update your name, photo, and download your Faculty ID</p>
             </div>
             {showCamera ? (
-              <div className="bg-white rounded-3xl p-6 shadow-2xl animate-bounce-in">
+              <div className="bg-white rounded-xl p-6 shadow-2xl animate-rise">
                 <WebcamCapture title="Take Your ID Photo" onCapture={handleSavePhoto} onCancel={()=>setShowCamera(false)} />
               </div>
             ) : (
               <>
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-5">
+                <div className="card rounded-xl p-5">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-28 h-28 rounded-2xl overflow-hidden bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
-                      {profilePhoto ? <img src={profilePhoto} alt="" className="w-full h-full object-cover"/> : <User size={48} className="text-white/30"/>}
+                    <div className="w-28 h-28 rounded-lg overflow-hidden bg-surface-2 border border-border flex items-center justify-center shrink-0">
+                      {profilePhoto ? <img src={profilePhoto} alt="" className="w-full h-full object-cover"/> : <User size={48} className="text-muted-fg"/>}
                     </div>
                     <div className="flex-1">
-                      <p className="font-display font-bold text-white text-xl">{teacher.professor_name}</p>
-                      <p className="text-white/50 text-sm mt-0.5">{teacher.department}</p>
-                      <p className="text-white/40 text-sm">Faculty · {teacher.employee_id}</p>
+                      <p className="font-semibold text-fg text-xl">{teacher.professor_name}</p>
+                      <p className="text-muted-fg text-sm mt-0.5">{teacher.department}</p>
+                      <p className="text-muted-fg text-sm">Faculty · {teacher.employee_id}</p>
                     </div>
                     <button onClick={()=>setShowCamera(true)}
-                      className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-2 rounded-xl transition-all">
+                      className="flex items-center gap-1.5 text-muted-fg hover:text-fg text-xs bg-surface-2 hover:bg-surface-2 border border-border px-3 py-2 rounded-xl transition-all">
                       <Camera size={13}/> {profilePhoto?"Retake":"Add Photo"}
                     </button>
                   </div>
@@ -508,16 +513,16 @@ export default function TeacherDashboard() {
                     idNumber={teacher.employee_id} role="Faculty"
                     photo={profilePhoto} qrBase64={teacherQR} type="teacher" />
                   <button onClick={downloadID}
-                    className="w-full flex items-center justify-center gap-2 mt-4 bg-[#003366] hover:bg-[#004080] text-white font-semibold py-3 rounded-2xl transition-all text-sm">
+                    className="w-full flex items-center justify-center gap-2 mt-4 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm">
                     <Download size={15}/> Download Faculty ID
                   </button>
                 </div>
 
-                <div className="bg-white/95 rounded-3xl border border-white/30 shadow-xl p-5">
+                <div className="bg-surface rounded-xl border border-border shadow-xl p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-display font-bold text-[#003366]">Edit Name</h3>
+                    <h3 className="font-semibold text-brand">Edit Name</h3>
                     <button onClick={()=>{setEditName(v=>!v);setNewName(teacher.professor_name);}}
-                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#003366] transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-brand transition-colors">
                       <Pencil size={12}/> {editName?"Cancel":"Edit"}
                     </button>
                   </div>
@@ -527,12 +532,12 @@ export default function TeacherDashboard() {
                         <p className="text-amber-700 text-xs font-semibold">Current name:</p>
                         <p className="text-amber-900 text-sm font-bold">{teacher.professor_name}</p>
                       </div>
-                      <input className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366] focus:bg-white transition-all"
+                      <input className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
                         placeholder="e.g. Engr. Maria Santos-Cruz"
                         value={newName} onChange={e=>setNewName(e.target.value)}
                         onKeyDown={e=>e.key==="Enter"&&handleSaveName()} autoFocus />
                       <button onClick={handleSaveName} disabled={savingName||!newName.trim()}
-                        className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080] text-white font-semibold py-3 rounded-2xl transition-all text-sm disabled:opacity-50">
+                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                         {savingName?<Spinner size={4} light/>:<Check size={15}/>}
                         {savingName?"Saving...":"Update Name"}
                       </button>
@@ -543,16 +548,18 @@ export default function TeacherDashboard() {
                 </div>
 
                 {/* PIN Setup Card */}
-                <div className="bg-white/95 rounded-3xl border border-white/30 shadow-xl p-5">
+                <div className="bg-surface rounded-xl border border-border shadow-xl p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <h3 className="font-display font-bold text-[#003366]">Login PIN</h3>
+                      <h3 className="font-semibold text-brand">Login PIN</h3>
                       <p className="text-gray-400 text-xs mt-0.5">
-                        {hasPin ? "✅ PIN is set — you can log in with ID + PIN" : "⚠️ No PIN set yet"}
+                        {hasPin
+                        ? <><CheckCircle2 size={13} aria-hidden="true" className="inline mr-1.5 -mt-0.5" />PIN is set — you can sign in with your ID and PIN</>
+                        : <><AlertTriangle size={13} aria-hidden="true" className="inline mr-1.5 -mt-0.5" />No PIN set yet</>}
                       </p>
                     </div>
                     <button onClick={() => { setSettingPin(v => !v); setPinForm({ pin: '', confirm: '' }); }}
-                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#003366] transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-brand transition-colors">
                       <Pencil size={12}/> {settingPin ? "Cancel" : hasPin ? "Change PIN" : "Set PIN"}
                     </button>
                   </div>
@@ -560,15 +567,15 @@ export default function TeacherDashboard() {
                     <div className="space-y-4">
                       <div>
                         <p className="text-xs font-semibold text-gray-500 mb-2">Your Employee ID (share this with no one):</p>
-                        <div className="bg-[#003366]/10 border border-[#003366]/20 rounded-xl px-4 py-2.5 flex items-center gap-2">
-                          <span className="font-mono font-bold text-[#003366] text-lg tracking-widest">{teacher.employee_id}</span>
+                        <div className="bg-brand/10 border border-brand/20 rounded-xl px-4 py-2.5 flex items-center gap-2">
+                          <span className="font-mono font-bold text-brand text-lg tracking-widest">{teacher.employee_id}</span>
                         </div>
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">Enter 4-digit PIN</label>
                         <div className="flex gap-3 justify-center">
                           {[0,1,2,3].map(i => (
-                            <div key={i} className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-xl font-bold text-[#003366]">
+                            <div key={i} className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-xl font-bold text-brand">
                               {pinForm.pin[i] ? "●" : ""}
                             </div>
                           ))}
@@ -579,8 +586,8 @@ export default function TeacherDashboard() {
                         <div className="flex gap-3 justify-center">
                           {[0,1,2,3].map(i => (
                             <div key={i} className={`w-12 h-12 rounded-xl border flex items-center justify-center text-xl font-bold
-                              ${pinForm.confirm.length > 0 && pinForm.pin !== pinForm.confirm.slice(0,pinForm.pin.length) && i < pinForm.confirm.length
-                                ? "bg-red-50 border-red-300 text-red-600" : "bg-gray-100 border-gray-200 text-[#003366]"}`}>
+ ${pinForm.confirm.length > 0 && pinForm.pin !== pinForm.confirm.slice(0,pinForm.pin.length) && i < pinForm.confirm.length
+ ? "bg-red-50 border-red-300 text-red-600" : "bg-gray-100 border-gray-200 text-brand"}`}>
                               {pinForm.confirm[i] ? "●" : ""}
                             </div>
                           ))}
@@ -617,7 +624,7 @@ export default function TeacherDashboard() {
                         </button>
                       </div>
                       <button onClick={handleSetPin} disabled={savingPin || pinForm.pin.length < 4 || pinForm.confirm.length < 4}
-                        className="w-full flex items-center justify-center gap-2 bg-[#003366] hover:bg-[#004080] text-white font-semibold py-3 rounded-2xl transition-all text-sm disabled:opacity-50">
+                        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                         {savingPin ? <Spinner size={4} light/> : <Check size={15}/>}
                         {savingPin ? "Saving..." : "Save PIN"}
                       </button>
@@ -627,7 +634,7 @@ export default function TeacherDashboard() {
                       {hasPin
                         ? `Your Employee ID is: `
                         : "Set a 4-digit PIN so you can log in quickly using your Employee ID + PIN instead of scanning QR."}
-                      {hasPin && <span className="font-mono font-bold text-[#003366] ml-1 tracking-widest">{teacher.employee_id}</span>}
+                      {hasPin && <span className="font-mono font-bold text-brand ml-1 tracking-widest">{teacher.employee_id}</span>}
                     </p>
                   )}
                 </div>
@@ -640,11 +647,11 @@ export default function TeacherDashboard() {
       {/* Appointment Modal */}
       {apptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={()=>setApptModal(null)}/>
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md animate-bounce-in">
+          <div className="absolute inset-0 bg-black/50" onClick={()=>setApptModal(null)}/>
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-rise">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
-                <h2 className="font-display font-bold text-lg text-[#003366]">Set Appointment</h2>
+                <h2 className="font-semibold text-lg text-brand">Set Appointment</h2>
                 <p className="text-gray-400 text-xs mt-0.5">Assign a date and time for this consultation</p>
               </div>
               <button onClick={()=>setApptModal(null)} className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
@@ -652,34 +659,34 @@ export default function TeacherDashboard() {
               </button>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3">
-                <p className="font-semibold text-[#003366] text-sm">{apptModal.student_name}</p>
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                <p className="font-semibold text-brand text-sm">{apptModal.student_name}</p>
                 <p className="text-gray-500 text-xs">{apptModal.course} · {apptModal.category}</p>
                 <p className="text-gray-600 text-xs italic mt-1">"{apptModal.purpose}"</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Date *</label>
-                  <input type="date" className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366] focus:bg-white transition-all"
+                  <input type="date" className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
                     value={apptForm.date} onChange={e=>setApptForm(p=>({...p,date:e.target.value}))}
                     min={new Date().toISOString().split("T")[0]} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Time *</label>
-                  <input type="time" className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366] focus:bg-white transition-all"
+                  <input type="time" className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
                     value={apptForm.time} onChange={e=>setApptForm(p=>({...p,time:e.target.value}))} />
                 </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Notes (optional)</label>
-                <input className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003366]/20 focus:border-[#003366] focus:bg-white transition-all"
+                <input className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
                   placeholder="e.g. Please bring your thesis draft"
                   value={apptForm.notes} onChange={e=>setApptForm(p=>({...p,notes:e.target.value}))} />
               </div>
               <div className="flex gap-2 pt-1">
-                <button onClick={()=>setApptModal(null)} className="flex-1 border-2 border-[#003366] text-[#003366] hover:bg-[#003366] hover:text-white font-semibold py-3 px-5 rounded-2xl transition-all text-sm">Cancel</button>
+                <button onClick={()=>setApptModal(null)} className="flex-1 border-2 border-brand text-brand hover:bg-brand hover:text-fg font-semibold py-3 px-5 rounded-lg transition-all text-sm">Cancel</button>
                 <button onClick={handleSetAppointment} disabled={savingAppt}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#ffa000] hover:bg-[#e69000] text-white font-semibold py-3 rounded-2xl transition-all text-sm disabled:opacity-50">
+                  className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent text-fg font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
                   {savingAppt?<Spinner size={4} light/>:<CalendarCheck size={14}/>}
                   {savingAppt?"Saving...":"Confirm Appointment"}
                 </button>

@@ -74,12 +74,12 @@ export default function ScheduleModal({ open, onClose, onSave, initial }) {
         {DAYS.map(day => {
           const s = schedule[day];
           return (
-            <div key={day} className={`rounded-2xl border transition-all ${
-              s.unavailable ? "bg-gray-50 border-gray-200 opacity-60" : "bg-blue-50 border-blue-100"
-            }`}>
+            <div key={day} className={`rounded-lg border transition-all ${
+ s.unavailable ? "bg-gray-50 border-gray-200 opacity-60" : "bg-blue-50 border-blue-100"
+ }`}>
               {/* Day header */}
               <div className="flex items-center gap-3 px-4 py-3">
-                <span className="w-10 font-bold text-sm text-[#003366] font-display">
+                <span className="w-10 font-bold text-sm text-brand">
                   {DAY_LABELS[day]}
                 </span>
                 <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none">
@@ -97,13 +97,13 @@ export default function ScheduleModal({ open, onClose, onSave, initial }) {
                         value={s.limit === 0 ? "" : s.limit}
                         onChange={e => updateField(day, "limit", e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value) || 0))}
                         placeholder="0"
-                        className="w-16 text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-[#003366]/30 text-center font-bold"
+                        className="w-16 text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 text-center font-bold"
                       />
                       <span className="text-xs text-gray-400">slots</span>
                     </div>
                     {s.slots.length < 4 && (
                       <button onClick={() => addSlot(day)}
-                        className="flex items-center gap-1 text-xs text-[#003366] font-semibold hover:bg-blue-100 px-2 py-1 rounded-lg transition-all">
+                        className="flex items-center gap-1 text-xs text-brand font-semibold hover:bg-blue-100 px-2 py-1 rounded-lg transition-all">
                         <Plus size={12} /> Add Time
                       </button>
                     )}
@@ -117,16 +117,16 @@ export default function ScheduleModal({ open, onClose, onSave, initial }) {
                   {s.slots.map((slot, idx) => (
                     <div key={idx} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-blue-100">
                       <span className="text-xs text-gray-400 font-bold w-5">{idx+1}.</span>
-                      <Clock size={13} className="text-[#003366]" />
+                      <Clock size={13} className="text-brand" />
                       <select value={slot.start}
                         onChange={e => updateSlot(day, idx, "start", e.target.value)}
-                        className="text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-[#003366]/30">
+                        className="text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand/20">
                         {TIME_OPTIONS.map(t => <option key={t}>{t}</option>)}
                       </select>
                       <span className="text-gray-400 text-xs">to</span>
                       <select value={slot.end}
                         onChange={e => updateSlot(day, idx, "end", e.target.value)}
-                        className="text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-[#003366]/30">
+                        className="text-sm border border-blue-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand/20">
                         {TIME_OPTIONS.map(t => <option key={t}>{t}</option>)}
                       </select>
                       {s.slots.length > 1 && (

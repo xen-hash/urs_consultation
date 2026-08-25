@@ -94,25 +94,24 @@ export function InstallAppButton({ className = "" }) {
       <button
         type="button"
         onClick={() => (canInstall ? install() : setShowSteps(true))}
-        className={`flex items-center gap-1.5 text-white/70 hover:text-white text-sm
-                    bg-white/10 hover:bg-white/20 border border-white/20
-                    px-3 py-1.5 rounded-xl transition-all ${className}`}
+        className={`flex items-center gap-1.5 text-muted-fg hover:text-fg text-sm
+ bg-surface-2 hover:bg-surface-2 border border-border
+ px-3 py-1.5 rounded-xl transition-all ${className}`}
       >
         <Download size={13} /> Install App
       </button>
 
       {showSteps && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center
-                     bg-black/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4"
           onClick={() => setShowSteps(false)}
         >
           <div
-            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-slide-up"
+            className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl animate-rise"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-4">
-              <h3 className="font-display font-bold text-lg text-[#003366]">
+              <h3 className="font-semibold text-lg text-brand">
                 Add to Home Screen
               </h3>
               <button onClick={() => setShowSteps(false)} className="text-gray-400 hover:text-gray-600">
@@ -121,18 +120,18 @@ export function InstallAppButton({ className = "" }) {
             </div>
             <ol className="text-sm text-gray-600 space-y-3 leading-relaxed">
               <li className="flex gap-2">
-                <span className="font-semibold text-[#003366]">1.</span>
+                <span className="font-semibold text-brand">1.</span>
                 <span>
                   Tap the <Share size={13} className="inline -mt-0.5" /> Share button in Safari's
                   toolbar.
                 </span>
               </li>
               <li className="flex gap-2">
-                <span className="font-semibold text-[#003366]">2.</span>
+                <span className="font-semibold text-brand">2.</span>
                 <span>Scroll down and choose <strong>Add to Home Screen</strong>.</span>
               </li>
               <li className="flex gap-2">
-                <span className="font-semibold text-[#003366]">3.</span>
+                <span className="font-semibold text-brand">3.</span>
                 <span>Tap <strong>Add</strong> — the URS seal appears with your other apps.</span>
               </li>
             </ol>
@@ -171,9 +170,7 @@ export default function PWAStatus() {
       {!online && (
         <div
           role="status"
-          className="pointer-events-auto flex items-center gap-2
-                     bg-amber-500 text-white text-sm font-semibold
-                     px-4 py-2.5 rounded-2xl shadow-2xl animate-slide-up"
+          className="pointer-events-auto flex items-center gap-2 bg-amber-500 text-fg text-sm font-semibold px-4 py-2.5 rounded-lg shadow-2xl animate-rise"
         >
           <WifiOff size={15} />
           You're offline — showing the last loaded data
@@ -183,20 +180,19 @@ export default function PWAStatus() {
       {needRefresh && (
         <div
           role="status"
-          className="pointer-events-auto flex items-center gap-3
-                     bg-[#003366] text-white text-sm px-4 py-2.5 rounded-2xl shadow-2xl animate-slide-up"
+          className="pointer-events-auto flex items-center gap-3 bg-brand text-fg text-sm px-4 py-2.5 rounded-lg shadow-2xl animate-rise"
         >
-          <RefreshCw size={15} className="text-[#ffa000]" />
+          <RefreshCw size={15} className="text-accent-fg" />
           <span className="font-semibold">A new version is available</span>
           <button
             onClick={() => updateServiceWorker(true)}
-            className="bg-[#ff6f00] hover:bg-[#e65c00] font-semibold px-3 py-1 rounded-xl transition-colors"
+            className="bg-accent hover:bg-accent font-semibold px-3 py-1 rounded-xl transition-colors"
           >
             Reload
           </button>
           <button
             onClick={() => setNeedRefresh(false)}
-            className="text-white/50 hover:text-white transition-colors"
+            className="text-muted-fg hover:text-fg transition-colors"
             aria-label="Dismiss"
           >
             <X size={15} />

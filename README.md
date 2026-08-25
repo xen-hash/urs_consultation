@@ -41,6 +41,9 @@ seeds the professor list the first time it starts.
 ```
 DATABASE_URL  = (the Postgres connection string from STEP 1)
 SECRET_KEY    = (generate a random string, e.g. openssl rand -hex 32)
+ADMIN_USERNAME      = (who signs in at /dean)
+ADMIN_PASSWORD_HASH = (bcrypt hash — see README_DEPLOY.md Step 0)
+KIOSK_PASSWORD      = (kiosk exit code)
 FRONTEND_URL  = https://your-app.vercel.app   ← fill in after Vercel deploy
 ```
 

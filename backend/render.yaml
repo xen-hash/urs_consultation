@@ -9,11 +9,26 @@ services:
       #   postgresql://user:pass@ep-xyz.neon.tech/neondb?sslmode=require
       - key: DATABASE_URL
         sync: false
+
+      # Signs every session token. A known value here means anyone can forge a
+      # session for any role, so let Render generate it.
       - key: SECRET_KEY
         generateValue: true
+
+      # Comma-separated frontend origins allowed to call this API. Never "*".
       - key: ALLOWED_ORIGINS
         sync: false
+
+      # Administrator credentials. Prefer ADMIN_PASSWORD_HASH (a bcrypt hash) so
+      # the plaintext never exists in the environment:
+      #   python -c "import bcrypt;print(bcrypt.hashpw(b'YOUR-PASSWORD', bcrypt.gensalt()).decode())"
+      # These used to be committed here as "admin123"; the app now refuses to
+      # start on that value.
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+
+      # Exit code for the public kiosk display.
       - key: KIOSK_PASSWORD
-        value: admin123
-      - key: ADMIN_PASSWORD
-        value: admin123
+        sync: false

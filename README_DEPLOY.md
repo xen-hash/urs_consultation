@@ -12,6 +12,63 @@ deploy/
 
 ---
 
+## STEP 0 — Security settings you must set before going live
+
+The backend **refuses to start** if `SECRET_KEY`, the administrator password or
+`KIOSK_PASSWORD` still hold their built-in development defaults. That is
+deliberate: those values are visible in the source, so a deployment carrying one
+has no authentication at all. Generate real ones:
+
+```bash
+# Signs session tokens. Anyone who knows it can forge a session for any role.
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+
+# Administrator password, as a bcrypt hash so the plaintext is never stored.
+python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR-PASSWORD', bcrypt.gensalt()).decode())"
+```
+
+Set these in the host's environment (Render → Environment):
+
+| Variable | Value |
+|---|---|
+| `SECRET_KEY` | the random string from above |
+| `ADMIN_USERNAME` | who signs in at `/dean` |
+| `ADMIN_PASSWORD_HASH` | the bcrypt hash from above |
+| `KIOSK_PASSWORD` | exit code for the public kiosk display |
+| `ALLOWED_ORIGINS` | your frontend URL — comma-separated, never `*` |
+
+For local development only, `ALLOW_INSECURE_DEFAULTS=1` lets the built-in
+defaults through. Never set it on a deployed instance.
+
+---
+
+## STEP 0b — First run: issue faculty ID cards
+
+Faculty sign in by scanning a Faculty ID card, or with their Employee ID and a
+PIN. **Cards are issued by an administrator** — there is no self-service path,
+because the one that used to exist handed any visitor any professor's login
+credential.
+
+After the first deploy:
+
+1. Sign in at `/dean` with the administrator credentials from Step 0.
+2. Open **Credentials**.
+3. For each faculty member, choose **Issue card**. The QR is displayed once —
+   print or download it there and then. It cannot be retrieved afterwards.
+4. Hand the printed card over. On first scan they are asked to set a PIN.
+
+**Upgrading an existing installation:** every faculty QR printed before this
+release stops working, because the old cards encoded the employee ID (a
+guessable value) rather than a random credential. Anyone who already set a PIN
+can still sign in with Employee ID + PIN while cards are reissued, so nobody is
+locked out — but tell faculty before the switch.
+
+If a card is lost, **Reissue** replaces it and revokes the old one in the same
+action. **Revoke** kills a card without issuing a replacement, and
+**Deactivate** blocks the account and revokes the card together.
+
+---
+
 ## STEP 1 — Set up a PostgreSQL Database
 
 The backend runs on PostgreSQL. Free options whose free tier doesn't expire:
@@ -44,12 +101,16 @@ postgresql://user:password@ep-xyz.ap-southeast-1.aws.neon.tech/neondb?sslmode=re
 5. Go to your service → **Environment** tab → add:
 
 ```
-DATABASE_URL    = (the Postgres connection string from Step 1)
-SECRET_KEY      = (make a long random string)
-ALLOWED_ORIGINS = https://your-app.vercel.app   ← update after Step 3
-KIOSK_PASSWORD  = admin123
-ADMIN_PASSWORD  = admin123
+DATABASE_URL        = (the Postgres connection string from Step 1)
+SECRET_KEY          = (the random string from Step 0)
+ALLOWED_ORIGINS     = https://your-app.vercel.app   ← update after Step 3
+ADMIN_USERNAME      = (who signs in at /dean)
+ADMIN_PASSWORD_HASH = (the bcrypt hash from Step 0)
+KIOSK_PASSWORD      = (the kiosk exit code from Step 0)
 ```
+
+The deploy will fail to boot if `SECRET_KEY`, the admin password or
+`KIOSK_PASSWORD` are left at their built-in defaults — see Step 0.
 
 `DATABASE_URL` replaces the old `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` /
 `DB_PORT` set; delete those if they're still there.
