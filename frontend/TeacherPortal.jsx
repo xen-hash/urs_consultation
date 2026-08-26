@@ -8,7 +8,7 @@ import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
 import URSBackground from "./URSBackground.jsx";
 import HomeBrand from "./ui/HomeBrand.jsx";
 import api, { apiError } from "./httpClient.js";
-import { setSession } from "./auth.js";
+import { setSession, clearSession } from "./auth.js";
 
 // This screen used to offer a third option, "Get My ID", which let anyone pick
 // any professor from a list and receive that professor's employee ID and login
@@ -37,6 +37,13 @@ export default function TeacherPortal() {
   const goHome = () => {
     setView("home"); setPin(""); setPinEmpId(""); setNewPin(""); setPendingTeacher(null);
   };
+
+  // Backing out of the PIN step is not just a change of view. The card scan has
+  // already signed you in, so dropping back to the sign-in screen and leaving it
+  // at that would strand a live faculty session behind a page that looks signed
+  // out — on a shared phone, the next person to scan is already you. Cancelling
+  // signs out, and the card gets you back in.
+  const cancelSetPin = () => { clearSession("teacher"); goHome(); };
 
   // The splash holds the confirmation while the route changes underneath it,
   // which a toast cannot do — navigation unmounts the toast host.
@@ -127,18 +134,18 @@ export default function TeacherPortal() {
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 w-full">
           <HomeBrand subtitle="Faculty Portal" className="flex-1" />
           {/* Back was only drawn once a panel was open, so the first screen —
-              the one people land on — had no way out at all. Choosing a PIN is
-              the exception: the card scan has already signed you in, and there
-              is nothing behind it to go back to. */}
+              the one people land on — had no way out at all. Every panel now
+              has one, the PIN step included. */}
           {view === "home" ? (
             <Link to="/" className="btn btn-ghost btn-sm shrink-0">
               <ChevronLeft size={16} aria-hidden="true" /> Back
             </Link>
-          ) : view !== "setpin" ? (
-            <button onClick={goHome} className="btn btn-ghost btn-sm shrink-0">
+          ) : (
+            <button onClick={view === "setpin" ? cancelSetPin : goHome}
+              className="btn btn-ghost btn-sm shrink-0">
               <ChevronLeft size={16} aria-hidden="true" /> Back
             </button>
-          ) : null}
+          )}
         </div>
       </nav>
 
@@ -216,7 +223,7 @@ export default function TeacherPortal() {
 
         {(view === "pinlogin" || view === "setpin") && (
           <PinPanel
-            onBack={goHome}
+            onBack={view === "setpin" ? cancelSetPin : goHome}
             mode={view}
             teacher={pendingTeacher}
             employeeId={pinEmpId}
@@ -245,8 +252,11 @@ function PinPanel({ mode, teacher, employeeId, onEmployeeId, pin, onPin, loading
   return (
     <section className="animate-rise max-w-sm mx-auto w-full" aria-labelledby="pin-heading">
       {/* Choosing a PIN happens after a card scan has already signed you in, so
-          there is nothing to go back to — every other panel gets a way out. */}
-      {!setting && <BackLink onClick={onBack}>Sign-in options</BackLink>}
+          the way out of this one is a sign-out rather than a step back — said
+          plainly, because "Back" here throws away a session. */}
+      <BackLink onClick={onBack}>
+        {setting ? "Cancel and sign out" : "Sign-in options"}
+      </BackLink>
       <header className="mb-6 mt-2 text-center">
         <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
           {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}

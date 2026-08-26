@@ -30,6 +30,7 @@ export default function HomeBrand({
   tone = "light",
   className = "",
   textClassName = "",
+  titleClassName = "text-sm truncate",
 }) {
   const navigate = useNavigate();
   const [asking, setAsking] = useState(false);
@@ -58,12 +59,17 @@ export default function HomeBrand({
         type="button"
         onClick={handleClick}
         title="Go to the main page"
-        className={`flex items-center gap-3 min-w-0 text-left -ml-2 px-2 py-1 rounded-lg
+        className={`flex items-center gap-2 xs:gap-3 min-w-0 text-left -ml-2 px-2 py-1 rounded-lg
                     transition-colors duration-200 ${text.hover} ${className}`}
       >
-        <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
+        {/* A little smaller under 400px, where the row has the least to give. */}
+        <img src={ursLogo} alt="" aria-hidden="true"
+          className="w-7 h-7 xs:w-8 xs:h-8 object-contain shrink-0" />
         <span className={`min-w-0 ${textClassName}`}>
-          <span className={`block font-semibold text-sm truncate ${text.title}`}>{title}</span>
+          {/* Truncating by default, but a caller with a narrow bar can let the
+              name wrap instead — half a name under an ellipsis is worse than
+              two lines of the whole one. */}
+          <span className={`block font-semibold ${text.title} ${titleClassName}`}>{title}</span>
           {subtitle && <span className={`block text-xs truncate ${text.sub}`}>{subtitle}</span>}
         </span>
       </button>
