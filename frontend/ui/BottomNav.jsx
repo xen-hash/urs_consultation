@@ -13,15 +13,21 @@ import { MoreHorizontal } from "lucide-react";
  * 320px. A longer list keeps its first four items and hands the rest to a
  * "More" action, which is expected to open the full navigation.
  */
-export default function BottomNav({ items, active, onSelect, onMore, className = "" }) {
+export default function BottomNav({ items, active, onSelect, onMore, alwaysShowMore = false, className = "" }) {
   // Six slots is the ceiling: at 320px that is ~53px each, which still clears
   // a comfortable touch target once the labels are kept short. Five sections
   // show and the sixth slot becomes More; below that everything fits.
+  // `alwaysShowMore` is for a screen whose sections all fit but which still
+  // needs the sheet for something else — the administration dashboard keeps
+  // sign out, refresh and the guide there, and with nowhere else to reach them
+  // a bar that hides More strands them.
   const MAX_SLOTS = 6;
-  const fits = items.length <= MAX_SLOTS;
+  const withMore = alwaysShowMore ? items.length + 1 : items.length;
+  const fits = withMore <= MAX_SLOTS;
   const visible = fits ? items.length : MAX_SLOTS - 1;
   const shown = items.slice(0, visible);
-  const overflowActive = !fits && items.slice(visible).some(i => i.id === active);
+  const showMore = !fits || alwaysShowMore;
+  const overflowActive = items.slice(visible).some(i => i.id === active);
 
   return (
     <nav
@@ -70,7 +76,7 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
           );
         })}
 
-        {!fits && (
+        {showMore && (
           <li className="flex-1 min-w-0">
             <button
               onClick={onMore}
