@@ -24,7 +24,9 @@
  * The steps that drive the app need callbacks into it, so this is a function
  * rather than a constant; the dashboard passes its own setters in.
  */
-export function studentTour({ showDepartments, openDepartment, openRequestFor, showInbox, demo }) {
+export function studentTour({
+  showDepartments, openDepartment, openRequestFor, showInbox, showProfile, demo,
+}) {
   const professor = demo?.professor;
 
   return [
@@ -47,7 +49,10 @@ export function studentTour({ showDepartments, openDepartment, openRequestFor, s
       body: professor
         ? `Opened against ${professor}, exactly as it would be if you tapped them. Nothing has been sent — this is your own form to look at.`
         : "Tapping a professor opens this form. It is how a consultation is requested.",
-      target: '[data-tour="request-form"]',
+      // The professor being requested, not the whole overlay. Pointing at the
+      // form itself highlighted the entire screen, which dims nothing and
+      // singles out nothing.
+      target: '[data-tour="request-header"]',
       before: openRequestFor,
     },
     {
@@ -63,13 +68,15 @@ export function studentTour({ showDepartments, openDepartment, openRequestFor, s
     {
       title: "Their answer arrives in Inbox",
       body: "Accepted, declined, or accepted with a date and time. A dot on the tab means something is waiting to be read.",
-      target: '[data-tour="nav-inbox"]',
+      // Both navigations: the bar on a phone, the tab strip on a desktop.
+      target: ['[data-tour="nav-inbox"]', '[data-tour="tab-inbox"]'],
       before: showInbox,
     },
     {
       title: "Profile holds your ID",
       body: "Your student QR code, your photo and your PIN. That QR is how you sign in without typing your ID.",
-      target: '[data-tour="nav-profile"]',
+      target: ['[data-tour="nav-profile"]', '[data-tour="tab-profile"]'],
+      before: showProfile,
     },
     {
       title: "No sign-in needed to just look",
@@ -78,33 +85,46 @@ export function studentTour({ showDepartments, openDepartment, openRequestFor, s
   ];
 }
 
-export const TEACHER_TOUR = [
-  {
-    title: "Your status is the top control",
-    body: "Available, Unavailable, On Leave or In Meeting. Leave it on Auto and it follows the schedule you set; change it by hand when the day does not go to plan.",
-    target: '[data-tour="teacher-status"]',
-  },
-  {
-    title: "Set how many you will take",
-    body: "The daily limit stops requests piling up past what you can actually see. Type a number and press Enter — it is remembered for next time.",
-    target: '[data-tour="teacher-limit"]',
-  },
-  {
-    title: "Requests come in below",
-    body: "Accept one to hold a slot, mark it Done when the consultation has happened, or Decline it with the student notified either way.",
-    target: '[data-tour="teacher-requests"]',
-  },
-  {
-    title: "Delete is for mistakes only",
-    body: "Duplicates and test entries can be removed outright. Declining is the answer a student sees; deleting removes the row and is not undoable.",
-    target: '[data-tour="teacher-requests"]',
-  },
-  {
-    title: "Your schedule drives everything",
-    body: "Set your weekly consultation hours and the board shows you as available during them automatically, without you touching anything.",
-    target: '[data-tour="teacher-schedule"]',
-  },
-];
+/**
+ * The teacher tour opens the tab each control lives on.
+ *
+ * The status select and the schedule button are on the Schedule tab, and the
+ * dashboard opens on Requests — so two of the five steps described controls
+ * that were not on screen and highlighted nothing at all.
+ */
+export function teacherTour(setTab) {
+  return [
+    {
+      title: "Your status is the top control",
+      body: "Available, Unavailable, On Leave or In Meeting. Leave it on Auto and it follows the schedule you set; change it by hand when the day does not go to plan.",
+      target: '[data-tour="teacher-status"]',
+      before: () => setTab("status"),
+    },
+    {
+      title: "Set how many you will take",
+      body: "The daily limit stops requests piling up past what you can actually see. Type a number and press Enter — it is saved to your account, so it holds on any device.",
+      target: '[data-tour="teacher-limit"]',
+      before: () => setTab("requests"),
+    },
+    {
+      title: "Requests come in below",
+      body: "Accept one to hold a slot, mark it Done when the consultation has happened, or Decline it with the student notified either way.",
+      target: '[data-tour="teacher-requests"]',
+      before: () => setTab("requests"),
+    },
+    {
+      title: "Delete is for mistakes only",
+      body: "Duplicates and test entries can be removed outright. Declining is the answer a student sees; deleting removes the row and is not undoable.",
+      target: '[data-tour="teacher-requests"]',
+    },
+    {
+      title: "Your schedule drives everything",
+      body: "Set your weekly consultation hours and the board shows you as available during them automatically, without you touching anything.",
+      target: '[data-tour="teacher-schedule"]',
+      before: () => setTab("status"),
+    },
+  ];
+}
 
 /**
  * The admin tour opens each section as it describes it.

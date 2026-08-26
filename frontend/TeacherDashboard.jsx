@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import {
@@ -10,7 +10,7 @@ import {
 import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, ConfirmModal, NumberField, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
-import { TEACHER_TOUR } from "./ui/tours.js";
+import { teacherTour } from "./ui/tours.js";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -106,6 +106,7 @@ export default function TeacherDashboard() {
   const [accepted, setAccepted]         = useState(new Set());
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [tourOpen, setTourOpen]         = useState(() => !hasSeenTour("teacher"));
+  const tourSteps = useMemo(() => teacherTour(setTab), []);
   const [deleteBusy, setDeleteBusy]     = useState(false);
   const [reqPage, setReqPage]           = useState(1);
   const REQ_PAGE_SIZE = 10;
@@ -363,8 +364,13 @@ export default function TeacherDashboard() {
         tone="danger"
         loading={deleteBusy}
       />
-      <Walkthrough id="teacher" steps={TEACHER_TOUR} open={tourOpen}
-        onClose={() => setTourOpen(false)} />
+      <Walkthrough
+        id="teacher"
+        steps={tourSteps}
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onExit={() => setTab("requests")}
+      />
       <URSHeader subtitle="Teacher Dashboard" accent="orange"
         onHelp={() => setTourOpen(true)}
         user={{ name: teacher.professor_name, sub: teacher.department }}
