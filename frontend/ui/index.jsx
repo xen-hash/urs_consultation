@@ -209,6 +209,60 @@ export function AlertMark({ size = 18, ring = true }) {
   );
 }
 
+/**
+ * A number field you can actually type in.
+ *
+ * The obvious implementation — value={n}, onChange={e => setN(parseInt(...) || 1)}
+ * — cannot be edited. Clearing the box makes parseInt return NaN, the fallback
+ * puts the minimum straight back, and the digit you were about to replace is
+ * still sitting there: typing 20 over a 10 gives you 120, or 1. The limit field
+ * on the faculty dashboard was stuck at 1 for exactly this reason.
+ *
+ * So the box holds text while you are typing, including empty, and only becomes
+ * a number when you leave it or press Enter. Clamping happens then too, not on
+ * every keystroke — clamping mid-type is what eats the digits.
+ */
+export function NumberField({
+  value, onCommit, min = 0, max = 999, className = "", id, ...rest
+}) {
+  const [draft, setDraft] = useState(String(value ?? ""));
+  const editing = useRef(false);
+
+  // Follow the outside value unless the person is mid-edit, in which case
+  // overwriting what they are typing is the whole bug being avoided.
+  useEffect(() => {
+    if (!editing.current) setDraft(String(value ?? ""));
+  }, [value]);
+
+  const commit = () => {
+    editing.current = false;
+    const parsed = parseInt(draft, 10);
+    const next = Number.isNaN(parsed) ? value : Math.min(max, Math.max(min, parsed));
+    setDraft(String(next));
+    if (next !== value) onCommit(next);
+  };
+
+  return (
+    <input
+      id={id}
+      type="number"
+      inputMode="numeric"
+      min={min}
+      max={max}
+      value={draft}
+      onFocus={e => { editing.current = true; e.target.select(); }}
+      onChange={e => { editing.current = true; setDraft(e.target.value); }}
+      onBlur={commit}
+      onKeyDown={e => {
+        if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+        if (e.key === "Escape") { editing.current = false; setDraft(String(value ?? "")); e.currentTarget.blur(); }
+      }}
+      className={className}
+      {...rest}
+    />
+  );
+}
+
 /* ── Feedback ─────────────────────────────────────────────────────────────── */
 
 export function Spinner({ size = 5, light = false }) {

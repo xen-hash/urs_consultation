@@ -12,6 +12,8 @@ import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
+import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
+import { STUDENT_TOUR } from "./ui/tours.js";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
 
@@ -200,6 +202,8 @@ export default function StudentDashboard() {
   if (!student) return <Navigate to="/student" replace />;
 
   const [tab, setTab]                   = useState("home");
+  // First visit gets the walkthrough; after that it only opens from the header.
+  const [tourOpen, setTourOpen]         = useState(() => !hasSeenTour("student"));
   const [departments, setDepartments]   = useState([]);
   const [loading, setLoading]           = useState(true);
   const [selectedDept, setSelectedDept] = useState(null);
@@ -374,6 +378,7 @@ export default function StudentDashboard() {
       <URSHeader
         subtitle="Student Dashboard"
         user={{ name: student.full_name, sub: student.student_id }}
+        onHelp={() => setTourOpen(true)}
         onLogout={() => setSigningOut(true)}
       />
 
@@ -605,7 +610,8 @@ export default function StudentDashboard() {
                   <h2 className="font-semibold text-xl text-fg">Faculty Departments</h2>
                   <p className="text-muted-fg text-sm mt-0.5">Select a department to view availability</p>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4"
+                  data-tour="student-departments">
                   {departments.map((dept, i) => {
                     const avail = dept.professors.filter(p => p.status === "Available").length;
                     const total = dept.professors.length;
@@ -1122,6 +1128,13 @@ export default function StudentDashboard() {
       })()}
       <BottomNavSpacer />
       <BottomNav items={TABS} active={tab} onSelect={setTab} />
+
+      <Walkthrough
+        id="student"
+        steps={STUDENT_TOUR}
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+      />
 
     </PageWrapper>
   );

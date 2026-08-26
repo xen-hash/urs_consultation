@@ -7,8 +7,10 @@ import {
   Pencil, X, Check, User, Camera, CalendarCheck, FileText,
   RotateCcw, AlertTriangle
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, ConfirmModal, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, ConfirmModal, NumberField, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
+import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
+import { TEACHER_TOUR } from "./ui/tours.js";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
@@ -41,6 +43,7 @@ function ding() {
 }
 
 const _teacherSeenIds = new Set();
+const LIMIT_KEY = "urs.teacher.dailyLimit";
 const _ttsQueue = [];
 let _ttsBusy = false;
 
@@ -88,9 +91,17 @@ export default function TeacherDashboard() {
   const [apptModal, setApptModal]   = useState(null);
   const [apptForm, setApptForm]     = useState({ date:"", time:"", notes:"" });
   const [savingAppt, setSavingAppt] = useState(false);
-  const [consultLimit, setConsultLimit] = useState(10);
+  const [consultLimit, setConsultLimit] = useState(() => {
+    // Kept per account: it is this teacher's own guard on how many they will
+    // take in a day, and it used to reset to 10 on every reload.
+    try {
+      const saved = parseInt(localStorage.getItem(LIMIT_KEY) || "", 10);
+      return Number.isNaN(saved) ? 10 : Math.min(100, Math.max(1, saved));
+    } catch { return 10; }
+  });
   const [accepted, setAccepted]         = useState(new Set());
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [tourOpen, setTourOpen]         = useState(() => !hasSeenTour("teacher"));
   const [deleteBusy, setDeleteBusy]     = useState(false);
   const [reqPage, setReqPage]           = useState(1);
   const REQ_PAGE_SIZE = 10;
@@ -144,6 +155,11 @@ export default function TeacherDashboard() {
   // The appointment sheet is a hand-rolled overlay rather than the shared
   // Modal, so it needs the scroll lock applied explicitly.
   useScrollLock(!!apptModal);
+
+  // Survives a reload. Wrapped because a private window can throw on write.
+  useEffect(() => {
+    try { localStorage.setItem(LIMIT_KEY, String(consultLimit)); } catch { /* not fatal */ }
+  }, [consultLimit]);
 
   useEffect(() => {
     fetchRequests(); fetchProfile();
@@ -329,7 +345,10 @@ export default function TeacherDashboard() {
         tone="danger"
         loading={deleteBusy}
       />
+      <Walkthrough id="teacher" steps={TEACHER_TOUR} open={tourOpen}
+        onClose={() => setTourOpen(false)} />
       <URSHeader subtitle="Teacher Dashboard" accent="orange"
+        onHelp={() => setTourOpen(true)}
         user={{ name: teacher.professor_name, sub: teacher.department }}
         onLogout={() => setSigningOut(true)} />
 
@@ -373,7 +392,7 @@ export default function TeacherDashboard() {
         {tab==="requests" && (
           <div className="space-y-3 animate-rise">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="font-semibold text-xl text-fg">Consultation Requests</h2>
+              <h2 className="font-semibold text-xl text-fg" data-tour="teacher-requests">Consultation Requests</h2>
               <button onClick={async()=>{setRefreshing(true);await fetchRequests();setRefreshing(false);}}
                 className="flex items-center gap-1.5 text-muted-fg hover:text-fg text-xs bg-surface-2 px-3 py-2 rounded-xl border border-border transition-all">
                 <RefreshCw size={12} className={refreshing?"animate-spin":""}/> Refresh
@@ -381,11 +400,17 @@ export default function TeacherDashboard() {
             </div>
 
             {/* Consultation Limit Banner */}
-            <div className="card rounded-lg px-4 py-3 flex items-center gap-3 flex-wrap">
+            <div className="card rounded-lg px-4 py-3 flex items-center gap-3 flex-wrap"
+              data-tour="teacher-limit">
               <span className="text-muted-fg text-sm font-semibold">Daily Limit:</span>
-              <input type="number" min={1} max={100} value={consultLimit}
-                onChange={e => setConsultLimit(Math.max(1, parseInt(e.target.value)||1))}
-                className="w-16 text-center bg-surface-2 border border-border text-fg font-bold text-sm rounded-xl px-2 py-1 focus:outline-none" />
+              <NumberField
+                id="daily-limit"
+                value={consultLimit}
+                onCommit={setConsultLimit}
+                min={1}
+                max={100}
+                aria-label="Daily consultation limit"
+                className="w-20 text-center bg-surface-2 border border-border text-fg font-bold text-sm rounded-xl px-2 py-1.5" />
               <span className="text-muted-fg text-xs">consultations max</span>
               <span className={`ml-auto text-xs font-bold px-3 py-1 rounded-full ${accepted.size >= consultLimit ? "bg-red-500/20 text-red-300 border border-red-400/30" : "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"}`}>
                 {accepted.size}/{consultLimit} accepted
@@ -525,7 +550,7 @@ export default function TeacherDashboard() {
                 <div className="w-11 h-11 bg-accent rounded-xl flex items-center justify-center"><Sliders size={20} className="text-fg"/></div>
                 <h3 className="font-semibold text-xl text-brand">My Availability Status</h3>
               </div>
-              <select value={myStatus} onChange={e=>setMyStatus(e.target.value)}
+              <select value={myStatus} onChange={e=>setMyStatus(e.target.value)} data-tour="teacher-status"
                 className={`w-full border rounded-lg px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-brand/20 mb-3 ${STATUS_STYLES[myStatus]||"border-gray-200 bg-gray-50"}`}>
                 {MANUAL_OPTIONS.map(o=><option key={o}>{o}</option>)}
               </select>
@@ -535,7 +560,7 @@ export default function TeacherDashboard() {
                 {savingStatus?"Saving...":"Update Status"}
               </button>
               <div className="mt-3 pt-3 border-t border-gray-100">
-                <button onClick={()=>setSchedModal(true)}
+                <button onClick={()=>setSchedModal(true)} data-tour="teacher-schedule"
                   className="w-full flex items-center justify-center gap-2 border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-2.5 px-5 rounded-lg transition-all text-sm">
                   <Calendar size={14}/> Edit Weekly Schedule
                 </button>

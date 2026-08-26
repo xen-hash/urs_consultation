@@ -1,7 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
-import { LogOut, Search, ChevronDown, ChevronRight, X, Users, CheckCircle2, Layers, RefreshCw } from "lucide-react";
+import {
+  LogOut, Search, ChevronDown, ChevronRight, X, Users, CheckCircle2, Layers,
+  RefreshCw, ArrowLeft, Radio,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import { StatusBadge, Modal, Button, Alert, Toast, useToastState, EmptyState } from "./SharedUI.jsx";
 import DepartmentIcon, { shortDepartment } from "./ui/DepartmentIcon.jsx";
 import VirtualKeyboard from "./VirtualKeyboard.jsx";
@@ -12,7 +16,21 @@ import { API_BASE, SOCKET_URL } from "./constants.js";
 
 let socket = null;
 
-export default function KioskView() {
+/**
+ * The live availability board.
+ *
+ * Two ways in, one screen. `/availability` is the public view: anyone can open
+ * it and see who is free right now without signing in, which is the whole point
+ * — a student checking whether one professor is in should not have to log in
+ * every time to find out. `/kiosk` is the same board locked to a display in the
+ * corridor, where leaving needs the exit password.
+ *
+ * It reads the public teacher-logs feed, polls it, and also listens on the
+ * socket, so a professor flipping their status is reflected here within
+ * seconds rather than on the next reload.
+ */
+export default function KioskView({ mode = "kiosk" }) {
+  const kiosk = mode === "kiosk";
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [departments, setDepartments] = useState([]);
@@ -26,6 +44,8 @@ export default function KioskView() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [now, setNow] = useState(new Date());
+  const [availOnly, setAvailOnly] = useState(false);
+  const [live, setLive] = useState(false);
   const searchRef = useRef(null);
 
   const fetchData = useCallback(async () => {
@@ -45,6 +65,10 @@ export default function KioskView() {
       transports: ["polling"], reconnectionAttempts: 3,
     });
     socket.on("status_update", fetchData);
+    // Shown as a live/reconnecting indicator: a board that has quietly stopped
+    // updating looks exactly like a board where nothing has changed.
+    socket.on("connect", () => setLive(true));
+    socket.on("disconnect", () => setLive(false));
     return () => { clearInterval(poll); clearInterval(clock); socket?.disconnect(); };
   }, [fetchData]);
 
@@ -67,8 +91,9 @@ export default function KioskView() {
     .map(d => ({
       ...d,
       professors: d.professors.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        d.department.toLowerCase().includes(search.toLowerCase())),
+        (!availOnly || p.status === "Available") &&
+        (p.name.toLowerCase().includes(search.toLowerCase()) ||
+         d.department.toLowerCase().includes(search.toLowerCase()))),
     }))
     .filter(d => d.professors.length > 0);
 
@@ -93,7 +118,12 @@ export default function KioskView() {
             <h1 className="font-bold text-base sm:text-lg leading-tight truncate">
               Faculty Consultation
             </h1>
-            <p className="text-white/60 text-xs truncate">University of Rizal System — Live board</p>
+            <p className="text-white/60 text-xs truncate flex items-center gap-1.5">
+              <Radio size={12} aria-hidden="true"
+                className={live ? "text-success" : "text-white/40"} />
+              {live ? "Live — updating automatically" : "Reconnecting…"}
+              <span className="hidden sm:inline">· No sign-in needed</span>
+            </p>
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="text-right leading-tight">
@@ -104,11 +134,18 @@ export default function KioskView() {
                 {now.toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" })}
               </p>
             </div>
-            <button onClick={() => setExitOpen(true)}
-              className="btn btn-sm bg-white/10 text-white hover:bg-white/20">
-              <LogOut size={14} aria-hidden="true" />
-              <span className="hidden sm:inline">Exit</span>
-            </button>
+            {kiosk ? (
+              <button onClick={() => setExitOpen(true)}
+                className="btn btn-sm bg-white/10 text-white hover:bg-white/20">
+                <LogOut size={14} aria-hidden="true" />
+                <span className="hidden sm:inline">Exit</span>
+              </button>
+            ) : (
+              <Link to="/" className="btn btn-sm bg-white/10 text-white hover:bg-white/20">
+                <ArrowLeft size={14} aria-hidden="true" />
+                <span className="hidden sm:inline">Back</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -134,6 +171,28 @@ export default function KioskView() {
           )}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            onClick={() => setAvailOnly(v => !v)}
+            aria-pressed={availOnly}
+            className={`inline-flex items-center gap-2 px-3 min-h-[40px] rounded-full border
+              text-sm font-medium transition-colors duration-150
+              ${availOnly
+                ? "border-transparent bg-success text-white"
+                : "border-border bg-surface text-fg hover:bg-surface-2"}`}
+          >
+            <CheckCircle2 size={15} aria-hidden="true" />
+            Available now
+            <span className={`text-xs tabular-nums ${availOnly ? "text-white/75" : "text-muted-fg"}`}>
+              {totalAvail}
+            </span>
+          </button>
+          <p className="text-xs text-muted-fg">
+            Updated {lastUpdate.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}
+            {" · refreshes on its own"}
+          </p>
+        </div>
+
         {/* One column on a phone, two on a small tablet, four on the kiosk
             display — this was a hard grid-cols-4 that crushed on anything small. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
@@ -157,8 +216,12 @@ export default function KioskView() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="card">
-            <EmptyState icon={Search} title="No matches"
-              description={search ? `Nothing matches "${search}".` : "No faculty on the board yet."} />
+            <EmptyState icon={Search}
+              title={availOnly && !search ? "Nobody is free right now" : "No matches"}
+              description={
+                search ? `Nothing matches "${search}".`
+                : availOnly ? "No faculty are marked available at the moment. Turn off the filter to see everyone and their schedules."
+                : "No faculty on the board yet."} />
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -208,7 +271,7 @@ export default function KioskView() {
       </main>
 
       <Modal
-        open={exitOpen}
+        open={kiosk && exitOpen}
         onClose={() => { setExitOpen(false); setExitPass(""); setExitErr(""); setShowKB(false); }}
         title="Exit kiosk mode"
         description="Enter the exit password to leave the display."

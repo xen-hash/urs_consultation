@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Monitor } from "lucide-react";
+import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Monitor, Radio } from "lucide-react";
 import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
 import SiteFooter from "./ui/SiteFooter.jsx";
 import URSBackground from "./URSBackground.jsx";
@@ -73,9 +73,28 @@ export default function LandingPage() {
           ))}
         </div>
 
+        {/* Checking whether one professor is in is the most common thing anyone
+            comes here to do, and it needs no account. It should not be buried
+            under a sign-in. */}
+        <Link to="/availability"
+          className="card card-action card-tinted-hue group mt-4 flex-row items-center gap-4"
+          style={{ "--tint": "rgb(var(--success-50))" }}>
+          <span className="icon-tile shrink-0 bg-success-50 text-success">
+            <Radio size={22} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold text-fg">See who is available right now</span>
+            <span className="block text-sm text-muted-fg">
+              Live faculty availability — no sign-in needed.
+            </span>
+          </span>
+          <ArrowRight size={18} aria-hidden="true"
+            className="text-brand shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
+        </Link>
+
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link to="/kiosk" className="btn btn-secondary">
-            <Monitor size={16} aria-hidden="true" /> Open public kiosk display
+            <Monitor size={16} aria-hidden="true" /> Open corridor display
           </Link>
         </div>
 
