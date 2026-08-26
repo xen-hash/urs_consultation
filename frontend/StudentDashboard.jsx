@@ -531,7 +531,7 @@ export default function StudentDashboard() {
                 </div>
                 <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
                   data-tour="student-professors">
-                  {filteredProfs.map(prof => {
+                  {filteredProfs.map((prof, profIndex) => {
                     const isAvail = prof.status === "Available";
                     const initials = prof.name
                       .replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i, "")
@@ -540,6 +540,7 @@ export default function StudentDashboard() {
                     return (
                       <button
                         key={prof.name}
+                        data-tour={profIndex === 0 ? "student-first-professor" : undefined}
                         disabled={!isAvail || (prof.slots_left !== null && prof.slots_left !== undefined && prof.slots_left === 0)}
                         onClick={() => {
                           if (!isAvail) return;
@@ -655,6 +656,7 @@ export default function StudentDashboard() {
                     const pct   = total > 0 ? Math.round((avail / total) * 100) : 0;
                     return (
                       <button key={dept.department}
+                        data-tour={i === 0 ? "student-first-department" : undefined}
                         onClick={() => { setSelectedDept(dept.department); setSearch(""); setFilter("all"); setProfPage(1); }}
                         className="group card card-action card-tinted-hue flex flex-col gap-3 p-5 text-left
                           h-full min-h-[160px] hover:-translate-y-0.5"
