@@ -213,9 +213,11 @@ def init_db():
                 )
 
         created = _seed_teacher_accounts(cur)
+        cleared = _clear_removed_teacher_photos(cur)
         print(
             f"[DB] Tables created and professors seeded"
             + (f"; {created} faculty account(s) created." if created else ".")
+            + (f" Cleared {cleared} photo(s) from removed accounts." if cleared else "")
         )
     finally:
         try:
@@ -223,6 +225,30 @@ def init_db():
         except Exception:
             pass
         conn.close()
+
+
+def _clear_removed_teacher_photos(cur):
+    """Drop photos left behind by teachers removed before removal cleared them.
+
+    Removing a teacher is a tombstone rather than a DELETE, and for most of this
+    project's life it kept the photo — the row's one heavy column, base64 in
+    TEXT at 80-95KB. Clearing it on removal only helps accounts removed after
+    that change; the ones already in the table keep theirs until something goes
+    and gets them, and no vacuum will: to Postgres a photo on a tombstoned row
+    is live data, faithfully preserved.
+
+    So this is that something. It is also the more pressing half of the reason:
+    a former staff member's face sitting in a database indefinitely is a problem
+    on its own terms, quite apart from the bytes.
+
+    Idempotent and self-extinguishing — once run it matches nothing, and on a
+    table of a few dozen rows the check costs nothing to repeat on every boot.
+    """
+    cur.execute(
+        "UPDATE teacher_accounts SET photo=NULL "
+        "WHERE removed_at IS NOT NULL AND photo IS NOT NULL"
+    )
+    return cur.rowcount or 0
 
 
 def _seed_teacher_accounts(cur):
