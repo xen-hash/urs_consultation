@@ -476,13 +476,13 @@ export default function StudentDashboard() {
                   </div>
                   <div>
                     <p className="font-semibold text-lg leading-tight">{student.full_name}</p>
-                    <p className="text-white/70 text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
+                    <p className="text-white/80 text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-3xl font-bold text-accent">{totalAvail}</p>
-                    <p className="text-white/70 text-xs">available now</p>
+                    <p className="text-white/80 text-xs">available now</p>
                   </div>
                   <button onClick={() => { setLoading(true); fetchProfessors(); }}
                     className="w-10 h-10 bg-white/15 hover:bg-white/25 border border-white/20 text-white rounded-xl flex items-center justify-center transition-all">
@@ -562,7 +562,8 @@ export default function StudentDashboard() {
  ${isAvail ? "bg-brand" : "bg-surface-2"}`}>
                           {prof.photo
                             ? <img src={prof.photo} alt={prof.name} className="w-full h-full object-cover" />
-                            : <span className="text-fg font-semibold text-4xl leading-none">{initials}</span>
+                            : <span className={`font-semibold text-4xl leading-none
+ ${isAvail ? "text-white" : "text-muted-fg"}`}>{initials}</span>
                           }
 
                           {/* Dark gradient overlay at bottom for text readability */}
@@ -570,20 +571,20 @@ export default function StudentDashboard() {
 
                           {/* Name + status overlaid on image */}
                           <div className="absolute bottom-0 inset-x-0 px-2 pb-2 pt-4 flex flex-col items-center gap-1">
-                            <p className="text-fg text-xs font-bold text-center leading-tight line-clamp-2 drop-shadow">
+                            <p className="text-white text-xs font-bold text-center leading-tight line-clamp-2 drop-shadow">
                               {prof.name.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i, "")}
                             </p>
                             {isAvail
-                              ? <span className="text-[9px] font-bold text-emerald-300 bg-emerald-500/30 border border-emerald-400/50 px-2 py-0.5 rounded-full">Available</span>
-                              : <span className="text-[9px] font-medium text-muted-fg">{prof.status}</span>
+                              ? <span className="text-[9px] font-bold text-emerald-200 bg-emerald-500/30 border border-emerald-400/50 px-2 py-0.5 rounded-full">Available</span>
+                              : <span className="text-[9px] font-medium text-white/70">{prof.status}</span>
                             }
                             {prof.day_limit > 0 && prof.slots_left !== null && prof.slots_left !== undefined && (
                               <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full 
  ${prof.slots_left === 0
- ? "text-red-300 bg-red-500/30 border border-red-400/50"
+ ? "text-red-200 bg-red-500/30 border border-red-400/50"
  : prof.slots_left <= 2
- ? "text-yellow-300 bg-yellow-500/30 border border-yellow-400/50"
- : "text-blue-300 bg-blue-500/30 border border-blue-400/50"}`}>
+ ? "text-yellow-200 bg-yellow-500/30 border border-yellow-400/50"
+ : "text-blue-200 bg-blue-500/30 border border-blue-400/50"}`}>
                                 {prof.slots_left === 0 ? "Full" : `${prof.slots_left}/${prof.day_limit} left`}
                               </span>
                             )}
@@ -997,9 +998,9 @@ export default function StudentDashboard() {
                 </div>
                 {/* Name & dept — left aligned */}
                 <div className="flex flex-col gap-1">
-                  <p className="font-semibold text-fg text-xl leading-tight">{reqModal.name}</p>
-                  <p className="text-muted-fg text-sm">{reqModal.department}</p>
-                  <span className="inline-flex items-center gap-1.5 mt-1 text-[11px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full w-fit">
+                  <p className="font-semibold text-white text-xl leading-tight">{reqModal.name}</p>
+                  <p className="text-white/75 text-sm">{reqModal.department}</p>
+                  <span className="inline-flex items-center gap-1.5 mt-1 text-[11px] font-bold text-emerald-100 bg-emerald-500/25 border border-emerald-400/40 px-3 py-1 rounded-full w-fit">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Available
                   </span>

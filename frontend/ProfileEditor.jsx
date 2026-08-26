@@ -82,7 +82,7 @@ export function WebcamCapture({ onCapture, onCancel, title = "Take Your Photo" }
         {loading && <div className="absolute inset-0 flex items-center justify-center"><Spinner size={10} /></div>}
         {countdown !== null && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <span className="text-fg font-black text-8xl animate-rise">{countdown}</span>
+            <span className="text-white font-black text-8xl animate-rise">{countdown}</span>
           </div>
         )}
         {active && countdown === null && (
@@ -101,12 +101,12 @@ export function WebcamCapture({ onCapture, onCancel, title = "Take Your Photo" }
       <div className="flex gap-2 w-full max-w-xs">
         {!active
           ? <button onClick={start} disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-2.5 rounded-xl transition-all text-sm disabled:opacity-50">
+              className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-2.5 rounded-xl transition-all text-sm disabled:opacity-50">
               {loading ? <Spinner size={4} light /> : <Camera size={15} />}
               {loading ? "Starting..." : "Open Camera"}
             </button>
           : <button onClick={capture} disabled={countdown !== null}
-              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-fg font-semibold py-2.5 rounded-xl transition-all text-sm disabled:opacity-60">
+              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl transition-all text-sm disabled:opacity-60">
               <Camera size={15} />
               {countdown !== null ? `Taking in ${countdown}...` : "Take Photo"}
             </button>
@@ -356,10 +356,10 @@ export function IDCardPreview({ name, subtitle, idNumber, role, photo, qrBase64,
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2.5 border-b" style={{ borderColor: "rgba(255,180,0,0.2)" }}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border"
           style={{ background: "radial-gradient(circle, #003d9a, #001560)", borderColor: "rgba(255,200,0,0.5)" }}>
-          <span className="text-fg font-bold text-[10px]">URS</span>
+          <span className="text-white font-bold text-[10px]">URS</span>
         </div>
         <div>
-          <p className="text-fg font-bold text-[11px] tracking-wide">UNIVERSITY OF RIZAL SYSTEM</p>
+          <p className="text-white font-bold text-[11px] tracking-wide">UNIVERSITY OF RIZAL SYSTEM</p>
           <p className="text-[9px]" style={{ color: "rgba(255,200,0,0.65)" }}>
             College of Engineering — {type === "student" ? "Student" : "Faculty"} Identification Card
           </p>
@@ -388,7 +388,7 @@ export function IDCardPreview({ name, subtitle, idNumber, role, photo, qrBase64,
 
         {/* Info */}
         <div className="flex-1 min-w-0 pt-0.5">
-          <p className="font-bold text-fg text-sm leading-tight truncate">{trunc(name.toUpperCase(), 26)}</p>
+          <p className="font-bold text-white text-sm leading-tight truncate">{trunc(name.toUpperCase(), 26)}</p>
           <p className="font-bold text-[10px] mt-0.5 truncate"
             style={{ color: "#ffd700", background: "linear-gradient(90deg,#ffd700,#ffa000)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
             {trunc(subtitle.toUpperCase(), 32)}
@@ -401,7 +401,7 @@ export function IDCardPreview({ name, subtitle, idNumber, role, photo, qrBase64,
             <p className="text-[8px] uppercase tracking-wider mb-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>
               {type === "student" ? "Student ID" : "Employee ID"}
             </p>
-            <p className="font-mono font-bold text-fg text-xs">{idNumber}</p>
+            <p className="font-mono font-bold text-white text-xs">{idNumber}</p>
             <span className="inline-block mt-1.5 text-[8px] font-bold px-2 py-0.5 rounded"
               style={{ background: "rgba(255,160,0,0.15)", border: "1px solid rgba(255,180,0,0.4)", color: "rgba(255,200,0,0.85)" }}>
               {type === "student" ? "STUDENT" : "FACULTY MEMBER"}

@@ -174,6 +174,16 @@
 
     --ring:          125 175 235;
 
+    /* Coloured text, the light end of each ramp. Kept apart from the fills of
+       the same name: a brand fill must stay dark enough to carry white button
+       text while brand text must be light enough to read on a dark card. */
+    --brand-text:    125 175 235;
+    --success-text:  134 239 172;
+    --danger-text:   252 165 165;
+    --info-text:     147 197 253;
+    --warning-text:  253 224 71;
+    --accent-text:   252 211 77;
+
     /* Mid-tone on white, muddy on a dark card — stepped up so slices stay
        separable from each other and from the surface behind them. */
     --chart-done:     74 222 128;
@@ -232,6 +242,16 @@
 
     --ring:          125 175 235;
 
+    /* Coloured text, the light end of each ramp. Kept apart from the fills of
+       the same name: a brand fill must stay dark enough to carry white button
+       text while brand text must be light enough to read on a dark card. */
+    --brand-text:    125 175 235;
+    --success-text:  134 239 172;
+    --danger-text:   252 165 165;
+    --info-text:     147 197 253;
+    --warning-text:  253 224 71;
+    --accent-text:   252 211 77;
+
     /* Mid-tone on white, muddy on a dark card — stepped up so slices stay
        separable from each other and from the surface behind them. */
     --chart-done:     74 222 128;
@@ -243,6 +263,27 @@
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
     --shadow:    0 1px 3px 0 rgb(0 0 0 / 0.40), 0 1px 2px -1px rgb(0 0 0 / 0.30);
     --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.55), 0 2px 6px -2px rgb(0 0 0 / 0.40);
+  }
+}
+
+/* The tinted cards take a hand-picked pastel through an inline --tint, chosen
+   against a white surface. On a dark card that corner stays pale and the card
+   reads as half-lit. The idea — a surface that catches the light at one edge —
+   survives; the pastel does not. */
+:root[data-theme="dark"] .card-tinted,
+:root[data-theme="dark"] .card-tinted-hue {
+  background-image: linear-gradient(155deg,
+    rgb(var(--surface)) 0%,
+    rgb(var(--surface)) 45%,
+    rgb(var(--surface-2)) 100%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card-tinted,
+  :root:not([data-theme="light"]) .card-tinted-hue {
+    background-image: linear-gradient(155deg,
+      rgb(var(--surface)) 0%,
+      rgb(var(--surface)) 45%,
+      rgb(var(--surface-2)) 100%);
   }
 }
 
