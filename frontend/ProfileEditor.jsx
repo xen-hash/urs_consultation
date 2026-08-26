@@ -68,14 +68,14 @@ export function WebcamCapture({ onCapture, onCancel, title = "Take Your Photo" }
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <p className="font-semibold text-gray-700 text-sm">{title}</p>
-      <div className="relative w-full max-w-xs aspect-square bg-gray-900 rounded-lg overflow-hidden border-2 border-gray-200">
+      <p className="font-semibold text-fg text-sm">{title}</p>
+      <div className="relative w-full max-w-xs aspect-square bg-gray-900 rounded-lg overflow-hidden border-2 border-border">
         <video ref={videoRef} muted playsInline
           className="w-full h-full object-cover"
           style={{ transform: "scaleX(-1)", display: active ? "block" : "none" }} />
         <canvas ref={canvasRef} className="hidden" />
         {!active && !loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-subtle-fg gap-2">
             <User size={40} /> <p className="text-sm">Camera not active</p>
           </div>
         )}
@@ -97,7 +97,7 @@ export function WebcamCapture({ onCapture, onCancel, title = "Take Your Photo" }
           </>
         )}
       </div>
-      {error && <p className="text-red-500 text-xs">{error}</p>}
+      {error && <p className="text-danger text-xs">{error}</p>}
       <div className="flex gap-2 w-full max-w-xs">
         {!active
           ? <button onClick={start} disabled={loading}
@@ -112,7 +112,7 @@ export function WebcamCapture({ onCapture, onCancel, title = "Take Your Photo" }
             </button>
         }
         <button onClick={onCancel}
-          className="px-4 py-2.5 border border-gray-200 text-gray-500 hover:text-gray-700 rounded-xl text-sm transition-all">
+          className="px-4 py-2.5 border border-border text-muted-fg hover:text-fg rounded-xl text-sm transition-all">
           Cancel
         </button>
       </div>
@@ -412,7 +412,7 @@ export function IDCardPreview({ name, subtitle, idNumber, role, photo, qrBase64,
         {/* QR */}
         {qrBase64 && (
           <div className="shrink-0 flex flex-col items-center gap-1">
-            <div className="rounded-xl p-1.5 bg-white shadow-lg" style={{ width: 88, height: 88 }}>
+            <div className="rounded-xl p-1.5 bg-surface shadow-lg" style={{ width: 88, height: 88 }}>
               <img src={`data:image/png;base64,${qrBase64}`} alt="QR" className="w-full h-full" />
             </div>
             <p className="text-[7.5px]" style={{ color: "rgba(255,255,255,0.25)" }}>Scan to verify</p>

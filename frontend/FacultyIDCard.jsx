@@ -101,7 +101,7 @@ export function WebcamCapture({ onCapture, onSkip }) {
         )}
       </div>
 
-      {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+      {error && <p className="text-danger text-xs text-center">{error}</p>}
 
       <div className="flex gap-3 w-full max-w-sm">
         {!active ? (
@@ -282,7 +282,7 @@ export function FacultyIDCard({ name, department, employeeId, photo, qrBase64, o
 
           {/* QR */}
           <div className="shrink-0 flex flex-col items-center gap-1.5">
-            <div className="w-36 h-36 bg-white rounded-lg p-2 shadow-xl border border-border">
+            <div className="w-36 h-36 bg-surface rounded-lg p-2 shadow-xl border border-border">
               {qrBase64 && <img src={`data:image/png;base64,${qrBase64}`} alt="QR" className="w-full h-full" />}
             </div>
             <p className="text-muted-fg text-[9px] text-center">Scan to verify</p>

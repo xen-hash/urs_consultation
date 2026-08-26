@@ -455,6 +455,11 @@
      notch and the home indicator unless it is inset. */
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  /* The inset PLUS real padding. `pt-safe` alone is the inset only, which is
+     0px on a phone with no notch — swapping a `pt-5` for it silently removes
+     the padding everywhere except the handful of devices that have one. */
+  .pt-safe-5 { padding-top: calc(1.25rem + env(safe-area-inset-top, 0px)); }
+  .pb-safe-4 { padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
   .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
   .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
 

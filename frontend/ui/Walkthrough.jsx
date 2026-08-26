@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, ArrowLeft, X } from "lucide-react";
-import { useScrollLock } from "./index.jsx";
 
 /**
  * The first-run walkthrough.
@@ -74,7 +73,12 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
   const [cardH, setCardH] = useState(0);
   const cardRef = useRef(null);
 
-  useScrollLock(open);
+  // Deliberately no scroll lock. Locking sets `position: fixed` on the body,
+  // which freezes the page — and a frozen page cannot be scrolled, so the
+  // scrollIntoView below did nothing and any target under the fold was ringed
+  // where it sat, half of it off-screen. The student tour's professor card is
+  // 384px tall on an 844px phone: the highlight came out as an empty box with
+  // the card's contents below the edge. The ring follows the page instead.
 
   // Steps marked `requireTarget` are dropped when their control is not on this
   // screen; the rest stay and simply lose their highlight. A dashboard shows
@@ -86,6 +90,18 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
 
   useLayoutEffect(() => {
     if (!open || !step) return undefined;
+
+    const measureOnly = () => {
+      const el = findTarget(step.target);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        top:    Math.max(0, r.top - PAD),
+        left:   Math.max(0, r.left - PAD),
+        width:  Math.max(0, Math.min(window.innerWidth, r.right + PAD) - Math.max(0, r.left - PAD)),
+        height: Math.max(0, Math.min(window.innerHeight, r.bottom + PAD) - Math.max(0, r.top - PAD)),
+      };
+    };
 
     const measure = () => {
       const el = findTarget(step.target);
@@ -113,10 +129,15 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
     // wait the cut-out is drawn around where the element used to be.
     step.before?.();
     const settle = setTimeout(measure, step.before ? 420 : 260);
+    // Re-measured as the page moves, so the ring stays on its target rather
+    // than being left behind by momentum scrolling after scrollIntoView.
+    const follow = () => setRect(r => (r ? measureOnly() : r));
     window.addEventListener("resize", measure);
+    window.addEventListener("scroll", follow, { passive: true, capture: true });
     return () => {
       clearTimeout(settle);
       window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", follow, { capture: true });
     };
   }, [open, step, index]);
 
@@ -173,7 +194,15 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
 
     if (roomBelow >= h) return { cardStyle: { top: rect.top + rect.height + GAP }, side: "up" };
     if (roomAbove >= h) return { cardStyle: { top: Math.max(EDGE, rect.top - GAP - h) }, side: "down" };
-    return centred;
+
+    // Neither side fits — a tall target on a short screen. Centring puts the
+    // card across the middle of the thing it is describing, which on the
+    // professor card meant sitting squarely over the name. Take the roomier
+    // side and sit flush against that edge instead, so the overlap eats the
+    // target's edge rather than its subject.
+    return roomBelow >= roomAbove
+      ? { cardStyle: { bottom: EDGE }, side: null }
+      : { cardStyle: { top: EDGE }, side: null };
   })();
 
   // The arrow sits over the middle of the target, so the line from the words to
