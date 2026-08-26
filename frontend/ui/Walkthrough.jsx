@@ -44,10 +44,34 @@ export function resetTour(id) {
 
 const PAD = 8;
 
+/**
+ * The element a step points at, or null.
+ *
+ * `target` may be a list, because the same control lives in two places at
+ * different breakpoints — the admin sections are a bottom bar on a phone and a
+ * sidebar rail on a desktop. Whichever one is actually laid out wins.
+ *
+ * A zero-size box means the element is in the DOM but hidden at this width.
+ * querySelector still finds it, and pointing at it drew a 16px ring in the
+ * corner of the screen with everything else dimmed — the guide appeared to be
+ * highlighting nothing. Treated as absent instead.
+ */
+function findTarget(target) {
+  if (!target) return null;
+  for (const selector of [].concat(target)) {
+    const el = document.querySelector(selector);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) return el;
+  }
+  return null;
+}
+
 export default function Walkthrough({ id, steps, open, onClose, onExit }) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState(null);
   const [ready, setReady] = useState(false);
+  const [cardH, setCardH] = useState(0);
   const cardRef = useRef(null);
 
   useScrollLock(open);
@@ -56,7 +80,7 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
   // screen; the rest stay and simply lose their highlight. A dashboard shows
   // different controls depending on the tab you are on, and silently cutting
   // half the guide is worse than a step that explains without pointing.
-  const live = steps.filter(s => !s.requireTarget || document.querySelector(s.target));
+  const live = steps.filter(s => !s.requireTarget || findTarget(s.target));
   const step = live[index];
   const last = index === live.length - 1;
 
@@ -64,12 +88,22 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
     if (!open || !step) return undefined;
 
     const measure = () => {
-      if (!step.target) { setRect(null); setReady(true); return; }
-      const el = document.querySelector(step.target);
+      const el = findTarget(step.target);
       if (!el) { setRect(null); setReady(true); return; }
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      // Instant, not smooth: the measurement happens right after, and a scroll
+      // still animating reports where the element was rather than where it is.
+      // On a short screen that put the highlight half off the bottom.
+      el.scrollIntoView({ block: "center", behavior: "auto" });
+
+      // Clamped to the viewport. A fixed bottom bar sits flush against the
+      // bottom edge, so the padded ring around it ran off the screen and the
+      // highlight was cut in half.
       const r = el.getBoundingClientRect();
-      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      const top    = Math.max(0, r.top - PAD);
+      const left   = Math.max(0, r.left - PAD);
+      const bottom = Math.min(window.innerHeight, r.bottom + PAD);
+      const right  = Math.min(window.innerWidth, r.right + PAD);
+      setRect({ top, left, width: Math.max(0, right - left), height: Math.max(0, bottom - top) });
       setReady(true);
     };
 
@@ -99,6 +133,15 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
 
   useEffect(() => { if (open) { setIndex(0); cardRef.current?.focus(); } }, [open]);
 
+  // The card is placed against its real height. It used to be positioned with
+  // a guessed 220px, so a step with three lines of text hung off the bottom of
+  // the screen with its buttons out of reach.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const h = cardRef.current?.offsetHeight;
+    if (h && h !== cardH) setCardH(h);
+  });
+
   if (!open || !step) return null;
 
   const finish = () => {
@@ -110,14 +153,24 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
   };
   const next = () => (last ? finish() : setIndex(i => i + 1));
 
-  // The card goes below the highlight, or above it when the highlight is low on
-  // the screen — otherwise the thing being explained is behind the explanation.
-  const below = !rect || rect.top + rect.height < window.innerHeight * 0.55;
-  const cardStyle = rect
-    ? below
-      ? { top: Math.min(rect.top + rect.height + 14, window.innerHeight - 220) }
-      : { bottom: Math.min(window.innerHeight - rect.top + 14, window.innerHeight - 200) }
-    : { top: Math.max(24, Math.round((window.innerHeight - 260) / 2)) };
+  // Placed against the space actually available, not a guess: below the
+  // highlight if it fits there, above it if it fits there, and centred only
+  // when neither has room — at which point covering part of the target is the
+  // least bad option, and the card is still whole and reachable.
+  const cardStyle = (() => {
+    const vh = window.innerHeight;
+    const h = cardH || 240;
+    const GAP = 14, EDGE = 12;
+
+    if (!rect) return { top: Math.max(EDGE, Math.round((vh - h) / 2)) };
+
+    const roomBelow = vh - (rect.top + rect.height) - GAP - EDGE;
+    const roomAbove = rect.top - GAP - EDGE;
+
+    if (roomBelow >= h) return { top: rect.top + rect.height + GAP };
+    if (roomAbove >= h) return { top: Math.max(EDGE, rect.top - GAP - h) };
+    return { top: Math.max(EDGE, Math.round((vh - h) / 2)) };
+  })();
 
   return createPortal(
     <div className="fixed inset-0 z-[95]" role="dialog" aria-modal="true"
@@ -127,16 +180,15 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
           stays visible at full contrast. */}
       {rect && ready ? (
         <>
-          <Dim style={{ top: 0, left: 0, right: 0, height: Math.max(0, rect.top - PAD) }} />
-          <Dim style={{ top: Math.max(0, rect.top - PAD), left: 0, width: Math.max(0, rect.left - PAD), height: rect.height + PAD * 2 }} />
-          <Dim style={{ top: Math.max(0, rect.top - PAD), left: rect.left + rect.width + PAD, right: 0, height: rect.height + PAD * 2 }} />
-          <Dim style={{ top: rect.top + rect.height + PAD, left: 0, right: 0, bottom: 0 }} />
+          <Dim style={{ top: 0, left: 0, right: 0, height: rect.top }} />
+          <Dim style={{ top: rect.top, left: 0, width: rect.left, height: rect.height }} />
+          <Dim style={{ top: rect.top, left: rect.left + rect.width, right: 0, height: rect.height }} />
+          <Dim style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }} />
           <span
             aria-hidden="true"
             className="absolute rounded-xl ring-2 ring-accent pointer-events-none animate-fade"
             style={{
-              top: rect.top - PAD, left: rect.left - PAD,
-              width: rect.width + PAD * 2, height: rect.height + PAD * 2,
+              top: rect.top, left: rect.left, width: rect.width, height: rect.height,
               boxShadow: "0 0 0 3px rgb(var(--accent) / 0.25)",
             }}
           />
@@ -149,6 +201,7 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
         ref={cardRef}
         tabIndex={-1}
         className="absolute left-0 right-0 mx-auto w-[min(22rem,calc(100vw-2rem))]
+                   max-h-[calc(100dvh-1.5rem)] overflow-y-auto
                    bg-surface rounded-xl shadow-lg p-5 animate-rise focus:outline-none"
         style={cardStyle}
       >

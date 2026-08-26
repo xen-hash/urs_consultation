@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, BookOpen, GraduationCap, ClipboardList, UserPlus,
@@ -12,7 +12,7 @@ import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
-import { ADMIN_TOUR } from "./ui/tours.js";
+import { adminTour } from "./ui/tours.js";
 import { useStats, useDepartments, usePagedResource } from "./admin/hooks.js";
 import { announceNew, resetAnnounced, setMuted } from "./admin/announcer.js";
 
@@ -45,6 +45,7 @@ export default function DeanDashboard() {
   const [signingOut, setSigningOut] = useState(false);
   const [muted, setMutedState] = useState(true);
   const [tourOpen, setTourOpen] = useState(() => !hasSeenTour("admin"));
+  const adminSteps = useMemo(() => adminTour(setTab), []);
 
   const { stats, loading: statsLoading, reload: reloadStats } = useStats();
   const { departments, reload: reloadDepts, loading: deptsLoading } = useDepartments();
@@ -182,8 +183,13 @@ export default function DeanDashboard() {
           onMore={() => setSheetOpen(true)}
         />
 
-        <Walkthrough id="admin" steps={ADMIN_TOUR} open={tourOpen}
-          onClose={() => setTourOpen(false)} />
+        <Walkthrough
+          id="admin"
+          steps={adminSteps}
+          open={tourOpen}
+          onClose={() => setTourOpen(false)}
+          onExit={() => setTab("overview")}
+        />
 
         <MoreSheet
           open={sheetOpen}
@@ -235,6 +241,7 @@ function NavContents({ tab, pending, onPick, onExport, muted, onToggleMute, onSi
               key={t.id}
               onClick={() => onPick(t.id)}
               aria-current={active ? "page" : undefined}
+              data-tour={`side-${t.id}`}
               className={`w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm font-medium
                 transition-colors duration-200
                 ${active ? "bg-white/15 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}

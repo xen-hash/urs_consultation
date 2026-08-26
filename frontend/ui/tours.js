@@ -106,30 +106,34 @@ export const TEACHER_TOUR = [
   },
 ];
 
-export const ADMIN_TOUR = [
-  {
-    title: "Dashboard is the summary",
-    body: "Totals, activity over time and the newest requests. Exports live here too — today only, or the whole record.",
-    target: '[data-tour="nav-overview"]',
-  },
-  {
-    title: "Cards is where you issue IDs",
-    body: "A faculty QR card is created here and shown once. Issuing a replacement kills the old card automatically, which is how a lost one is revoked.",
-    target: '[data-tour="nav-credentials"]',
-  },
-  {
-    title: "Requests, and clearing them out",
-    body: "Filter by status, department or date. Archive hides old rows but keeps them; Free space deletes them for good when the database is filling up.",
-    target: '[data-tour="nav-requests"]',
-  },
-  {
-    title: "Students and forgotten PINs",
-    body: "Reset a student's PIN when they are locked out — they choose a new one on their next sign-in. You can remove an account from here too.",
-    target: '[data-tour="nav-students"]',
-  },
-  {
-    title: "Faculty is the roster",
-    body: "Add someone new, and see who is available at a glance. Removing a faculty member asks why, and the reason goes into the audit log.",
-    target: '[data-tour="nav-faculty"]',
-  },
-];
+/**
+ * The admin tour opens each section as it describes it.
+ *
+ * It used to point at the bottom bar and talk about screens you could not see —
+ * and on a desktop, where that bar is hidden, it pointed at a hidden element
+ * and appeared to highlight nothing at all. Each step now switches to its tab,
+ * so the section is on screen while you read about it, and each target names
+ * both navigations: the bar on a phone, the rail on a desktop, whichever is
+ * actually laid out.
+ */
+export function adminTour(setTab) {
+  const step = (id, title, body) => ({
+    title,
+    body,
+    target: [`[data-tour="nav-${id}"]`, `[data-tour="side-${id}"]`],
+    before: () => setTab(id),
+  });
+
+  return [
+    step("overview", "Dashboard is the summary",
+      "Totals, activity over time and the newest requests. Exports live here too — today only, or the whole record."),
+    step("credentials", "Cards is where you issue IDs",
+      "A faculty QR card is created here and shown once. Issuing a replacement kills the old card automatically, which is how a lost one is revoked."),
+    step("requests", "Requests, and clearing them out",
+      "Filter by status, department or date. Archive hides old rows but keeps them; Free space deletes them for good when the database is filling up."),
+    step("students", "Students and forgotten PINs",
+      "Reset a student's PIN when they are locked out — they choose a new one on their next sign-in. You can remove an account from here too."),
+    step("faculty", "Faculty is the roster",
+      "Add someone new, and see who is available at a glance. Removing a faculty member asks why, and the reason goes into the audit log."),
+  ];
+}
