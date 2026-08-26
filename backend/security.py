@@ -83,9 +83,74 @@ def require_role(*roles):
                 return jsonify({"error": "Authentication required."}), 401
             if claims["role"] not in roles:
                 return jsonify({"error": "Not permitted."}), 403
+            if claims["role"] == "student":
+                touch_presence(claims["sub"])
             return fn(*args, **kwargs)
         return wrapper
     return decorator
+
+
+# ─── Presence ─────────────────────────────────────────────────────────────────
+#
+# "Is anyone using this right now?" had no answer: last_login said when someone
+# arrived, never whether they were still there. Rather than a heartbeat the
+# client has to remember to send, presence is a side effect of being
+# authenticated at all — the student dashboard polls availability every thirty
+# seconds while it is open, so simply using the app keeps the mark fresh, and
+# closing the tab lets it go stale on its own.
+
+# How long a gap before the next request counts as a new visit rather than a
+# continuation of the same one. Long enough to survive reading a professor's
+# schedule or filling in a purpose without the session appearing to restart.
+IDLE_GAP_MINUTES = 15
+
+# Never more than one write per student per minute. Without this every poll
+# from every signed-in student would be a row update, which on a free-tier
+# database is the sort of thing that quietly becomes the workload.
+_TOUCH_EVERY_SECONDS = 60
+
+_touched = {}
+_touch_lock = threading.Lock()
+
+
+def touch_presence(student_id):
+    """Mark a student as active now. Cheap, throttled, and never fatal."""
+    if not student_id:
+        return
+    now = time.time()
+    with _touch_lock:
+        last = _touched.get(student_id, 0)
+        if now - last < _TOUCH_EVERY_SECONDS:
+            return
+        _touched[student_id] = now
+        # One process, one dict: bound it so a semester of student IDs cannot
+        # accumulate in memory. Dropping entries only costs an extra write.
+        if len(_touched) > 2000:
+            cutoff = now - _TOUCH_EVERY_SECONDS
+            for key in [k for k, v in _touched.items() if v < cutoff]:
+                _touched.pop(key, None)
+
+    try:
+        # A single statement, so there is no read-then-write race between two
+        # gunicorn workers: session_started_at only moves when the gap since
+        # last_seen is longer than a visit, and last_seen always moves forward.
+        execute(
+            """UPDATE students
+                  SET session_started_at = CASE
+                        WHEN last_seen IS NULL
+                          OR last_seen < (NOW() AT TIME ZONE 'Asia/Manila')
+                                         - make_interval(mins => %s)
+                        THEN (NOW() AT TIME ZONE 'Asia/Manila')
+                        ELSE session_started_at
+                      END,
+                      last_seen = (NOW() AT TIME ZONE 'Asia/Manila')
+                WHERE student_id = %s""",
+            (IDLE_GAP_MINUTES, student_id),
+        )
+    except Exception as exc:  # pragma: no cover - best effort
+        # Presence is a nicety. A student mid-request must not see a 500 because
+        # the dashboard's "who is online" counter could not be updated.
+        print(f"[PRESENCE] could not mark {student_id} active: {exc}")
 
 
 def is_admin():

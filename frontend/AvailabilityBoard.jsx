@@ -7,6 +7,12 @@ import { shortDepartment } from "./ui/DepartmentIcon.jsx";
 import DepartmentChips, { DepartmentTile } from "./admin/DepartmentChips.jsx";
 import api from "./httpClient.js";
 import { SOCKET_URL } from "./constants.js";
+import { formatTime, PH_TZ } from "./ui/datetime.js";
+
+// The board hangs on a wall in Binangonan; the machine driving it may think it
+// is somewhere else entirely.
+const formatBoardDate = (d) =>
+  d.toLocaleDateString("en-PH", { timeZone: PH_TZ, weekday: "short", month: "short", day: "numeric" });
 
 let socket = null;
 
@@ -82,7 +88,7 @@ export default function AvailabilityBoard() {
     { label: "Faculty",     value: all.length,         icon: Users },
     { label: "Available",   value: totalAvail,         icon: CheckCircle2, highlight: true },
     { label: "Departments", value: departments.length, icon: Layers },
-    { label: "Updated",     value: lastUpdate.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" }), icon: RefreshCw },
+    { label: "Updated",     value: formatTime(lastUpdate), icon: RefreshCw },
   ];
 
   return (
@@ -105,10 +111,10 @@ export default function AvailabilityBoard() {
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="text-right leading-tight">
               <p className="text-lg sm:text-2xl font-bold tabular-nums">
-                {now.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })}
+                {formatTime(now)}
               </p>
               <p className="text-white/50 text-[11px] hidden xs:block">
-                {now.toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" })}
+                {formatBoardDate(now)}
               </p>
             </div>
             <Link to="/" className="btn btn-sm bg-white/10 text-white hover:bg-white/20">

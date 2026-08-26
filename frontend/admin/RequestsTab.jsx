@@ -5,6 +5,7 @@ import {
   Modal, ConfirmModal, Alert,
 } from "../SharedUI.jsx";
 import { shortDepartment } from "../ui/DepartmentIcon.jsx";
+import { formatWhen } from "../ui/datetime.js";
 import { usePagedResource, useDebounced } from "./hooks.js";
 import { DEPARTMENTS } from "../constants.js";
 import api, { apiError } from "../httpClient.js";
@@ -186,13 +187,6 @@ export default function RequestsTab({ addToast, onChanged }) {
       />
     </div>
   );
-}
-
-function formatWhen(value) {
-  if (!value) return "—";
-  return new Date(value.replace(" ", "T")).toLocaleString("en-PH", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
 }
 
 /**

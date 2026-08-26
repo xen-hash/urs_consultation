@@ -4,7 +4,8 @@ import { io } from "socket.io-client";
 import {
   Clock, CheckCircle2, XCircle, CalendarCheck,
   Send, RefreshCw, Search, GraduationCap, BookOpen, X,
-  ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Delete, Palette
+  ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Delete, Palette,
+  ShieldQuestion,
 } from "lucide-react";
 import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash, Card, CardHeader } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
@@ -17,6 +18,9 @@ import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
 import { studentTour } from "./ui/tours.js";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
+import {
+  formatDate as phDate, formatWhen as phWhen, formatDateTime as phDateTime,
+} from "./ui/datetime.js";
 
 let socket = null;
 
@@ -190,6 +194,39 @@ function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
   );
 }
 
+// ── Waiting on the admin office ───────────────────────────────────────────────
+//
+// Registration is open, so an account exists the moment someone fills in the
+// form — but only the admin office knows who is actually enrolled, and until
+// they say so the server refuses to file a consultation request. That refusal
+// used to arrive as a red toast *after* the student had chosen a professor,
+// picked a category and written out their purpose. Saying it up front costs
+// them nothing; letting them find out at the end costs them the whole form.
+
+const UNVERIFIED_NOTICE =
+  "Please wait until your enrolment is verified before making an appointment. " +
+  "The admin office confirms new accounts — you can browse faculty and see who " +
+  "is available in the meantime.";
+
+function UnverifiedNotice({ className = "" }) {
+  return (
+    <div
+      role="status"
+      className={`flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-50
+                  px-4 py-3.5 ${className}`}
+    >
+      <span className="icon-tile w-9 h-9 shrink-0 badge-warning">
+        <ShieldQuestion size={17} aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-fg">Waiting for enrolment verification</p>
+        <p className="text-xs text-muted-fg mt-0.5 leading-relaxed">{UNVERIFIED_NOTICE}</p>
+      </div>
+    </div>
+  );
+}
+
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -227,6 +264,11 @@ export default function StudentDashboard() {
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [selectedReq, setSelectedReq]   = useState(null);
   useScrollLock(!!reqModal || !!selectedReq);
+
+  // Whether the admin office has confirmed this account is enrolled. It comes
+  // from the session, but the session was written at sign-in and an account
+  // confirmed since then would still be told to wait — so it is re-read below.
+  const [verified, setVerified]         = useState(student.verified !== false);
 
   const [profile, setProfile]               = useState({ ...student });
   const [profilePhoto, setProfilePhoto]     = useState(student.photo || null);
@@ -272,6 +314,19 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => { fetchInbox(); }, []); // load on mount for appointment banner
+
+  // Confirmation usually happens while the student is signed in and waiting, so
+  // the flag is worth re-reading rather than trusting the one stored at login.
+  useEffect(() => {
+    api.get(`/student/profile/${student.student_id}`)
+      .then(({ data }) => {
+        if (typeof data?.verified === "boolean") {
+          setVerified(data.verified);
+          patchProfile("student", { verified: data.verified });
+        }
+      })
+      .catch(() => {});   // Offline, or an older backend: leave it as it was.
+  }, [student.student_id]);
   useEffect(() => { if (tab === "inbox") fetchInbox(); }, [tab]);
 
   useEffect(() => {
@@ -281,6 +336,7 @@ export default function StudentDashboard() {
   }, [student.student_id]);
 
   const submitRequest = async () => {
+    if (!verified) return addToast(UNVERIFIED_NOTICE, "warning");
     if (!reqForm.purpose.trim()) return addToast("Please describe your purpose.", "warning");
     // Check locally if student already has a pending request to this professor
     const hasPending = myRequests.some(r => r.professor_name === reqModal.name && r.status === "pending");
@@ -446,6 +502,8 @@ export default function StudentDashboard() {
         {/* ── FACULTY TAB ── */}
         {tab === "home" && (
           <>
+            {!verified && <UnverifiedNotice className="mb-4 animate-rise" />}
+
             {/* ── Appointment Alert Banner ── */}
             {myRequests.filter(r => r.appointment_date && r.status === "pending").length > 0 && (
               <div className="mb-4 animate-rise">
@@ -457,7 +515,7 @@ export default function StudentDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-fg font-bold text-sm">New Appointment Set!</p>
                       <p className="text-muted-fg text-xs mt-0.5 truncate">
-                        {req.professor_name} — {new Date(req.appointment_date).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })} at {req.appointment_time || "TBD"}
+                        {req.professor_name} — {phDate(req.appointment_date)} at {req.appointment_time || "TBD"}
                       </p>
                       {req.appointment_notes && (
                         <p className="text-muted-fg text-xs mt-0.5 italic truncate">"{req.appointment_notes}"</p>
@@ -800,7 +858,7 @@ export default function StudentDashboard() {
                         <div className="bg-orange-500/15 border border-orange-400/30 rounded-xl px-3 py-2 mb-3">
                           <p className="text-orange-200 text-xs font-bold mb-0.5 flex items-center gap-1.5"><CalendarCheck size={12} aria-hidden="true" />Appointment details</p>
                           <p className="text-fg text-sm font-semibold">
-                            {new Date(req.appointment_date).toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
+                            {phDate(req.appointment_date)}
                             {req.appointment_time && ` at ${req.appointment_time}`}
                           </p>
                           {req.appointment_notes && (
@@ -812,7 +870,7 @@ export default function StudentDashboard() {
                       {/* Footer */}
                       <div className="flex items-center justify-between">
                         <p className="text-muted-fg text-xs">
-                          {req.request_time ? new Date(req.request_time).toLocaleDateString("en-PH",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}
+                          {phWhen(req.request_time, "")}
                         </p>
                         <button onClick={e => { e.stopPropagation(); setSelectedReq(req); }}
                           className="text-xs text-muted-fg hover:text-fg bg-surface-2 hover:bg-surface-2 px-3 py-1 rounded-lg transition-all">
@@ -1008,6 +1066,8 @@ export default function StudentDashboard() {
               </div>
             </div>
 
+            {!verified && <UnverifiedNotice />}
+
             {/* Category */}
             <div>
               <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-3 block">Category</label>
@@ -1055,10 +1115,11 @@ export default function StudentDashboard() {
             <button
               data-tour="request-submit"
               onClick={submitRequest}
-              disabled={submitting}
-              className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3.5 rounded-lg transition-all text-sm disabled:opacity-50">
+              disabled={submitting || !verified}
+              title={verified ? undefined : UNVERIFIED_NOTICE}
+              className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3.5 rounded-lg transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed">
               {submitting ? <Spinner size={4} light /> : <Send size={14} />}
-              {submitting ? "Sending…" : "Submit Request"}
+              {!verified ? "Awaiting verification" : submitting ? "Sending…" : "Submit Request"}
             </button>
           </div>
         </div>
@@ -1135,10 +1196,7 @@ export default function StudentDashboard() {
                 <div>
                   <p className="text-[10px] font-bold text-subtle-fg uppercase tracking-widest mb-1">Requested On</p>
                   <p className="text-muted-fg text-sm">
-                    {req.request_time ? new Date(req.request_time).toLocaleString("en-PH", {
-                      month: "long", day: "numeric", year: "numeric",
-                      hour: "numeric", minute: "2-digit", hour12: true
-                    }) : "—"}
+                    {phDateTime(req.request_time)}
                   </p>
                 </div>
 
@@ -1150,9 +1208,7 @@ export default function StudentDashboard() {
                       <div>
                         <p className="text-[10px] text-subtle-fg font-semibold mb-0.5">Date</p>
                         <p className="text-fg text-sm font-bold">
-                          {new Date(req.appointment_date).toLocaleDateString("en-PH", {
-                            weekday: "short", month: "short", day: "numeric", year: "numeric"
-                          })}
+                          {phDate(req.appointment_date)}
                         </p>
                       </div>
                       <div>

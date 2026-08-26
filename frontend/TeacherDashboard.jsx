@@ -22,6 +22,7 @@ import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import { SOCKET_URL, DAYS, DAY_LABELS } from "./constants.js";
 import QRCodeLib from "qrcode";
+import { formatDate as phDate, formatTime as phTime } from "./ui/datetime.js";
 
 let socket = null;
 const MANUAL_OPTIONS = ["Auto (use schedule)","Available","Unavailable","On Leave","In Meeting"];
@@ -550,7 +551,7 @@ export default function TeacherDashboard() {
                         <Badge tone="neutral">{req.category}</Badge>
                         <span className="text-xs text-subtle-fg inline-flex items-center gap-1">
                           <Clock size={12} aria-hidden="true" />
-                          {req.request_time ? new Date(req.request_time).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : ""}
+                          {phTime(req.request_time, "")}
                         </span>
                       </div>
                     </div>
@@ -563,7 +564,7 @@ export default function TeacherDashboard() {
                       <div className="mt-3 flex items-center gap-2 flex-wrap bg-accent-50 border border-accent/25 rounded-lg px-3.5 py-2.5">
                         <CalendarCheck size={15} className="text-accent-fg shrink-0" aria-hidden="true" />
                         <p className="text-sm font-medium text-fg">
-                          {new Date(req.appointment_date).toLocaleDateString("en-PH",{month:"short",day:"numeric"})} at {formatTime(req.appointment_time)}
+                          {phDate(req.appointment_date)} at {formatTime(req.appointment_time)}
                         </p>
                         {req.appointment_notes && (
                           <p className="text-xs text-muted-fg">— {req.appointment_notes}</p>

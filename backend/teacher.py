@@ -9,6 +9,7 @@ from security import (
     require_role, subject, owns, forbid_unless_owner, is_admin,
     current_claims, record_audit,
 )
+from phtime import serialize_row
 
 teacher_bp = Blueprint("teacher", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -25,22 +26,8 @@ _REQUESTS_TTL   = 15
 
 
 def _serialize_row(row):
-    if not row:
-        return row
-    result = {}
-    for k, v in row.items():
-        if isinstance(v, datetime):
-            result[k] = v.strftime("%Y-%m-%d %H:%M:%S")
-        elif isinstance(v, date):
-            result[k] = v.isoformat()
-        elif isinstance(v, timedelta):
-            total = int(v.total_seconds())
-            h, rem = divmod(total, 3600)
-            m, s   = divmod(rem, 60)
-            result[k] = f"{h:02}:{m:02}:{s:02}"
-        else:
-            result[k] = v
-    return result
+    """Row out with Manila-offset timestamps — see phtime for the two clocks."""
+    return serialize_row(row)
 
 
 def _with_photos(result):

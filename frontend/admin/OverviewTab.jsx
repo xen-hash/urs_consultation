@@ -7,6 +7,7 @@ import { shortDepartment } from "../ui/DepartmentIcon.jsx";
 import { TrendChart, StatusDonut } from "./Charts.jsx";
 import AuditFeed from "./AuditFeed.jsx";
 import StorageCard from "./StorageCard.jsx";
+import ActiveStudentsCard from "./ActiveStudentsCard.jsx";
 
 /** Headline numbers. These come from /admin/stats — SQL counts over the whole
  *  table. They used to be `students.length` on the current page, so every
@@ -47,7 +48,7 @@ function DepartmentBar({ dept }) {
 }
 
 export default function OverviewTab({
-  stats, statsLoading, departments, requests, onSeeAll, onExport, addToast,
+  stats, statsLoading, departments, requests, onSeeAll, onSeeActivity, onExport, addToast,
 }) {
   const categories = stats?.categories || [];
   const maxCategory = Math.max(1, ...categories.map(c => c.count));
@@ -71,6 +72,8 @@ export default function OverviewTab({
         <StatCard icon={CheckCircle2} label="Completed" value={stats?.done}
           sub={`${stats?.pending ?? 0} still pending`} loading={statsLoading} />
       </div>
+
+      <ActiveStudentsCard />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -134,10 +137,20 @@ export default function OverviewTab({
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="p-5 pb-0">
-            <CardHeader title="Recent activity"
-              subtitle="Sign-ins, credentials and exports" icon={ScrollText} />
+            {/* The feed is the newest handful, not the log. Without a way
+                through to the full trail it was the only activity the admin
+                dashboard could show at all. */}
+            <CardHeader
+              title="Recent activity"
+              subtitle="Sign-ins, credentials and exports" icon={ScrollText}
+              action={
+                <Button size="sm" onClick={onSeeActivity}>
+                  View all <ChevronRight size={14} aria-hidden="true" />
+                </Button>
+              }
+            />
           </div>
-          <AuditFeed limit={6} />
+          <AuditFeed limit={8} />
         </Card>
 
         <Card>

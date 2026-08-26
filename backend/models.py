@@ -136,6 +136,9 @@ INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_audit_action    ON audit_log (action)",
     # QR logins look an account up by serial on every scan.
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_ta_qr_serial ON teacher_accounts (qr_serial) WHERE qr_serial IS NOT NULL",
+    # "Who is on right now" scans by recency, and the admin dashboard asks every
+    # half minute while it is open.
+    "CREATE INDEX IF NOT EXISTS idx_students_seen  ON students (last_seen DESC)",
 ]
 
 # Columns added after the original release. Older databases (and the MySQL one
@@ -181,6 +184,13 @@ LATE_COLUMNS = [
     ("students",              "verified",           "BOOLEAN DEFAULT FALSE"),
     ("students",              "verified_at",        "TIMESTAMP"),
     ("students",              "verified_by",        "VARCHAR(120)"),
+    # Presence. last_login only ever answered "did they ever come back?"; these
+    # answer "is anyone using this right now, and for how long?", which is the
+    # question an administrator watching a consultation period actually has.
+    # Written in Manila time by security.touch_presence, at most once a minute
+    # per student.
+    ("students",              "last_seen",          "TIMESTAMP"),
+    ("students",              "session_started_at", "TIMESTAMP"),
 ]
 
 # The status column used to be a MySQL ENUM. It is a plain VARCHAR here, with a
