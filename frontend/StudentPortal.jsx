@@ -4,6 +4,7 @@ import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, Rad
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
+import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
@@ -88,7 +89,7 @@ export default function StudentPortal() {
       />
 
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-3xl mx-auto w-full">
           <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm text-fg truncate">University of Rizal System</p>
@@ -102,7 +103,8 @@ export default function StudentPortal() {
         </div>
       </nav>
 
-      <main className="flex-1 w-full max-w-sm mx-auto px-4 pt-8 sm:pt-12 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+      <main className="flex-1 w-full max-w-sm mx-auto px-4 flex flex-col justify-center
+                       pt-8 sm:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
 
         {!mode && (
           <div className="animate-rise">
@@ -154,12 +156,15 @@ export default function StudentPortal() {
                 to request consultations.
               </p>
             </div>
+
+            <PortalNav current="/student" className="mt-8" />
           </div>
         )}
 
         {mode === "qr" && (
           <section className="animate-rise" aria-labelledby="s-scan">
-            <header className="mb-6">
+            <BackLink onClick={home}>Sign-in options</BackLink>
+            <header className="mb-6 mt-2">
               <h1 id="s-scan" className="text-title font-bold text-on-backdrop">Scan your QR code</h1>
               <p className="text-on-backdrop/75 mt-1.5">Hold it inside the frame.</p>
             </header>
@@ -179,7 +184,8 @@ export default function StudentPortal() {
 
         {mode === "manual" && (
           <section className="animate-rise" aria-labelledby="s-id">
-            <header className="mb-6">
+            <BackLink onClick={home}>Sign-in options</BackLink>
+            <header className="mb-6 mt-2">
               <h1 id="s-id" className="text-title font-bold text-on-backdrop">Enter your student number</h1>
             </header>
             <div className="card space-y-4">
@@ -203,6 +209,7 @@ export default function StudentPortal() {
 
         {(mode === "pin" || mode === "setpin") && pending && (
           <StudentPinStep
+            onBack={home}
             student={pending}
             setting={mode === "setpin"}
             pin={pin}
@@ -220,13 +227,14 @@ export default function StudentPortal() {
    in on ID alone this once — the server still allows it — and the wording says
    so plainly rather than pretending a PIN was checked. */
 
-function StudentPinStep({ student, setting, pin, onPin, loading, onSubmit }) {
+function StudentPinStep({ student, setting, pin, onPin, loading, onSubmit, onBack }) {
   const press = fn => e => { e.preventDefault(); fn(); };
   const digit = n => press(() => pin.length < 4 && onPin(pin + n));
 
   return (
     <section className="animate-rise" aria-labelledby="s-pin">
-      <header className="mb-6 text-center">
+      <BackLink onClick={onBack}>Not you? Start again</BackLink>
+      <header className="mb-6 mt-2 text-center">
         <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
           {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}
         </span>

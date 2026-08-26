@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
 import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
+import PortalNav from "./ui/PortalNav.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 
@@ -122,6 +123,8 @@ export default function DeanLogin() {
               {!loading && <ArrowRight size={16} aria-hidden="true" />}
             </button>
           </div>
+
+          <PortalNav current="/dean" tone="light" className="mt-8" />
         </div>
       </main>
     </div>

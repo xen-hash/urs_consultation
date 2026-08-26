@@ -9,6 +9,7 @@ import TeacherDashboard from "./TeacherDashboard.jsx";
 import DeanLogin        from "./DeanLogin.jsx";
 import DeanDashboard    from "./DeanDashboard.jsx";
 import AvailabilityBoard from "./AvailabilityBoard.jsx";
+import NotFound        from "./NotFound.jsx";
 
 export default function App() {
   // One place for every role, rather than three copies that drift apart.
@@ -28,7 +29,10 @@ export default function App() {
       {/* The corridor display is gone; anything still pointing at it lands on
           the public board, which is what it showed anyway. */}
       <Route path="/kiosk"             element={<Navigate to="/availability" replace />} />
-      <Route path="*"                  element={<Navigate to="/" replace />} />
+      {/* A wrong address is answered, not swallowed. Redirecting silently to
+          the front page looks identical to the link having worked and the site
+          being empty. */}
+      <Route path="*"                  element={<NotFound />} />
     </Routes>
   );
 }

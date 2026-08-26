@@ -4,6 +4,7 @@ import { QrCode, ScanLine, ChevronLeft, Lock, Delete, ArrowRight, ShieldCheck } 
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
+import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
 import URSBackground from "./URSBackground.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
@@ -120,7 +121,7 @@ export default function TeacherPortal() {
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 max-w-3xl mx-auto w-full">
           <div className="flex items-center gap-3 min-w-0">
             <img src={ursLogo} alt="" aria-hidden="true"
               className="w-8 h-8 object-contain shrink-0" />
@@ -137,7 +138,8 @@ export default function TeacherPortal() {
         </div>
       </nav>
 
-      <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+      <main className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 flex flex-col justify-center
+                       pt-8 sm:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
 
         {view === "home" && (
           <div className="animate-rise">
@@ -176,12 +178,15 @@ export default function TeacherPortal() {
                 security, they can no longer be generated from this page.
               </p>
             </div>
+
+            <PortalNav current="/teacher" className="mt-8" />
           </div>
         )}
 
         {view === "scanqr" && (
           <section className="animate-rise" aria-labelledby="scan-heading">
-            <header className="mb-6">
+            <BackLink onClick={goHome}>Sign-in options</BackLink>
+            <header className="mb-6 mt-2">
               <h1 id="scan-heading" className="text-2xl font-bold text-on-backdrop tracking-tight">Scan your Faculty ID</h1>
               <p className="text-on-backdrop/75 mt-1.5">
                 Hold the QR code on your card inside the frame — or, if the card is
@@ -207,6 +212,7 @@ export default function TeacherPortal() {
 
         {(view === "pinlogin" || view === "setpin") && (
           <PinPanel
+            onBack={goHome}
             mode={view}
             teacher={pendingTeacher}
             employeeId={pinEmpId}
@@ -227,14 +233,17 @@ export default function TeacherPortal() {
    onPointerDown so a tap registers without waiting for the click that follows a
    touch, which is what made the old keypad feel laggy on a phone. */
 
-function PinPanel({ mode, teacher, employeeId, onEmployeeId, pin, onPin, loading, onSubmit }) {
+function PinPanel({ mode, teacher, employeeId, onEmployeeId, pin, onPin, loading, onSubmit, onBack }) {
   const setting = mode === "setpin";
   const press = (fn) => (e) => { e.preventDefault(); fn(); };
   const digit = (n) => press(() => pin.length < 4 && onPin(pin + n));
 
   return (
-    <section className="animate-rise max-w-sm mx-auto" aria-labelledby="pin-heading">
-      <header className="mb-6 text-center">
+    <section className="animate-rise max-w-sm mx-auto w-full" aria-labelledby="pin-heading">
+      {/* Choosing a PIN happens after a card scan has already signed you in, so
+          there is nothing to go back to — every other panel gets a way out. */}
+      {!setting && <BackLink onClick={onBack}>Sign-in options</BackLink>}
+      <header className="mb-6 mt-2 text-center">
         <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
           {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}
         </span>
