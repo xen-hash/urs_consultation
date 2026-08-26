@@ -15,6 +15,13 @@ import { useScrollLock } from "./index.jsx";
  * drift out of date the way a screenshot-based guide does — a step whose target
  * has gone is skipped rather than pointing at nothing.
  *
+ * A step can also carry a `before`, which the tour runs as the step opens. That
+ * is what turns the student tour into a live demo: it opens a real department,
+ * a real professor and the real request form, on this person's actual account,
+ * so the walkthrough is the task rather than a description of it. Nothing is
+ * ever submitted on their behalf — the last step explains the button and leaves
+ * it for them to press.
+ *
  * Shown once per person per tour, remembered in localStorage. A guide that
  * reappears every visit stops being help and becomes an obstacle, so it is also
  * dismissible at any point and re-openable from the header.
@@ -37,7 +44,7 @@ export function resetTour(id) {
 
 const PAD = 8;
 
-export default function Walkthrough({ id, steps, open, onClose }) {
+export default function Walkthrough({ id, steps, open, onClose, onExit }) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState(null);
   const [ready, setReady] = useState(false);
@@ -61,19 +68,22 @@ export default function Walkthrough({ id, steps, open, onClose }) {
       const el = document.querySelector(step.target);
       if (!el) { setRect(null); setReady(true); return; }
       el.scrollIntoView({ block: "center", behavior: "smooth" });
-      // Let the scroll settle before measuring, or the cut-out lands where the
-      // element used to be.
-      setTimeout(() => {
-        const r = el.getBoundingClientRect();
-        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-        setReady(true);
-      }, 260);
+      const r = el.getBoundingClientRect();
+      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      setReady(true);
     };
 
     setReady(false);
-    measure();
+    // A step that drives the app needs its screen to exist before anything is
+    // measured, so the render it causes is given a beat to land. Without the
+    // wait the cut-out is drawn around where the element used to be.
+    step.before?.();
+    const settle = setTimeout(measure, step.before ? 420 : 260);
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return () => {
+      clearTimeout(settle);
+      window.removeEventListener("resize", measure);
+    };
   }, [open, step, index]);
 
   useEffect(() => {
@@ -91,7 +101,13 @@ export default function Walkthrough({ id, steps, open, onClose }) {
 
   if (!open || !step) return null;
 
-  const finish = () => { markTourSeen(id); onClose(); };
+  const finish = () => {
+    markTourSeen(id);
+    // Put the app back where it was found. A demo that opens a department and
+    // a half-filled form should not leave the person standing in it.
+    onExit?.();
+    onClose();
+  };
   const next = () => (last ? finish() : setIndex(i => i + 1));
 
   // The card goes below the highlight, or above it when the highlight is low on

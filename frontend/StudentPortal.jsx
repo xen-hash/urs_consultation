@@ -102,7 +102,7 @@ export default function StudentPortal() {
         </div>
       </nav>
 
-      <main className="flex-1 w-full max-w-sm mx-auto px-4 py-8 sm:py-12 pb-safe">
+      <main className="flex-1 w-full max-w-sm mx-auto px-4 pt-8 sm:pt-12 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
 
         {!mode && (
           <div className="animate-rise">

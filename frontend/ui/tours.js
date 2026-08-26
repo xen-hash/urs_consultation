@@ -12,32 +12,71 @@
  * in some states.
  */
 
-export const STUDENT_TOUR = [
-  {
-    title: "Start with the departments",
-    body: "Each card is a department. Tap one to see its faculty and who is free right now — the colour is just there to tell them apart.",
-    target: '[data-tour="student-departments"]',
-  },
-  {
-    title: "Request a consultation",
-    body: "Open a professor who is available and you can send them a request saying what you need. They accept it, decline it, or give you an appointment time.",
-    target: '[data-tour="student-departments"]',
-  },
-  {
-    title: "Replies arrive in Inbox",
-    body: "This is where their answer turns up, along with any appointment date and time they set. A dot means something is unread.",
-    target: '[data-tour="nav-inbox"]',
-  },
-  {
-    title: "Profile holds your ID",
-    body: "Your student QR code and details live here. You can change your photo and your PIN from the same screen.",
-    target: '[data-tour="nav-profile"]',
-  },
-  {
-    title: "No sign-in needed to look",
-    body: "Just checking if someone is in? The live availability board is open to everyone — there is a link to it on the front page.",
-  },
-];
+/**
+ * The student tour is a live demo rather than a description.
+ *
+ * Booking a consultation is the one thing a student is here to do, and it is
+ * four screens deep — reading about it does not help much. So the tour opens a
+ * real department, a real professor and the real request form as it goes, and
+ * stops at the send button rather than pressing it. Nothing is submitted on
+ * anyone's behalf.
+ *
+ * The steps that drive the app need callbacks into it, so this is a function
+ * rather than a constant; the dashboard passes its own setters in.
+ */
+export function studentTour({ showDepartments, openDepartment, openRequestFor, showInbox, demo }) {
+  const professor = demo?.professor;
+
+  return [
+    {
+      title: "Start with the departments",
+      body: "Each card is a department, coloured so they are easy to tell apart. The number on it is how many of its faculty are free right now.",
+      target: '[data-tour="student-departments"]',
+      before: showDepartments,
+    },
+    {
+      title: "Open one to see the faculty",
+      body: professor
+        ? `Here is ${demo.department}, opened for you. Every professor shows whether they are available, and their consultation slots for today.`
+        : "Tap a department and you get its faculty, each showing whether they are available and how many consultation slots are left today.",
+      target: '[data-tour="student-professors"]',
+      before: openDepartment,
+    },
+    {
+      title: "This is the request form",
+      body: professor
+        ? `Opened against ${professor}, exactly as it would be if you tapped them. Nothing has been sent — this is your own form to look at.`
+        : "Tapping a professor opens this form. It is how a consultation is requested.",
+      target: '[data-tour="request-form"]',
+      before: openRequestFor,
+    },
+    {
+      title: "Say what it is about",
+      body: "Pick a category, then write what you need in a sentence or two. The professor sees this before they accept, so it is worth being specific.",
+      target: '[data-tour="request-purpose"]',
+    },
+    {
+      title: "Then send it — when it is real",
+      body: "This is the button. We have not pressed it, and this form will close empty when the guide ends. Do this for real and the request goes straight to them.",
+      target: '[data-tour="request-submit"]',
+    },
+    {
+      title: "Their answer arrives in Inbox",
+      body: "Accepted, declined, or accepted with a date and time. A dot on the tab means something is waiting to be read.",
+      target: '[data-tour="nav-inbox"]',
+      before: showInbox,
+    },
+    {
+      title: "Profile holds your ID",
+      body: "Your student QR code, your photo and your PIN. That QR is how you sign in without typing your ID.",
+      target: '[data-tour="nav-profile"]',
+    },
+    {
+      title: "No sign-in needed to just look",
+      body: "Only checking whether someone is in? The live board on the front page is open to everyone, no account required.",
+    },
+  ];
+}
 
 export const TEACHER_TOUR = [
   {

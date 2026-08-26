@@ -119,7 +119,7 @@ export default function AvailabilityBoard() {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 pb-safe">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         {/* One column on a phone, four on a wall display — this was a hard
             grid-cols-4 that crushed on anything small. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">

@@ -91,14 +91,18 @@ export default function TeacherDashboard() {
   const [apptModal, setApptModal]   = useState(null);
   const [apptForm, setApptForm]     = useState({ date:"", time:"", notes:"" });
   const [savingAppt, setSavingAppt] = useState(false);
+  // Stored on the account, not in this browser. It is a statement about the
+  // teacher's own day, so it should follow them to another device — and the
+  // public board needs it, or someone who has taken all they can still shows
+  // as free. The cached value is only the opening guess while the profile
+  // loads, so the field does not flicker from 10 to their real number.
   const [consultLimit, setConsultLimit] = useState(() => {
-    // Kept per account: it is this teacher's own guard on how many they will
-    // take in a day, and it used to reset to 10 on every reload.
     try {
       const saved = parseInt(localStorage.getItem(LIMIT_KEY) || "", 10);
       return Number.isNaN(saved) ? 10 : Math.min(100, Math.max(1, saved));
     } catch { return 10; }
   });
+  const [savingLimit, setSavingLimit] = useState(false);
   const [accepted, setAccepted]         = useState(new Set());
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [tourOpen, setTourOpen]         = useState(() => !hasSeenTour("teacher"));
@@ -149,8 +153,22 @@ export default function TeacherDashboard() {
     try {
       const res = await api.get(`/teacher/profile/${teacher.employee_id}`);
       if (res.data.photo) setProfilePhoto(res.data.photo);
+      if (res.data.daily_limit > 0) setConsultLimit(res.data.daily_limit);
     } catch(_){}
   }, [teacher]);
+
+  const saveLimit = async (value) => {
+    setConsultLimit(value);
+    setSavingLimit(true);
+    try {
+      const { data } = await api.post("/teacher/daily-limit", { daily_limit: value });
+      addToast(data.message, "success");
+    } catch (e) {
+      addToast(apiError(e, "Could not save the limit."), "error");
+    } finally {
+      setSavingLimit(false);
+    }
+  };
 
   // The appointment sheet is a hand-rolled overlay rather than the shared
   // Modal, so it needs the scroll lock applied explicitly.
@@ -406,7 +424,8 @@ export default function TeacherDashboard() {
               <NumberField
                 id="daily-limit"
                 value={consultLimit}
-                onCommit={setConsultLimit}
+                onCommit={saveLimit}
+                disabled={savingLimit}
                 min={1}
                 max={100}
                 aria-label="Daily consultation limit"
