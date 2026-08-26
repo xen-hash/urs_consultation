@@ -4,25 +4,23 @@ import { DEVELOPERS, PROJECT_CONTACT } from "../constants.js";
 /**
  * Who built this, on the public screens.
  *
- * Signed-in dashboards deliberately do not carry it: someone triaging
- * consultation requests does not need the credits, and a footer on a dense
- * scrolling screen is one more thing between them and the bottom of the list.
+ * The front page only. It used to sit on every public screen, which put the
+ * credits under people who were mid sign-in and had not asked who wrote this.
+ * Someone curious about that is on the front page; someone typing a PIN is not.
  *
  * The names and the address live in constants.js, so they are edited in one
  * place rather than in the markup of every page that shows them.
  */
-export default function SiteFooter({ tone = "backdrop" }) {
+export default function SiteFooter() {
   const people = DEVELOPERS.filter(d => d.name);
 
-  // Most public screens sit on the campus backdrop, where text is white. The
-  // administrator sign-in is a light page, and white on it is invisible.
-  const t = tone === "light"
-    ? { rule: "border-border", head: "text-subtle-fg", body: "text-fg",
-        soft: "text-muted-fg", link: "text-brand hover:text-brand-700",
-        decoration: "decoration-brand/30", faint: "text-subtle-fg" }
-    : { rule: "border-on-backdrop/10", head: "text-on-backdrop/45", body: "text-on-backdrop/85",
-        soft: "text-on-backdrop/55", link: "text-on-backdrop/85 hover:text-on-backdrop",
-        decoration: "decoration-on-backdrop/30", faint: "text-on-backdrop/40" };
+  // The front page sits on the campus backdrop, so the text here is white
+  // rather than the dark-on-light the rest of the tokens are tuned for.
+  const t = {
+    rule: "border-on-backdrop/10", head: "text-on-backdrop/45", body: "text-on-backdrop/85",
+    soft: "text-on-backdrop/55", link: "text-on-backdrop/85 hover:text-on-backdrop",
+    decoration: "decoration-on-backdrop/30", faint: "text-on-backdrop/40",
+  };
 
   return (
     <footer className={`relative z-10 mt-auto border-t ${t.rule} pb-safe`}>
