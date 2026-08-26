@@ -22,15 +22,48 @@ from config import (
 # retried — re-running a failed INSERT could double-write.
 _CONNECTION_SQLSTATES = ("57P01", "57P02", "57P03")
 
+# 26000, "unnamed prepared statement does not exist".
+#
+# Not a bad query — the query is fine and never ran. pg8000 sends a statement
+# as Parse, then Describe, then Bind and Execute. A transaction-pooling
+# connection pooler (Neon's -pooler endpoint is PgBouncer in that mode) hands
+# each transaction whichever server connection is free, so a connection that
+# sat idle can be pointed at a different backend between the Parse and the
+# Describe. The second message then asks for a statement the new backend never
+# parsed, and the server answers with this.
+#
+# It has to be told apart from a real SQL error, because the two need opposite
+# handling. This connection is desynchronised and must be thrown away, not
+# rolled back and put back in the pool for the next request to trip over —
+# which is what used to happen, so one occurrence became a run of failures on
+# whichever endpoints drew that connection. And retrying is safe here in a way
+# it is not for a constraint violation: the failure is raised at Describe,
+# before Bind and Execute, so nothing was written and there is nothing to
+# double-write.
+_PROTOCOL_SQLSTATES = ("26000",)
+
+
+def _sqlstate(exc):
+    if not isinstance(exc, DatabaseError):
+        return None
+    detail = exc.args[0] if exc.args else None
+    return detail.get("C") if isinstance(detail, dict) else None
+
 
 def _is_connection_error(exc):
+    """True when the connection is unusable and the statement never ran.
+
+    Both halves matter: the caller throws the connection away *and* retries
+    once on a fresh one, so anything answering yes here must be safe to send
+    twice.
+    """
     if isinstance(exc, (InterfaceError, OSError)):
         return True
-    if isinstance(exc, DatabaseError):
-        detail = exc.args[0] if exc.args else None
-        code = detail.get("C") if isinstance(detail, dict) else None
-        if code:
-            return code.startswith("08") or code in _CONNECTION_SQLSTATES
+    code = _sqlstate(exc)
+    if code:
+        return (code.startswith("08")
+                or code in _CONNECTION_SQLSTATES
+                or code in _PROTOCOL_SQLSTATES)
     return False
 
 

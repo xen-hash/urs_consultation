@@ -108,6 +108,30 @@ print(
     f"sslmode={DB_SSLMODE} (from {_CONFIG_SOURCE})"
 )
 
+# Neon (and Supabase) offer two endpoints for the same database: a direct one,
+# and a pooled one whose host carries "-pooler". The pooled endpoint is
+# PgBouncer in transaction mode, which hands each transaction whichever server
+# connection happens to be free — and pg8000 sends a query as Parse, then
+# Describe, then Bind and Execute, so a connection that sat idle can be pointed
+# at a different backend midway and the server answers "unnamed prepared
+# statement does not exist" (SQLSTATE 26000).
+#
+# db.py now survives that: it throws the desynchronised connection away and
+# retries once. But surviving it is not the same as not having it, and the
+# cure is one character of configuration, so say so where someone reading a
+# boot log will find it.
+if "-pooler" in (DB_HOST or "").lower():
+    print(
+        "[DB] NOTE: this is a POOLED endpoint (the host contains '-pooler'). "
+        "Transaction pooling breaks up the multi-step protocol this driver "
+        "uses, which surfaces as intermittent 500s reading "
+        "'unnamed prepared statement does not exist'. Those are retried, but "
+        "the fix is to point DATABASE_URL at the direct endpoint — the same "
+        "host without '-pooler'. This app runs one worker with a small "
+        "connection pool of its own, so it gains nothing from PgBouncer."
+    )
+
+
 def _looks_like_a_connection_string(value: str) -> bool:
     return _clean_url(value).lower().startswith(("postgresql://", "postgres://"))
 
