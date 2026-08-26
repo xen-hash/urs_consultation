@@ -3,7 +3,7 @@ import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Radio } fro
 import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
 import SiteFooter from "./ui/SiteFooter.jsx";
 import URSBackground from "./URSBackground.jsx";
-import ursLogo from "./URS_LOGO.png";
+import HomeBrand from "./ui/HomeBrand.jsx";
 
 const PORTALS = [
   {
@@ -32,12 +32,8 @@ export default function LandingPage() {
   return (
     <URSBackground>
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-6xl mx-auto w-full">
-          <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-sm text-fg truncate">University of Rizal System</p>
-            <p className="text-xs text-muted-fg truncate">College of Engineering</p>
-          </div>
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
+          <HomeBrand subtitle="College of Engineering" className="flex-1" />
           <span className={`badge ${online ? "badge-success" : "badge-warning"} hidden xs:inline-flex`}>
             {online ? <Wifi size={13} aria-hidden="true" /> : <WifiOff size={13} aria-hidden="true" />}
             {online ? "Online" : "Offline"}

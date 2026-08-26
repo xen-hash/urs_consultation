@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Compass, Home } from "lucide-react";
 import URSBackground from "./URSBackground.jsx";
 import PortalNav from "./ui/PortalNav.jsx";
-import ursLogo from "./URS_LOGO.png";
+import HomeBrand from "./ui/HomeBrand.jsx";
 
 /**
  * A wrong address, answered rather than swallowed.
@@ -20,12 +20,8 @@ export default function NotFound() {
   return (
     <URSBackground>
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-4xl mx-auto w-full">
-          <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
-          <div className="min-w-0">
-            <p className="font-semibold text-sm text-fg truncate">University of Rizal System</p>
-            <p className="text-xs text-muted-fg">College of Engineering</p>
-          </div>
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
+          <HomeBrand subtitle="College of Engineering" className="flex-1" />
         </div>
       </nav>
 

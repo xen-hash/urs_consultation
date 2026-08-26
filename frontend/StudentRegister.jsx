@@ -4,10 +4,10 @@ import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, Graduation
 import { Toast, useToastState, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
 import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
+import HomeBrand from "./ui/HomeBrand.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import { DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
-import ursLogo from "./URS_LOGO.png";
 
 export default function StudentRegister() {
   const navigate = useNavigate();
@@ -75,12 +75,8 @@ export default function StudentRegister() {
       />
 
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-3xl mx-auto w-full">
-          <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-sm text-fg truncate">Student registration</p>
-            <p className="text-xs text-muted-fg truncate">College of Engineering</p>
-          </div>
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
+          <HomeBrand subtitle="Student registration" className="flex-1" />
           <Link to="/student" className="btn btn-ghost btn-sm shrink-0">
             <ArrowLeft size={15} aria-hidden="true" /> Back
           </Link>

@@ -39,8 +39,16 @@ const PORTALS = [
   { to: "/availability", label: "Who's available",  icon: Radio },
 ];
 
-export default function PortalNav({ current, tone = "backdrop", className = "" }) {
-  const others = PORTALS.filter(p => p.to !== current);
+/**
+ * `hide` drops entries a screen already offers better than a chip row can:
+ * the student sign-in has its own "who's available" note above this, and the
+ * faculty and administration screens are staff-only doors where a public board
+ * is not one of the ways in they are looking for.
+ */
+export default function PortalNav({ current, hide = [], tone = "backdrop", className = "" }) {
+  const others = PORTALS.filter(p => p.to !== current && !hide.includes(p.to));
+
+  if (others.length === 0) return null;
 
   const styles = tone === "light"
     ? { rule: "border-border", head: "text-subtle-fg",
