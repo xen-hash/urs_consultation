@@ -174,10 +174,13 @@ def get_teacher_logs():
     sched_map = {(r["professor_name"], r["department"]): r for r in sched_rows}
 
     photo_rows = query(
-        "SELECT professor_name, department, photo FROM teacher_accounts WHERE removed_at IS NULL",
+        "SELECT professor_name, department, photo, daily_limit FROM teacher_accounts "
+        "WHERE removed_at IS NULL",
         fetchall=True
     ) or []
     photo_map = {(r["professor_name"], r["department"]): r.get("photo") for r in photo_rows}
+    limit_map = {(r["professor_name"], r["department"]): (r.get("daily_limit") or 0)
+                 for r in photo_rows}
 
     today_ph = datetime.now(PH).strftime("%Y-%m-%d")
     consumed_rows = query(
@@ -213,6 +216,14 @@ def get_teacher_logs():
                 day_sched = weekly[today_key]
                 if isinstance(day_sched, dict):
                     day_limit = day_sched.get("limit", 0) or 0
+
+            # The teacher's own cap wins over the schedule's. It is the number
+            # they set on their dashboard for today, and it used to live only in
+            # that browser — the board never knew about it, so a professor who
+            # had taken all they could still showed as free.
+            own_limit = limit_map.get(key, 0)
+            if own_limit > 0:
+                day_limit = own_limit
 
             consumed_today = pending_map.get(name, 0)
             slots_left = max(0, day_limit - consumed_today) if day_limit > 0 else None
@@ -294,6 +305,44 @@ def save_schedule():
     )
     _logs_cache["ts"] = 0
     return jsonify({"message": "Schedule saved successfully"})
+
+
+# ─── DAILY LIMIT ──────────────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/daily-limit", methods=["POST"])
+@require_role("teacher", "admin")
+def save_daily_limit():
+    """How many consultations this teacher will take in a day.
+
+    Theirs to set, and freely: it is a statement about their own day, not a
+    policy anyone else administers. Acts on the caller's own account — the
+    employee id comes from the session, never from the body.
+
+    0 means "no cap of my own", in which case the per-day figure in the weekly
+    schedule applies as before. Anything above it is refused rather than
+    silently clamped, so a typo is visible instead of quietly becoming a
+    different number.
+    """
+    global _logs_cache
+    raw = (request.json or {}).get("daily_limit")
+    try:
+        limit = int(raw)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Give a whole number."}), 400
+    if limit < 0 or limit > 100:
+        return jsonify({"error": "Choose a number between 0 and 100."}), 400
+
+    execute("UPDATE teacher_accounts SET daily_limit=%s WHERE employee_id=%s",
+            (limit, subject()))
+    # The board reads through a short-lived cache; drop it so the new cap shows
+    # in everyone's slots-left straight away.
+    _logs_cache["ts"] = 0
+
+    return jsonify({
+        "message": f"You will take up to {limit} consultation(s) a day."
+                   if limit else "Daily limit removed — your schedule decides.",
+        "daily_limit": limit,
+    })
 
 
 # ─── SAVE MANUAL STATUS ───────────────────────────────────────────────────────
@@ -725,6 +774,7 @@ def get_teacher_profile(employee_id):
         "department": teacher["department"],
         "photo": teacher.get("photo"),
         "has_pin": bool(teacher.get("pin_hash")),
+        "daily_limit": teacher.get("daily_limit") or 0,
     })
 
 

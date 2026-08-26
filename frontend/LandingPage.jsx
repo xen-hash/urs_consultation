@@ -46,7 +46,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-16 pb-safe">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
         <header className="max-w-2xl animate-rise">
           <h1 className="text-display font-bold text-on-backdrop">
             Faculty consultation, without the guesswork

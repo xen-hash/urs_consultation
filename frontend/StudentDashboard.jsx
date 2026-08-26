@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import {
@@ -13,7 +13,7 @@ import { getSession, patchProfile, clearSession } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
-import { STUDENT_TOUR } from "./ui/tours.js";
+import { studentTour } from "./ui/tours.js";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
 
@@ -353,6 +353,40 @@ export default function StudentDashboard() {
   const filteredProfs = allFilteredProfs.slice((profPage-1)*PROF_PAGE_SIZE, profPage*PROF_PAGE_SIZE);
   const profTotalPages = Math.ceil(allFilteredProfs.length / PROF_PAGE_SIZE);
 
+  // The guide is a live demo: it opens a real department, a real professor and
+  // the real request form as it goes. The professor it demonstrates on is
+  // whoever is first in the roster — a real one, so the screens are the screens
+  // this student would actually see. Nothing is ever submitted for them.
+  const demoDept = departments[0];
+  const demoProf = demoDept?.professors?.[0];
+
+  const tourSteps = useMemo(() => studentTour({
+    demo: demoProf
+      ? { professor: demoProf.name, department: demoDept.department }
+      : null,
+    showDepartments: () => { setTab("home"); setSelectedDept(null); setReqModal(null); },
+    openDepartment: () => {
+      if (!demoDept) return;
+      setTab("home"); setReqModal(null);
+      setSelectedDept(demoDept.department);
+      setSearch(""); setFilter("all"); setProfPage(1);
+    },
+    openRequestFor: () => {
+      if (!demoProf) return;
+      setReqForm({ purpose: "", category: "Academic" });
+      setReqModal({ ...demoProf, department: demoDept.department });
+    },
+    showInbox: () => { setReqModal(null); setTab("inbox"); },
+  }), [demoDept, demoProf]);
+
+  // Leaving the guide should not leave someone standing in a half-open form.
+  const endTour = () => {
+    setReqModal(null);
+    setReqForm({ purpose: "", category: "Academic" });
+    setSelectedDept(null);
+    setTab("home");
+  };
+
   const inboxBadge = myRequests.filter(
     r => r.appointment_date && r.status === "pending"
   ).length;
@@ -493,7 +527,8 @@ export default function StudentDashboard() {
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+                  data-tour="student-professors">
                   {filteredProfs.map(prof => {
                     const isAvail = prof.status === "Available";
                     const initials = prof.name
@@ -904,6 +939,7 @@ export default function StudentDashboard() {
       ══════════════════════════════════════════════════════════════════════ */}
       {reqModal && (
         <div
+          data-tour="request-form"
           className="fixed inset-0 z-50 flex flex-col bg-white"
           style={{ animation: "reqIn 0.18s ease both" }}>
           <style>{`@keyframes reqIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}`}</style>
@@ -972,7 +1008,7 @@ export default function StudentDashboard() {
             </div>
 
             {/* Purpose */}
-            <div>
+            <div data-tour="request-purpose">
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purpose</label>
                 <span className={`text-xs font-semibold tabular-nums
@@ -999,6 +1035,7 @@ export default function StudentDashboard() {
               Cancel
             </button>
             <button
+              data-tour="request-submit"
               onClick={submitRequest}
               disabled={submitting}
               className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3.5 rounded-lg transition-all text-sm disabled:opacity-50">
@@ -1131,9 +1168,10 @@ export default function StudentDashboard() {
 
       <Walkthrough
         id="student"
-        steps={STUDENT_TOUR}
+        steps={tourSteps}
         open={tourOpen}
         onClose={() => setTourOpen(false)}
+        onExit={endTour}
       />
 
     </PageWrapper>

@@ -161,6 +161,9 @@ LATE_COLUMNS = [
     # on the next restart; a marked row is skipped by the seeder's ON CONFLICT
     # and stays gone. It also keeps the reason attached to the account itself,
     # not only to the audit line.
+    # How many consultations this teacher will take in a day. 0 means "no limit
+    # of my own" — the per-day figure in the weekly schedule is used instead.
+    ("teacher_accounts",      "daily_limit",        "INT DEFAULT 0"),
     ("teacher_accounts",      "removed_at",         "TIMESTAMP"),
     ("teacher_accounts",      "removed_reason",     "TEXT"),
     ("students",              "last_login",         "TIMESTAMP"),

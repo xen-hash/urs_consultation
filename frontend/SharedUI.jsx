@@ -69,7 +69,7 @@ export function PageWrapper({ children, className = "" }) {
 
 export function ContentArea({ children, className = "" }) {
   return (
-    <main className={`flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-safe ${className}`}>
+    <main className={`flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] ${className}`}>
       {children}
     </main>
   );
