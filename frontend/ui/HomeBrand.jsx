@@ -12,10 +12,17 @@ import { Modal, Button } from "./index.jsx";
  * instinctively click to get home did nothing — and the sign-in screens had no
  * other way out either. This makes it the home link everywhere.
  *
- * Signed in, the front page is the wrong place to be dropped silently: it is
- * public, it looks signed out, and on a shared campus machine leaving a live
- * session behind it is how the next person ends up in someone else's account.
- * So a signed-in tap asks first, and going home means signing out.
+ * On a screen where you are actually working — a dashboard — the front page is
+ * the wrong place to be dropped silently: it is public, it looks signed out,
+ * and on a shared campus machine leaving a live session behind it is how the
+ * next person ends up in someone else's account. Those screens pass
+ * `confirmSignOut`, and the tap asks first.
+ *
+ * Everywhere else it just goes home. The public screens are sign-in pages and
+ * the front page itself: you are looking at a signed-out screen, so being asked
+ * to confirm a sign-out is nonsense — and it happened, because a session left
+ * in sessionStorage by an earlier sign-in still counts as signed in even when
+ * the screen in front of you is a login form.
  */
 
 const ROLE_NOUN = {
@@ -30,10 +37,11 @@ export default function HomeBrand({
   tone = "light",
   className = "",
   titleClassName = "text-sm truncate",
+  confirmSignOut = false,
 }) {
   const navigate = useNavigate();
   const [asking, setAsking] = useState(false);
-  const role = currentRole();
+  const role = confirmSignOut ? currentRole() : null;
 
   const goHome = () => navigate("/");
 

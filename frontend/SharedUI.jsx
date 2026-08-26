@@ -39,7 +39,7 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp }) {
         {/* The name is the way back to the front page — signed in, it asks
             first and signs you out on the way. */}
         <HomeBrand title={title || "University of Rizal System"} subtitle={subtitle}
-          className="flex-1" />
+          className="flex-1" confirmSignOut />
         {(person || onLogout || onHelp) && (
           <div className="flex items-center gap-2 min-w-0">
             {/* The walkthrough has to be reachable after it is dismissed —

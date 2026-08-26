@@ -83,7 +83,7 @@ export function useInstallPrompt() {
 }
 
 /** "Install App" button — renders nothing once the app is already installed. */
-export function InstallAppButton({ className = "" }) {
+export function InstallAppButton({ tone = "light", className = "" }) {
   const { canInstall, needsManualSteps, install } = useInstallPrompt();
   const [showSteps, setShowSteps] = useState(false);
 
@@ -94,9 +94,12 @@ export function InstallAppButton({ className = "" }) {
       <button
         type="button"
         onClick={() => (canInstall ? install() : setShowSteps(true))}
-        className={`flex items-center gap-1.5 text-muted-fg hover:text-fg text-sm
- bg-surface-2 hover:bg-surface-2 border border-border
- px-3 py-1.5 rounded-xl transition-all ${className}`}
+        // The front page's bar is navy now, so the light pill would be the one
+        // bright slab left on it.
+        className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border
+          transition-colors ${tone === "dark"
+            ? "text-on-backdrop/80 hover:text-on-backdrop bg-on-backdrop/10 hover:bg-on-backdrop/20 border-on-backdrop/20"
+            : "text-muted-fg hover:text-fg bg-surface-2 border-border"} ${className}`}
       >
         <Download size={13} /> Install App
       </button>

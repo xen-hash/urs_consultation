@@ -130,19 +130,19 @@ export default function TeacherPortal() {
       {/* Full width, not a centred column: on a desktop the centred bar put the
           logo out in the middle of the screen, nowhere near the corner people
           look for it. */}
-      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
+      <nav className="sticky top-0 z-30 header-on-backdrop pt-safe">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 w-full">
-          <HomeBrand subtitle="Faculty Portal" className="flex-1" />
+          <HomeBrand tone="dark" subtitle="Faculty Portal" className="flex-1" />
           {/* Back was only drawn once a panel was open, so the first screen —
               the one people land on — had no way out at all. Every panel now
               has one, the PIN step included. */}
           {view === "home" ? (
-            <Link to="/" className="btn btn-ghost btn-sm shrink-0">
+            <Link to="/" className="btn btn-ghost-light btn-sm shrink-0">
               <ChevronLeft size={16} aria-hidden="true" /> Back
             </Link>
           ) : (
             <button onClick={view === "setpin" ? cancelSetPin : goHome}
-              className="btn btn-ghost btn-sm shrink-0">
+              className="btn btn-ghost-light btn-sm shrink-0">
               <ChevronLeft size={16} aria-hidden="true" /> Back
             </button>
           )}
