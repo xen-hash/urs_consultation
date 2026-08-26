@@ -202,6 +202,30 @@ SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
 # revoked individually, so this doubles as the blast radius of a leaked one.
 SESSION_TTL_HOURS = int(os.getenv("SESSION_TTL_HOURS", 12))
 
+# ── Student registration checks ───────────────────────────────────────────────
+# Registration is open by design — students sign themselves up — so these are
+# what stands between the roster and anyone who finds the URL.
+#
+# STUDENT_EMAIL_DOMAINS: comma-separated list a registration email must end
+# with. Empty means any address is accepted, which is the weakest setting and
+# only sensible while the school's own domain is being sorted out.
+#
+# STUDENT_ID_PATTERN: a regular expression the student number must match. The
+# default accepts the common Philippine forms — 2021-00123, 21-00123, or a
+# plain run of digits — and rejects free text.
+#
+# STUDENT_AUTO_VERIFY: when true, accounts skip the administrator's queue. Off
+# by default: an unverified account can look around but cannot file a request.
+STUDENT_EMAIL_DOMAINS = [
+    d.strip().lstrip("@").lower()
+    for d in (os.getenv("STUDENT_EMAIL_DOMAINS", "") or "").split(",")
+    if d.strip()
+]
+STUDENT_ID_PATTERN = os.getenv("STUDENT_ID_PATTERN", r"^\d{2,4}-?\d{3,6}$")
+STUDENT_AUTO_VERIFY = os.getenv("STUDENT_AUTO_VERIFY", "").strip().lower() in (
+    "1", "true", "yes", "on"
+)
+
 ALLOW_INSECURE_DEFAULTS = os.getenv("ALLOW_INSECURE_DEFAULTS", "").strip().lower() in (
     "1", "true", "yes", "on"
 )

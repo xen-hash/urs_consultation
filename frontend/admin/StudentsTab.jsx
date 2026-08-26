@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { GraduationCap, Search, KeyRound, Trash2, CheckCircle2, Clock } from "lucide-react";
+import {
+  GraduationCap, Search, KeyRound, Trash2, CheckCircle2, Clock,
+  ShieldCheck, ShieldQuestion,
+} from "lucide-react";
 import {
   Card, Badge, Button, ConfirmModal, EmptyState, SkeletonRows, Pagination,
 } from "../SharedUI.jsx";
@@ -17,6 +20,9 @@ import api, { apiError } from "../httpClient.js";
  */
 export default function StudentsTab({ addToast }) {
   const [search, setSearch] = useState("");
+  // Waiting-to-be-confirmed is the queue that matters here: every account in it
+  // is a student who cannot book anything yet.
+  const [pendingOnly, setPendingOnly] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
   const debounced = useDebounced(search);
@@ -27,9 +33,11 @@ export default function StudentsTab({ addToast }) {
     setBusy(true);
     try {
       const path = `/admin/students/${encodeURIComponent(student.student_id)}`;
-      const { data: body } = action === "pin"
-        ? await api.post(`${path}/reset-pin`)
-        : await api.delete(path);
+      const { data: body } =
+        action === "pin"      ? await api.post(`${path}/reset-pin`)
+      : action === "verify"   ? await api.post(`${path}/verify`, { verified: true })
+      : action === "unverify" ? await api.post(`${path}/verify`, { verified: false })
+      :                         await api.delete(path);
       addToast(body.message, "success");
       setConfirm(null);
       reload();
@@ -39,6 +47,16 @@ export default function StudentsTab({ addToast }) {
   };
 
   const CONFIRMS = {
+    verify: {
+      title: "Confirm this student is enrolled?",
+      body: s => `${s.full_name} (${s.student_id}${s.email ? `, ${s.email}` : ""}) will be able to send consultation requests. Check them against your enrolment list first — the registration form only checks that the number and address look right, not that they are real.`,
+      label: "Confirm enrolment", tone: "primary",
+    },
+    unverify: {
+      title: "Withdraw confirmation?",
+      body: s => `${s.full_name} will keep their account and can still see who is available, but cannot send requests until confirmed again.`,
+      label: "Withdraw", tone: "danger",
+    },
     pin: {
       title: "Reset this PIN?",
       body: s => `${s.full_name}'s PIN will be cleared. They choose a new one the next time they sign in — no one else can sign in as them in the meantime, because the account has no PIN to guess.`,
@@ -51,28 +69,52 @@ export default function StudentsTab({ addToast }) {
     },
   };
   const active = confirm ? CONFIRMS[confirm.action] : null;
+  const rows = pendingOnly ? data.filter(s => !s.verified) : data;
+  const waiting = data.filter(s => !s.verified).length;
 
   return (
     <div className="animate-rise">
-      <div className="relative mb-4 max-w-sm">
+      <div className="flex flex-wrap gap-2 items-center mb-4">
+        <div className="relative flex-1 min-w-[190px] max-w-sm">
         <Search size={17} aria-hidden="true"
           className="absolute left-3.5 top-1/2 -translate-y-1/2 text-subtle-fg pointer-events-none" />
         {/* Searching queries the server. It used to filter only the twenty rows
             already loaded, so a student on page three was unfindable. */}
-        <input className="input pl-11" placeholder="Search name or student ID…" value={search}
-          onChange={e => setSearch(e.target.value)} aria-label="Search students" />
+          <input className="input pl-11" placeholder="Search name or student ID…" value={search}
+            onChange={e => setSearch(e.target.value)} aria-label="Search students" />
+        </div>
+
+        <button
+          onClick={() => setPendingOnly(v => !v)}
+          aria-pressed={pendingOnly}
+          className={`inline-flex items-center gap-2 px-3 min-h-[44px] rounded-lg border
+            text-sm font-semibold transition-colors duration-150
+            ${pendingOnly
+              ? "border-transparent bg-warning-fg text-white"
+              : "border-border bg-surface text-fg hover:bg-surface-2"}`}
+        >
+          <ShieldQuestion size={16} aria-hidden="true" />
+          Waiting to be confirmed
+          <span className={`text-xs tabular-nums ${pendingOnly ? "text-white/75" : "text-muted-fg"}`}>
+            {waiting}
+          </span>
+        </button>
       </div>
 
       <Card className="p-0 overflow-hidden">
         {loading ? (
           <SkeletonRows rows={8} cols={4} />
-        ) : data.length === 0 ? (
-          <EmptyState icon={GraduationCap} title="No students found"
-            description={search ? `Nothing matches "${search}".` : "No students have registered yet."} />
+        ) : rows.length === 0 ? (
+          <EmptyState icon={GraduationCap}
+            title={pendingOnly ? "Nobody is waiting" : "No students found"}
+            description={
+              pendingOnly ? "Every student on this page has been confirmed as enrolled."
+              : search ? `Nothing matches "${search}".`
+              : "No students have registered yet."} />
         ) : (
           <>
             <ul className="sm:hidden divide-y divide-border">
-              {data.map(s => (
+              {rows.map(s => (
                 <li key={s.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -106,7 +148,7 @@ export default function StudentsTab({ addToast }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map(s => (
+                  {rows.map(s => (
                     <tr key={s.id}>
                       <td className="font-mono text-xs font-semibold text-brand">{s.student_id}</td>
                       <td className="font-semibold">{s.full_name}</td>
@@ -154,21 +196,47 @@ export default function StudentsTab({ addToast }) {
   );
 }
 
-/** Whether the account has a PIN — the thing a reset actually changes. */
+/** Whether the account has a PIN, and whether anyone has confirmed the person
+ *  is actually enrolled. The second is the one that decides if they can book. */
 function PinState({ student }) {
-  const set = student.has_pin;
+  const states = [
+    {
+      ok: student.verified,
+      icon: student.verified ? ShieldCheck : ShieldQuestion,
+      label: student.verified ? "Enrolled" : "Not confirmed",
+      tone: student.verified ? "text-success" : "text-warning-fg",
+    },
+    {
+      ok: student.has_pin,
+      icon: student.has_pin ? CheckCircle2 : Clock,
+      label: student.has_pin ? "PIN set" : "No PIN yet",
+      tone: student.has_pin ? "text-success" : "text-muted-fg",
+    },
+  ];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium
-      ${set ? "text-success" : "text-muted-fg"}`}>
-      {set ? <CheckCircle2 size={14} aria-hidden="true" /> : <Clock size={14} aria-hidden="true" />}
-      {set ? "PIN set" : "No PIN yet"}
-    </span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {states.map(s => (
+        <span key={s.label} className={`inline-flex items-center gap-1.5 text-xs font-medium ${s.tone}`}>
+          <s.icon size={14} aria-hidden="true" className="shrink-0" />
+          {s.label}
+        </span>
+      ))}
+    </div>
   );
 }
 
 function StudentActions({ student, onPick }) {
   return (
     <>
+      {!student.verified ? (
+        <Button size="sm" variant="primary" icon={ShieldCheck} onClick={() => onPick("verify")}>
+          Confirm enrolment
+        </Button>
+      ) : (
+        <Button size="sm" icon={ShieldQuestion} onClick={() => onPick("unverify")}>
+          Withdraw
+        </Button>
+      )}
       {student.has_pin && (
         <Button size="sm" icon={KeyRound} onClick={() => onPick("pin")}>Reset PIN</Button>
       )}

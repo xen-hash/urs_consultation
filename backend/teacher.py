@@ -563,6 +563,7 @@ def dean_get_students():
     def _public(row):
         out = _serialize_row(row)
         out["has_pin"] = bool(out.pop("pin_hash", None))
+        out["verified"] = bool(out.get("verified"))
         return out
 
     resp   = {
@@ -646,30 +647,86 @@ def dean_get_teachers():
 @teacher_bp.route("/dean/add-teacher", methods=["POST"])
 @require_role("admin")
 def dean_add_teacher():
+    """Register a faculty member.
+
+    Identity is more than a name here. Two professors can share one, and the
+    employee ID is derived from name and department — so on the old version a
+    second J. Santos in the same department silently collided with the first,
+    and re-adding a name that had been removed silently brought the removed
+    account back, card history and all. Both are now refused with an
+    explanation, and a restore has to be asked for by name.
+
+    Email and staff number are the fields that actually tell two people apart,
+    so they are required; position is what an administrator recognises someone
+    by on a roster of forty, so it is asked for too.
+    """
     global _students_cache
     data           = request.json or {}
     professor_name = (data.get("professor_name") or "").strip()
     department     = (data.get("department") or "").strip()
+    email          = (data.get("email") or "").strip().lower()
+    position       = (data.get("position") or "").strip()
+    staff_no       = (data.get("staff_no") or "").strip().upper()
+    restore        = bool(data.get("restore"))
 
     if not professor_name or not department:
-        return jsonify({"error": "Name and department are required"}), 400
+        return jsonify({"error": "Name and department are required."}), 400
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"error": "A valid work email address is required."}), 400
+    if not staff_no:
+        return jsonify({"error": "A staff or employee number is required."}), 400
+
+    # Email and staff number are unique across the whole roster, not just within
+    # a department — the same person cannot hold two accounts by moving.
+    for column, value, label in (("email", email, "email address"),
+                                 ("staff_no", staff_no, "staff number")):
+        clash = query(
+            f"SELECT professor_name, department, removed_at FROM teacher_accounts "
+            f"WHERE LOWER({column})=LOWER(%s)",
+            (value,), fetchone=True
+        )
+        if clash and not clash.get("removed_at"):
+            return jsonify({
+                "error": f"That {label} already belongs to {clash['professor_name']} "
+                         f"({clash['department']})."
+            }), 409
 
     existing = query(
-        "SELECT employee_id, removed_at FROM teacher_accounts "
+        "SELECT employee_id, removed_at, removed_reason FROM teacher_accounts "
         "WHERE professor_name=%s AND department=%s",
         (professor_name, department), fetchone=True
     )
     if existing and not existing.get("removed_at"):
-        return jsonify({"error": f"{professor_name} already exists in {department}"}), 409
-    if existing:
-        # Someone removed and now being added back. Restoring beats refusing:
-        # their employee ID is derived from name and department, so a fresh
-        # insert would collide with the tombstone anyway. They come back with no
-        # card and no PIN, exactly like a new account.
+        return jsonify({
+            "error": f"{professor_name} already exists in {department}. If this is a "
+                     f"different person with the same name, add their middle initial "
+                     f"so the two can be told apart."
+        }), 409
+
+    if existing and not restore:
+        # The account was removed on purpose. Bringing it back on a name match
+        # alone is how a removed professor reappeared with their old history
+        # attached — so say who it was and make the choice explicit.
+        when = existing["removed_at"]
+        when = when.strftime("%d %b %Y") if hasattr(when, "strftime") else str(when)[:10]
+        return jsonify({
+            "error": f"{professor_name} was removed from {department} on {when}"
+                     + (f" — \"{existing['removed_reason']}\"." if existing.get("removed_reason") else ".")
+                     + " Restore that account, or use a different name if this is someone else.",
+            "removed_account": {
+                "employee_id":    existing["employee_id"],
+                "professor_name": professor_name,
+                "department":     department,
+                "removed_at":     when,
+                "removed_reason": existing.get("removed_reason"),
+            },
+        }), 409
+
+    if existing and restore:
         execute(
-            "UPDATE teacher_accounts SET removed_at=NULL, removed_reason=NULL, active=TRUE "
-            "WHERE employee_id=%s",
-            (existing["employee_id"],)
+            "UPDATE teacher_accounts SET removed_at=NULL, removed_reason=NULL, active=TRUE, "
+            "email=%s, position=%s, staff_no=%s WHERE employee_id=%s",
+            (email, position or None, staff_no, existing["employee_id"])
         )
         execute(
             "INSERT INTO professors (name, department) VALUES (%s, %s) "
@@ -677,11 +734,14 @@ def dean_add_teacher():
             (professor_name, department)
         )
         _logs_cache["ts"] = 0
+        record_audit("admin.restore_teacher", target=existing["employee_id"],
+                     detail=f"{professor_name} / {department}")
         return jsonify({
-            "message":        f"{professor_name} restored.",
+            "message":        f"{professor_name} restored. They have no card and no PIN — issue a new card.",
             "employee_id":    existing["employee_id"],
             "professor_name": professor_name,
             "department":     department,
+            "restored":       True,
         })
 
     # One definition of the ID, shared with the startup seeding.
@@ -689,15 +749,22 @@ def dean_add_teacher():
     employee_id = make_employee_id(professor_name, department)
 
     execute(
-        """INSERT INTO teacher_accounts (employee_id, professor_name, department, password_hash)
-           VALUES (%s, %s, %s, %s)""",
-        (employee_id, professor_name, department, _UNUSABLE_PASSWORD)
+        """INSERT INTO teacher_accounts
+             (employee_id, professor_name, department, password_hash, email, position, staff_no)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+        (employee_id, professor_name, department, _UNUSABLE_PASSWORD,
+         email, position or None, staff_no)
+    )
+    execute(
+        "INSERT INTO professors (name, department) VALUES (%s, %s) "
+        "ON CONFLICT (name, department) DO NOTHING",
+        (professor_name, department)
     )
     _logs_cache["ts"] = 0
     record_audit("admin.add_teacher", target=employee_id,
-                 detail=f"{professor_name} / {department}")
+                 detail=f"{professor_name} / {department} / {email}")
     return jsonify({
-        "message": "Teacher added successfully",
+        "message": "Faculty member added.",
         "employee_id": employee_id,
         "professor_name": professor_name,
         "department": department

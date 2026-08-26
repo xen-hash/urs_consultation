@@ -128,7 +128,7 @@ export default function DeanDashboard() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-30 bg-surface header-blend header-blend-canvas pt-safe">
-          <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5">
+          <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 w-full max-w-[1200px] mx-auto">
             <div className="min-w-0 flex-1">
               <h1 className="font-semibold text-fg truncate">
                 {TABS.find(t => t.id === tab)?.label}
@@ -147,7 +147,7 @@ export default function DeanDashboard() {
           </div>
         </header>
 
-        <main className="flex-1 p-3 sm:p-5">
+        <main className="flex-1 p-3 sm:p-5 w-full max-w-[1200px] mx-auto">
           {tab === "overview" && (
             <OverviewTab
               stats={stats}

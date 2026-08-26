@@ -39,7 +39,7 @@ export default function FacultyTab({
   return (
     <div className="animate-rise">
       <div className="flex flex-wrap gap-2 items-center mb-3">
-        <div className="relative flex-1 min-w-[190px] max-w-sm">
+        <div className="relative flex-1 min-w-[190px] max-w-md">
           <Search size={17} aria-hidden="true"
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-subtle-fg pointer-events-none" />
           <input className="input pl-11 pr-10" placeholder="Search faculty…" value={search}
@@ -51,7 +51,7 @@ export default function FacultyTab({
             </button>
           )}
         </div>
-        <Button variant="primary" icon={UserPlus} className="ml-auto"
+        <Button variant="primary" icon={UserPlus} className="shrink-0"
           onClick={() => setAdding(true)}>
           Add faculty
         </Button>

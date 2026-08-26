@@ -16,7 +16,7 @@ from datetime import datetime, date, timedelta
 
 import bcrypt
 import pytz
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 
 from db import query, execute
 from security import require_role, record_audit, generate_qr_b64
@@ -280,6 +280,51 @@ def reset_student_pin(student_id):
     })
 
 
+@admin_bp.route("/students/<student_id>/verify", methods=["POST"])
+@require_role("admin")
+def verify_student(student_id):
+    """Confirm — or withdraw confirmation — that this person is enrolled.
+
+    The registration form checks the shape of a student number and the domain of
+    an email address. Neither proves enrolment: a plausible number is easy to
+    invent, and only the admin office holds the list of who is actually here.
+    So an account waits for this before it can take up a professor's time.
+
+    Reversible on purpose. Confirming the wrong person should be as easy to undo
+    as it was to do, and a mistake here quietly hands out access.
+    """
+    student = _student_or_404(student_id)
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+
+    verified = bool((request.json or {}).get("verified", True))
+    if verified:
+        execute(
+            "UPDATE students SET verified=TRUE, verified_at=%s::timestamp, verified_by=%s "
+            "WHERE student_id=%s",
+            (_now_ph(), (g.claims or {}).get("name") or "admin", student["student_id"])
+        )
+    else:
+        execute(
+            "UPDATE students SET verified=FALSE, verified_at=NULL, verified_by=NULL "
+            "WHERE student_id=%s",
+            (student["student_id"],)
+        )
+
+    record_audit("admin.verify_student" if verified else "admin.unverify_student",
+                 target=student["student_id"], detail=student["full_name"])
+
+    import teacher as teacher_module
+    teacher_module._students_cache["ts"] = 0
+
+    return jsonify({
+        "message": f"{student['full_name']} confirmed as enrolled."
+                   if verified else
+                   f"{student['full_name']} is no longer confirmed and cannot send requests.",
+        "verified": verified,
+    })
+
+
 @admin_bp.route("/students/<student_id>", methods=["DELETE"])
 @require_role("admin")
 def delete_student(student_id):
@@ -393,6 +438,9 @@ def stats():
     return jsonify({
         "daily":     [{"day": r["day"], "count": r["c"]} for r in daily],
         "students":  one("SELECT COUNT(*) AS c FROM students"),
+        # Surfaced on the dashboard: a queue nobody can see is a queue nobody
+        # works through, and every account in it is a student who cannot book.
+        "unverified": one("SELECT COUNT(*) AS c FROM students WHERE verified IS NOT TRUE"),
         "teachers":  one("SELECT COUNT(*) AS c FROM teacher_accounts WHERE removed_at IS NULL"),
         "requests":  one("SELECT COUNT(*) AS c FROM consultation_requests"),
         "today":     one(

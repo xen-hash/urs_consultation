@@ -46,6 +46,17 @@ def submit_request():
     if not me:
         return jsonify({"error": "Student not found"}), 404
 
+    # An account nobody has confirmed can browse the board but cannot take up a
+    # professor's time. This is what registration checks alone cannot do:
+    # anyone can type a plausible student number, and only the admin office
+    # knows who is actually enrolled.
+    if not me.get("verified"):
+        return jsonify({
+            "error": "Your account is still waiting to be confirmed by the admin "
+                     "office. You can see who is available, but you cannot send a "
+                     "request until they confirm you are enrolled."
+        }), 403
+
     student_id   = me["student_id"]
     student_name = me["full_name"]
     course       = me["course"] or data.get("course") or ""
