@@ -65,7 +65,7 @@ export default function SiteFooter({ tone = "backdrop" }) {
                 <Mail size={15} aria-hidden="true" />
                 {PROJECT_CONTACT}
               </a>
-              <p className={`text-xs ${t.head} mt-2 max-w-[24ch] sm:ml-auto`}>
+              <p className={`text-xs ${t.head} mt-2 sm:max-w-[24ch] sm:ml-auto`}>
                 For problems with the system or questions about the project.
               </p>
             </div>
