@@ -377,6 +377,7 @@ export default function StudentDashboard() {
       setReqModal({ ...demoProf, department: demoDept.department });
     },
     showInbox: () => { setReqModal(null); setTab("inbox"); },
+    showProfile: () => { setReqModal(null); setTab("profile"); },
   }), [demoDept, demoProf]);
 
   // Leaving the guide should not leave someone standing in a half-open form.
@@ -422,6 +423,7 @@ export default function StudentDashboard() {
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               aria-current={tab === t.id ? "page" : undefined}
+              data-tour={`tab-${t.id}`}
               className={`flex items-center gap-2 px-4 min-h-[44px] text-sm font-semibold
                 border-b-2 -mb-px transition-colors duration-200
                 ${tab === t.id
@@ -945,7 +947,8 @@ export default function StudentDashboard() {
           <style>{`@keyframes reqIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}`}</style>
 
           {/* ① Header ── fixed height, never scrolls */}
-          <div className="shrink-0 flex items-center gap-3 px-5 pt-5 pb-3 bg-white">
+          <div data-tour="request-header"
+            className="shrink-0 flex items-center gap-3 px-5 pt-5 pb-3 bg-white">
             <button
               onPointerDown={e => { e.preventDefault(); setReqModal(null); }}
               className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
