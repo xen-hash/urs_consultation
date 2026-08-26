@@ -89,6 +89,8 @@ export default function DeanDashboard() {
 
   if (!admin) return null;
 
+  const sectionLabel = TABS.find(t => t.id === tab)?.label;
+
   const NAV_TABS = [
     ...BAR_ORDER.map(id => TABS.find(t => t.id === id)).filter(Boolean),
     ...TABS.filter(t => !BAR_ORDER.includes(t.id)),
@@ -129,24 +131,35 @@ export default function DeanDashboard() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-30 bg-surface header-blend header-blend-canvas pt-safe">
-          <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 w-full max-w-[1200px] mx-auto">
+          <div className="flex items-center gap-1.5 xs:gap-2 px-2 xs:px-3 sm:px-5 py-2.5 w-full max-w-[1200px] mx-auto">
             {/* The university name is the way back to the front page. Signed in
                 as an administrator it asks first, and going there signs you out
-                — this screen is often left open on an office machine. The name
-                itself is for wide screens; on a phone the crest is the target,
-                and the section title needs the room. */}
-            <HomeBrand className="shrink-0 mr-0.5" textClassName="hidden md:block" />
+                — this screen is often left open on an office machine.
+
+                Three 44px controls leave the name 49px short of fitting a
+                phone row on one line, and none of the three can go: refresh is
+                the only way to reload the activity list, which does not poll,
+                and sign out is the only one on a phone — five sections fit the
+                bottom bar, so it draws no More and the sheet behind it is
+                unreachable. So the name wraps rather than shrinks, and the
+                section is left to the bottom bar, which marks it already. */}
+            <HomeBrand
+              className="flex-1 min-w-0 md:flex-none md:shrink-0 md:mr-0.5"
+              titleClassName="text-[13px] xs:text-sm leading-tight md:truncate"
+            />
+            <h1 className="sr-only md:hidden">{sectionLabel}</h1>
             <span aria-hidden="true" className="hidden md:block w-px h-8 bg-border shrink-0" />
-            <div className="min-w-0 flex-1">
-              <h1 className="font-semibold text-fg truncate">
-                {TABS.find(t => t.id === tab)?.label}
-              </h1>
-              <p className="text-xs text-muted-fg hidden sm:block">
+            <div className="min-w-0 flex-1 hidden md:block">
+              <h1 className="font-semibold text-fg truncate">{sectionLabel}</h1>
+              <p className="text-xs text-muted-fg">
                 Administration · College of Engineering
               </p>
             </div>
+            {/* Only where it is not already answered: the bottom bar badges
+                Requests with the same count on a phone, and the row has no
+                width to spare once the name is on it. */}
             {stats?.pending > 0 && (
-              <span className="badge badge-warning">{stats.pending} pending</span>
+              <span className="badge badge-warning hidden md:inline-flex">{stats.pending} pending</span>
             )}
             <IconButton icon={HelpCircle} label="Show the guide" onClick={() => setTourOpen(true)} />
             <IconButton icon={RefreshCw} label="Refresh" onClick={refreshAll} />

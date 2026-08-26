@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" && exec .claude/hooks/after-commit.sh'",
+            "timeout": 30,
+            "statusMessage": "Auto-PR: checking the branch…"
+          }
+        ]
+      }
+    ]
+  }
+}
