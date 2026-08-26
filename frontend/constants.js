@@ -109,19 +109,17 @@ export const YEAR_LEVELS = ["1st Year","2nd Year","3rd Year","4th Year","5th Yea
 
 
 /* ── Who built this ───────────────────────────────────────────────────────────
-   Shown in the footer on the public screens. Edit the names, roles and the
-   address here — nothing else needs touching, and no rebuild of the markup is
-   involved.
+   Shown in the footer on the public screens. Edit it here and nowhere else.
 
-   An entry with an empty name is skipped, so unused rows can simply be left
-   blank rather than deleted. Set PROJECT_CONTACT to "" to drop the contact
-   block entirely.
+   A group credit is one entry with no role. To name people individually
+   instead, add a row each and give them roles:
 
-   NOTE: these are placeholders. Replace them before the site goes out. */
+     { name: "Juan Dela Cruz", role: "Backend and database" },
+
+   An entry with an empty name is skipped, so a spare row can be left blank
+   rather than deleted. Set PROJECT_CONTACT to "" to drop the contact block. */
 export const DEVELOPERS = [
-  { name: "", role: "Backend and database" },
-  { name: "", role: "Frontend and interface" },
-  { name: "", role: "Testing and documentation" },
+  { name: "Bautista et al.", role: "" },
 ];
 
-export const PROJECT_CONTACT = "";
+export const PROJECT_CONTACT = "jnathbj@gmail.com";
