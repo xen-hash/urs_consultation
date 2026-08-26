@@ -29,7 +29,6 @@ export default function HomeBrand({
   subtitle,
   tone = "light",
   className = "",
-  textClassName = "",
   titleClassName = "text-sm truncate",
 }) {
   const navigate = useNavigate();
@@ -65,7 +64,7 @@ export default function HomeBrand({
         {/* A little smaller under 400px, where the row has the least to give. */}
         <img src={ursLogo} alt="" aria-hidden="true"
           className="w-7 h-7 xs:w-8 xs:h-8 object-contain shrink-0" />
-        <span className={`min-w-0 ${textClassName}`}>
+        <span className="min-w-0">
           {/* Truncating by default, but a caller with a narrow bar can let the
               name wrap instead — half a name under an ellipsis is worse than
               two lines of the whole one. */}
