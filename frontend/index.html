@@ -18,6 +18,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <meta name="description" content="University of Rizal System – Faculty Consultation Management System" />
+    <!-- Runs before the first paint, so a dark-mode device never gets a white
+         flash while the bundle loads. Deliberately inline and tiny: a module
+         import here would be fetched and evaluated after paint, which is the
+         flash it exists to prevent. Mirrors applyTheme() in ui/theme.js. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("urs.theme");
+          if (t === "light" || t === "dark") {
+            document.documentElement.setAttribute("data-theme", t);
+            document.documentElement.style.colorScheme = t;
+          } else {
+            document.documentElement.style.colorScheme = "light dark";
+          }
+        } catch (e) { /* storage blocked — the media query still applies */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

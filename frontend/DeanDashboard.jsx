@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Toast, useToastState, Button } from "./SharedUI.jsx";
 import MoreSheet from "./ui/MoreSheet.jsx";
+import ThemeToggle, { ThemeRows } from "./ui/ThemeToggle.jsx";
 import ConfirmSplash from "./ui/ConfirmSplash.jsx";
 import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
@@ -194,6 +195,7 @@ export default function DeanDashboard() {
           onSelect={setTab}
           footer={
             <div className="space-y-0.5">
+              <ThemeRows onPick={() => setSheetOpen(false)} />
               <button onClick={() => { refreshAll(); setSheetOpen(false); }}
                 className="w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
                            text-muted-fg hover:bg-surface-2 transition-colors">
@@ -275,6 +277,15 @@ function NavContents({ tab, pending, onPick, onExport, muted, onToggleMute, onRe
             <span className="truncate">{label}</span>
           </button>
         ))}
+      </div>
+
+      {/* The rail is navy in both themes, so the control is the dark-tone one
+          whichever way the rest of the screen goes. */}
+      <div className="p-2 border-t border-white/10 shrink-0 flex items-center justify-between gap-2">
+        <span className="text-white/30 text-[10px] font-semibold uppercase tracking-widest px-1">
+          Theme
+        </span>
+        <ThemeToggle tone="dark" />
       </div>
 
       <div className="p-2 border-t border-white/10 space-y-0.5 shrink-0 pb-safe">

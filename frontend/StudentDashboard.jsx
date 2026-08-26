@@ -4,10 +4,11 @@ import { io } from "socket.io-client";
 import {
   Clock, CheckCircle2, XCircle, CalendarCheck,
   Send, RefreshCw, Search, GraduationCap, BookOpen, X,
-  ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Delete
+  ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Delete, Palette
 } from "lucide-react";
-import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash, Card, CardHeader } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
+import ThemeToggle from "./ui/ThemeToggle.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
@@ -931,6 +932,17 @@ export default function StudentDashboard() {
 
               </div>
             )}
+
+            {/* A per-device preference, so it lives with the other things you
+                set about yourself rather than in the bar, where at 390px it
+                pushed the university name into an ellipsis. */}
+            <Card>
+              <CardHeader title="Appearance" subtitle="How this app looks on this device" icon={Palette} />
+              <ThemeToggle />
+              <p className="text-xs text-muted-fg mt-3">
+                System follows your phone or computer, including its night schedule.
+              </p>
+            </Card>
           </div>
         )}
       </div>
