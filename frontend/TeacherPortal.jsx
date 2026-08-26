@@ -5,6 +5,7 @@ import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
+import SiteFooter from "./ui/SiteFooter.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import ursLogo from "./URS_LOGO.png";
@@ -119,7 +120,7 @@ export default function TeacherPortal() {
       />
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3 min-w-0">
             <img src={ursLogo} alt="" aria-hidden="true"
@@ -218,6 +219,8 @@ export default function TeacherPortal() {
           />
         )}
       </main>
+
+      <SiteFooter />
     </URSBackground>
   );
 }

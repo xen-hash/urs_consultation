@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ClipboardList, Search, Archive, X } from "lucide-react";
+import { ClipboardList, Search, Archive, X, Trash2, HardDrive } from "lucide-react";
 import {
-  Card, Button, RequestBadge, EmptyState, SkeletonRows, Pagination, Modal, Alert,
+  Card, Button, IconButton, RequestBadge, EmptyState, SkeletonRows, Pagination,
+  Modal, ConfirmModal, Alert,
 } from "../SharedUI.jsx";
 import { shortDepartment } from "../ui/DepartmentIcon.jsx";
 import { usePagedResource, useDebounced } from "./hooks.js";
@@ -23,12 +24,27 @@ export default function RequestsTab({ addToast, onChanged }) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [purgeOpen, setPurgeOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const debounced = useDebounced(search);
 
   const { data, total, pages, page, setPage, loading, limit, reload } =
     usePagedResource("/dean/requests", {
       params: { search: debounced, status, department, from, to },
     });
+
+  const removeRow = async (row) => {
+    setDeleteBusy(true);
+    try {
+      const { data } = await api.delete(`/teacher/requests/${row.id}`);
+      addToast(data.message, "success");
+      setConfirmDelete(null);
+      reload(); onChanged?.();
+    } catch (e) {
+      addToast(apiError(e, "Could not delete that request."), "error");
+    } finally { setDeleteBusy(false); }
+  };
 
   const anyFilter = search || status || department || from || to;
   const clearFilters = () => {
@@ -60,10 +76,12 @@ export default function RequestsTab({ addToast, onChanged }) {
         {anyFilter && (
           <Button icon={X} onClick={clearFilters}>Clear</Button>
         )}
-        <Button variant="danger" icon={Archive} className="ml-auto"
-          onClick={() => setArchiveOpen(true)}>
-          Archive…
-        </Button>
+        <div className="ml-auto flex gap-2">
+          <Button icon={Archive} onClick={() => setArchiveOpen(true)}>Archive…</Button>
+          <Button variant="danger" icon={HardDrive} onClick={() => setPurgeOpen(true)}>
+            Free space…
+          </Button>
+        </div>
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -85,9 +103,14 @@ export default function RequestsTab({ addToast, onChanged }) {
                     <RequestBadge status={r.status} hasAppointment={!!r.appointment_date} />
                   </div>
                   <p className="text-sm text-muted-fg italic line-clamp-2">"{r.purpose}"</p>
-                  <p className="text-xs text-subtle-fg mt-1.5">
-                    {r.category} · {shortDepartment(r.department)} · {formatWhen(r.request_time)}
-                  </p>
+                  <div className="flex items-end justify-between gap-3 mt-1.5">
+                    <p className="text-xs text-subtle-fg min-w-0">
+                      {r.category} · {shortDepartment(r.department)} · {formatWhen(r.request_time)}
+                    </p>
+                    <IconButton icon={Trash2} label={`Delete ${r.student_name}'s request`}
+                      onClick={() => setConfirmDelete(r)}
+                      className="shrink-0 -mr-2 -mb-2 hover:text-danger hover:bg-danger-50" size={16} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -102,6 +125,7 @@ export default function RequestsTab({ addToast, onChanged }) {
                     <th scope="col">Purpose</th>
                     <th scope="col">Status</th>
                     <th scope="col">When</th>
+                    <th scope="col"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -116,6 +140,11 @@ export default function RequestsTab({ addToast, onChanged }) {
                       </td>
                       <td><RequestBadge status={r.status} hasAppointment={!!r.appointment_date} /></td>
                       <td className="text-xs text-muted-fg whitespace-nowrap">{formatWhen(r.request_time)}</td>
+                      <td>
+                        <IconButton icon={Trash2} label={`Delete ${r.student_name}'s request`}
+                          onClick={() => setConfirmDelete(r)}
+                          className="hover:text-danger hover:bg-danger-50" size={16} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -134,6 +163,26 @@ export default function RequestsTab({ addToast, onChanged }) {
         onClose={() => setArchiveOpen(false)}
         addToast={addToast}
         onDone={() => { reload(); onChanged?.(); }}
+      />
+
+      <PurgeModal
+        open={purgeOpen}
+        onClose={() => setPurgeOpen(false)}
+        addToast={addToast}
+        onDone={() => { reload(); onChanged?.(); }}
+      />
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => removeRow(confirmDelete)}
+        title="Delete this request?"
+        description={confirmDelete
+          ? `${confirmDelete.student_name}'s request to ${confirmDelete.professor_name} will be removed for good, and will not appear in exports afterwards.`
+          : ""}
+        confirmLabel="Delete"
+        tone="danger"
+        loading={deleteBusy}
       />
     </div>
   );
@@ -203,6 +252,88 @@ function ArchiveModal({ open, onClose, addToast, onDone }) {
             <option value="pending">Pending</option>
             <option value="done">Done</option>
             <option value="declined">Declined</option>
+          </select>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * The permanent half of archiving.
+ *
+ * Archiving is the right default — those rows are a record of consultations
+ * that happened, and they stay in the exports. But it does not reclaim
+ * anything, and on a free-tier database the ceiling is real. This is the
+ * deliberate other option, with the same filters and no undo.
+ *
+ * A date range is required. An unbounded delete here would empty the table on
+ * one mis-click, and "everything before last year" is what freeing space
+ * actually means. The server enforces this too — the button is not the only
+ * thing standing in front of it.
+ */
+function PurgeModal({ open, onClose, addToast, onDone }) {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { data } = await api.post("/admin/requests/delete", { from, to, status });
+      addToast(data.message, data.deleted ? "success" : "info");
+      onDone();
+      onClose();
+    } catch (err) {
+      addToast(apiError(err, "Could not delete those requests."), "error");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} onSubmit={submit} anchor="center"
+      title="Delete old requests"
+      description="Frees the space they take up. There is no undo."
+      footer={
+        <>
+          <Button type="button" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button type="submit" variant="danger" icon={Trash2} loading={busy}
+            disabled={!from && !to}>
+            {busy ? "Deleting…" : "Delete permanently"}
+          </Button>
+        </>
+      }>
+      <div className="space-y-4">
+        <Alert tone="danger">
+          These rows are removed from the database for good — they will not appear
+          in exports or reports afterwards. To clear the lists while keeping the
+          records, use Archive instead.
+        </Alert>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="pg-from" className="label">From</label>
+            <input id="pg-from" type="date" className="input" value={from}
+              onChange={e => setFrom(e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="pg-to" className="label">To</label>
+            <input id="pg-to" type="date" className="input" value={to}
+              onChange={e => setTo(e.target.value)} />
+          </div>
+        </div>
+        <p className="text-xs text-muted-fg -mt-1">
+          Give at least one date. Everything on or before the "to" date is the
+          usual way to clear out an old semester.
+        </p>
+        <div>
+          <label htmlFor="pg-status" className="label">Only this status</label>
+          <select id="pg-status" className="input" value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="">Any status</option>
+            <option value="pending">Pending</option>
+            <option value="done">Done</option>
+            <option value="declined">Declined</option>
+            <option value="archived">Archived</option>
           </select>
         </div>
       </div>

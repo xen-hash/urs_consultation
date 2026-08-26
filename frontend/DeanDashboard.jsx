@@ -123,7 +123,7 @@ export default function DeanDashboard() {
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+        <header className="sticky top-0 z-30 bg-surface header-blend header-blend-canvas pt-safe">
           <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5">
             <div className="min-w-0 flex-1">
               <h1 className="font-semibold text-fg truncate">

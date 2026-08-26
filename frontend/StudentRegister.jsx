@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, GraduationCap } from "lucide-react";
 import { Toast, useToastState, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
+import SiteFooter from "./ui/SiteFooter.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import { DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
@@ -63,7 +64,7 @@ export default function StudentRegister() {
         onDone={() => setSplash(false)}
       />
 
-      <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
           <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
           <div className="min-w-0 flex-1">
@@ -171,6 +172,8 @@ export default function StudentRegister() {
           </>
         )}
       </main>
+
+      <SiteFooter />
     </URSBackground>
   );
 }
