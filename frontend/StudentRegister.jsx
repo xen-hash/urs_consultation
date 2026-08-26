@@ -29,8 +29,11 @@ export default function StudentRegister() {
       return addToast("Fill in all fields to continue.", "warning");
     // The shape is checked here for a quick answer and again on the server,
     // which is the one that counts — this side of it can be edited by anyone.
-    if (!/^\d{2,4}-?\d{3,6}$/.test(form.student_id.trim()))
-      return addToast("Check your student number — it should look like 2021-00123.", "warning");
+    // Mirrors the server's default pattern: an optional campus letter, then the
+    // year and the serial. The server is the one that counts — this side is a
+    // fast answer, and anyone can edit it.
+    if (!/^[A-Za-z]{0,2}\d{2,4}-?\d{3,6}$/.test(form.student_id.trim()))
+      return addToast("Check your student number — it should look like M2022-0247.", "warning");
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim()))
       return addToast("Enter your school email address.", "warning");
     setStep(2);
@@ -129,9 +132,11 @@ export default function StudentRegister() {
 
             {step === 1 ? (
               <div className="card space-y-4 animate-rise">
-                <Field label="Student ID" id="reg-id" value={form.student_id}
-                  onChange={v => set("student_id", v)} placeholder="e.g. 21-00123"
-                  className="font-mono" autoCapitalize="characters" />
+                <Field label="Student number" id="reg-id" value={form.student_id}
+                  onChange={v => set("student_id", v.toUpperCase())}
+                  placeholder="M2022-0247"
+                  className="font-mono" autoCapitalize="characters"
+                  hint="Exactly as it appears on your registration form." />
                 <Field label="Full name" id="reg-name" value={form.full_name}
                   onChange={v => set("full_name", v)} placeholder="Juan Dela Cruz"
                   autoComplete="name" autoCapitalize="words" />

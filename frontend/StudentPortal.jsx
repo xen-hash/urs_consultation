@@ -25,7 +25,7 @@ export default function StudentPortal() {
 
   const findStudent = async (id) => {
     const sid = (id || studentId).trim();
-    if (!sid) return addToast("Enter your Student ID.", "warning");
+    if (!sid) return addToast("Enter your student number.", "warning");
     setLoading(true);
     try {
       const { data } = await api.post("/auth/student/find", { student_id: sid });
@@ -122,7 +122,7 @@ export default function StudentPortal() {
               </button>
               <button onClick={() => setMode("manual")} className="card card-action w-full text-left">
                 <span className="icon-tile icon-tile-accent"><Keyboard size={22} aria-hidden="true" /></span>
-                <span className="font-semibold text-fg">Enter Student ID</span>
+                <span className="font-semibold text-fg">Enter student number</span>
                 <span className="text-sm text-muted-fg">Type your ID, then your PIN.</span>
               </button>
             </div>
@@ -180,15 +180,17 @@ export default function StudentPortal() {
         {mode === "manual" && (
           <section className="animate-rise" aria-labelledby="s-id">
             <header className="mb-6">
-              <h1 id="s-id" className="text-title font-bold text-on-backdrop">Enter your Student ID</h1>
+              <h1 id="s-id" className="text-title font-bold text-on-backdrop">Enter your student number</h1>
             </header>
             <div className="card space-y-4">
+              {/* Upper-cased as they type: a phone keyboard lower-cases the
+                  leading letter by habit, and the number is stored upper. */}
               <div>
-                <label htmlFor="student-id" className="label">Student ID</label>
+                <label htmlFor="student-id" className="label">Student number</label>
                 <input id="student-id" className="input font-mono tracking-wide" autoFocus
-                  value={studentId} placeholder="e.g. 21-00123"
+                  value={studentId} placeholder="M2022-0247"
                   autoCapitalize="characters" spellCheck="false"
-                  onChange={e => setStudentId(e.target.value)}
+                  onChange={e => setStudentId(e.target.value.toUpperCase())}
                   onKeyDown={e => e.key === "Enter" && findStudent()} />
               </div>
               <Button variant="primary" className="w-full" loading={loading}

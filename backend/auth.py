@@ -92,7 +92,7 @@ def _check_registration(student_id, email):
         try:
             if not re.match(STUDENT_ID_PATTERN, student_id):
                 return ("That student number doesn't look right. Use the one on your "
-                        "registration form, like 2021-00123.")
+                        "registration form, like M2022-0247.")
         except re.error:
             pass   # a bad pattern in the environment must not lock everyone out
 
@@ -119,7 +119,7 @@ def student_register():
         if not data.get(field):
             return jsonify({"error": f"Missing field: {field}"}), 400
 
-    student_id = data["student_id"].strip()
+    student_id = data["student_id"].strip().upper()
     email      = data["email"].strip().lower()
     pin        = str(data["pin"]).strip()
 
@@ -134,7 +134,7 @@ def student_register():
     if throttled:
         return throttled
 
-    existing = query("SELECT id FROM students WHERE student_id=%s", (student_id,), fetchone=True)
+    existing = query("SELECT id FROM students WHERE UPPER(student_id)=%s", (student_id,), fetchone=True)
     if existing:
         return jsonify({"error": "Student ID already registered."}), 409
 
@@ -152,7 +152,7 @@ def student_register():
          STUDENT_AUTO_VERIFY, _now_ph_str() if STUDENT_AUTO_VERIFY else None,
          "auto" if STUDENT_AUTO_VERIFY else None)
     )
-    student = query("SELECT * FROM students WHERE student_id=%s", (student_id,), fetchone=True)
+    student = query("SELECT * FROM students WHERE UPPER(student_id)=UPPER(%s)", (student_id,), fetchone=True)
     token = issue_token("student", student_id, student["full_name"])
     record_audit("student.register", target=student_id,
                  actor={"role": "student", "sub": student_id, "name": student["full_name"]})
@@ -186,7 +186,7 @@ def student_find():
         return throttled
 
     student = query(
-        "SELECT student_id, full_name, pin_hash FROM students WHERE student_id=%s",
+        "SELECT student_id, full_name, pin_hash FROM students WHERE UPPER(student_id)=UPPER(%s)",
         (student_id,), fetchone=True
     )
     if not student:
@@ -213,9 +213,15 @@ def student_login():
     if throttled:
         return throttled
 
-    student = query("SELECT * FROM students WHERE student_id=%s", (student_id,), fetchone=True)
+    student = query("SELECT * FROM students WHERE UPPER(student_id)=UPPER(%s)", (student_id,), fetchone=True)
     if not student:
         return jsonify({"error": "Student not found. Please register first."}), 404
+
+    # From here on, the number as stored — not as typed. The session token's
+    # subject is what every ownership check compares against, and their
+    # consultation history is filed under the stored spelling; a token minted
+    # from "m2022-0247" would match none of it.
+    student_id = student["student_id"]
 
     # PIN verification — skipped only for legacy accounts that never set one.
     if student.get("pin_hash"):
@@ -254,7 +260,7 @@ def student_set_pin():
     if len(pin) != 4 or not pin.isdigit():
         return jsonify({"error": "PIN must be exactly 4 digits."}), 400
 
-    student = query("SELECT * FROM students WHERE student_id=%s", (student_id,), fetchone=True)
+    student = query("SELECT * FROM students WHERE UPPER(student_id)=UPPER(%s)", (student_id,), fetchone=True)
     if not student:
         return jsonify({"error": "Student not found"}), 404
 
