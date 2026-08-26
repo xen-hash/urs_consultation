@@ -19,7 +19,7 @@ import bgImage from "./URS_BCKGRND.PNG.png";
  */
 export default function URSBackground({ children, className = "" }) {
   return (
-    <div className={`relative min-h-dvh flex flex-col ${className}`}>
+    <div className={`surface-fixed-light relative min-h-dvh flex flex-col ${className}`}>
       <div aria-hidden="true"
         className="fixed inset-0 z-0 overflow-hidden
                    [--backdrop-blur:6px] lg:[--backdrop-blur:14px] 2xl:[--backdrop-blur:22px]">

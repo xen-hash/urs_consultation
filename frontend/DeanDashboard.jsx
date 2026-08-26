@@ -5,8 +5,8 @@ import {
   QrCode, LogOut, Shield, Download, RefreshCw, HelpCircle,
   Volume2, VolumeX, X,
 } from "lucide-react";
-import { Toast, useToastState, Button } from "./SharedUI.jsx";
-import MoreSheet from "./ui/MoreSheet.jsx";
+import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
+import ThemeToggle from "./ui/ThemeToggle.jsx";
 import ConfirmSplash from "./ui/ConfirmSplash.jsx";
 import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
@@ -41,7 +41,6 @@ export default function DeanDashboard() {
   const admin = getSession("admin");
 
   const [tab, setTab] = useState("overview");
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [muted, setMutedState] = useState(true);
   const [tourOpen, setTourOpen] = useState(() => !hasSeenTour("admin"));
@@ -67,7 +66,7 @@ export default function DeanDashboard() {
     reloadStats(); reloadDepts(); recent.reload();
   }, [reloadStats, reloadDepts, recent]);
 
-  const signOut = () => { setSheetOpen(false); setSigningOut(true); };
+  const signOut = () => setSigningOut(true);
 
   const exportData = async (type) => {
     try {
@@ -107,8 +106,6 @@ export default function DeanDashboard() {
       onExport={exportData}
       muted={muted}
       onToggleMute={() => setMutedState(m => !m)}
-      onRefresh={refreshAll}
-      onHelp={() => setTourOpen(true)}
       onSignOut={signOut}
     />
   );
@@ -131,12 +128,26 @@ export default function DeanDashboard() {
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
+        {/* A bar for the controls that belong to the whole screen rather than to
+            a section: the theme, a manual refresh, and the way back into the
+            walkthrough. It carries the section heading too, so the page has a
+            visible one again. No crest and no university name — at 390px those
+            cost the row more width than they earn, and the rail already says
+            where you are. */}
+        <header className="sticky top-0 z-30 bg-surface header-blend header-blend-canvas pt-safe">
+          <div className="flex items-center gap-1.5 xs:gap-2 px-2 xs:px-3 sm:px-5 py-2
+                          w-full max-w-[1200px] mx-auto">
+            <h1 className="font-semibold text-fg truncate min-w-0 flex-1">{sectionLabel}</h1>
+            {stats?.pending > 0 && (
+              <span className="badge badge-warning hidden md:inline-flex">{stats.pending} pending</span>
+            )}
+            <ThemeToggle />
+            <IconButton icon={RefreshCw} label="Refresh" onClick={refreshAll} />
+            <IconButton icon={HelpCircle} label="Show the guide" onClick={() => setTourOpen(true)} />
+          </div>
+        </header>
 
-        <main className="flex-1 p-3 sm:p-5 pt-safe w-full max-w-[1200px] mx-auto">
-          {/* The top bar is gone, so this is the page's only heading. Kept for
-              screen readers and document structure — the sidebar and the bottom
-              bar both show which section is open. */}
-          <h1 className="sr-only">{sectionLabel} — Administration</h1>
+        <main className="flex-1 p-3 sm:p-5 w-full max-w-[1200px] mx-auto">
           {tab === "overview" && (
             <OverviewTab
               stats={stats}
@@ -166,16 +177,15 @@ export default function DeanDashboard() {
 
         {/* Seven sections is more than a phone bar can hold, so the four most
             used sit in the bar and the rest stay one tap away in the drawer. */}
-        {/* More is forced open here: all five sections fit the bar, so it would
-            otherwise never draw — and with the top bar gone the sheet behind it
-            is the only way to sign out, refresh or reopen the guide on a
-            phone, where the rail is hidden. */}
+        {/* Five sections and Sign out fill the six slots exactly, so nothing
+            overflows and no More is drawn. Signing out is the one action worth
+            a permanent slot on a phone: the rail that used to hold it is
+            desktop-only. */}
         <BottomNav
           items={NAV_TABS}
           active={tab}
           onSelect={setTab}
-          onMore={() => setSheetOpen(true)}
-          alwaysShowMore
+          action={{ icon: LogOut, label: "Sign out", onClick: signOut }}
         />
 
         <Walkthrough
@@ -186,46 +196,12 @@ export default function DeanDashboard() {
           onExit={() => setTab("overview")}
         />
 
-        <MoreSheet
-          open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
-          items={NAV_TABS.slice(5)}
-          active={tab}
-          onSelect={setTab}
-          footer={
-            <div className="space-y-0.5">
-              <button onClick={() => { refreshAll(); setSheetOpen(false); }}
-                className="w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
-                           text-muted-fg hover:bg-surface-2 transition-colors">
-                <RefreshCw size={17} aria-hidden="true" className="shrink-0" />Refresh
-              </button>
-              <button onClick={() => { setTourOpen(true); setSheetOpen(false); }}
-                className="w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
-                           text-muted-fg hover:bg-surface-2 transition-colors">
-                <HelpCircle size={17} aria-hidden="true" className="shrink-0" />Show the guide
-              </button>
-              {[["today", "Export today"], ["all", "Export all records"]].map(([type, label]) => (
-                <button key={type}
-                  onClick={() => { exportData(type); setSheetOpen(false); }}
-                  className="w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
-                             text-muted-fg hover:bg-surface-2 transition-colors">
-                  <Download size={17} aria-hidden="true" className="shrink-0" />{label}
-                </button>
-              ))}
-              <button onClick={signOut}
-                className="w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
-                           text-danger hover:bg-danger-50 transition-colors">
-                <LogOut size={17} aria-hidden="true" className="shrink-0" />Sign out
-              </button>
-            </div>
-          }
-        />
       </div>
     </div>
   );
 }
 
-function NavContents({ tab, pending, onPick, onExport, muted, onToggleMute, onRefresh, onHelp, onSignOut }) {
+function NavContents({ tab, pending, onPick, onExport, muted, onToggleMute, onSignOut }) {
   return (
     <>
       <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0 pt-safe">
@@ -278,20 +254,6 @@ function NavContents({ tab, pending, onPick, onExport, muted, onToggleMute, onRe
       </div>
 
       <div className="p-2 border-t border-white/10 space-y-0.5 shrink-0 pb-safe">
-        {/* Refresh and the guide had no home but the top bar. The activity list
-            does not poll, and the walkthrough has no other way back. */}
-        <button onClick={onRefresh}
-          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm
-                     text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-          <RefreshCw size={16} aria-hidden="true" className="shrink-0" />
-          <span className="truncate">Refresh</span>
-        </button>
-        <button onClick={onHelp}
-          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm
-                     text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-          <HelpCircle size={16} aria-hidden="true" className="shrink-0" />
-          <span className="truncate">Show the guide</span>
-        </button>
         <button onClick={onToggleMute}
           className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm
                      text-white/60 hover:text-white hover:bg-white/10 transition-colors">

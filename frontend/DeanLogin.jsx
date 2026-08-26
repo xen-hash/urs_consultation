@@ -40,7 +40,7 @@ export default function DeanLogin() {
   const onEnter = e => { if (e.key === "Enter") handleLogin(); };
 
   return (
-    <div className="min-h-dvh flex bg-canvas">
+    <div className="surface-fixed-light min-h-dvh flex bg-canvas">
       <Toast toasts={toasts} removeToast={removeToast} />
       <ConfirmSplash
         open={splash}

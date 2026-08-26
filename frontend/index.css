@@ -22,7 +22,13 @@
    for anyone with low vision. That value survives only as `--accent`, a fill
    that always carries dark text; `--accent-fg` is the darkened text variant. */
 
-:root {
+:root,
+/* The public entry screens are not themed. They are a fixed design — white
+   cards on the navy campus backdrop, which already reads as dark — and their
+   card tints are hand-picked light values passed inline, which a dark palette
+   cannot reach. Left to follow the theme, the faculty card turns cream under
+   dark text. This pins them to the light tokens whatever <html> says. */
+.surface-fixed-light {
   --canvas:        248 250 252;
   --surface:       255 255 255;
   --surface-2:     241 245 249;
@@ -58,6 +64,21 @@
 
   --ring:          26 78 133;
 
+  /* Text sitting ON a filled brand or danger button. A token, not a literal,
+     because dark mode needs to be able to move it. */
+  --on-brand:      255 255 255;
+  --on-danger:     255 255 255;
+
+  /* Coloured TEXT, kept apart from the fills of the same name. In dark mode a
+     brand fill must stay dark enough to carry white text while brand text must
+     be light enough to read on a dark card, and no single value does both. */
+  --brand-text:    0 51 102;
+  --success-text:  21 128 61;
+  --danger-text:   220 38 38;
+  --info-text:     29 78 216;
+  --warning-text:  161 98 7;
+  --accent-text:   180 83 9;
+
   /* Text sitting directly on the campus backdrop rather than on a card. The
      tokens above are tuned for dark-on-light; over the backdrop that inverts,
      and using --fg there paints navy on navy. Contrast against the backdrop
@@ -87,6 +108,142 @@
   --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04);
   --shadow:    0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.04);
   --shadow-lg: 0 8px 24px -6px rgb(15 23 42 / 0.12), 0 2px 6px -2px rgb(15 23 42 / 0.06);
+}
+
+
+/* ── Dark theme ──────────────────────────────────────────────────────────────
+   The same tokens, restated. Every component reads them rather than carrying
+   colours of its own, so this is nearly the whole of dark mode.
+
+   Two selectors give three states:
+     [data-theme="dark"]                    chosen dark, wins outright
+     prefers-color-scheme + :not([light])   the device's own setting, when
+                                            nothing has been chosen
+   "System" removes the attribute rather than writing the resolved value, so a
+   phone flipping to night mode re-themes an open page with no JavaScript.
+
+   Contrast on the dark surface #18202F (AA wants 4.5:1 for body text):
+     fg #F1F5F9 ............ 13.9:1
+     muted-fg #94A3B8 .......  5.6:1
+     text-brand #7DAFEB .....  6.4:1
+     text-success #86EFAC ...  9.6:1
+     text-danger #FCA5A5 ....  7.7:1
+   And white on the brand fill #1E4A85, which is what the buttons use: 8.9:1. */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+    --canvas:        9 14 28;
+    --surface:       24 32 47;
+    --surface-2:     38 50 70;
+    --fg:            241 245 249;
+    --muted-fg:      148 163 184;
+    --subtle-fg:     125 140 160;
+    --border:        45 58 80;
+    --border-strong: 71 85 105;
+
+    /* The ramp keeps its direction. Inverting it was the obvious move — a
+       #003366 link is invisible on a dark card — but `bg-brand` carries white
+       text in a dozen places written inline, and a light fill under white text
+       is unreadable. No single value satisfies both: white needs a fill below
+       ~0.18 luminance, dark-surface text needs above ~0.27. So the fill stays
+       dark and legible under white, and the .text-* rules below move the text
+       to the light end of the ramp instead. */
+    --brand-50:      26 38 56;
+    --brand-100:     33 48 70;
+    --brand-200:     40 60 88;
+    --brand-300:     125 175 235;
+    --brand-400:     92 133 180;
+    --brand-500:     40 92 158;
+    --brand-600:     30 74 133;
+    --brand-700:     44 100 170;
+    --brand-800:     22 56 102;
+    --brand-900:     13 27 42;
+
+    --accent:        255 176 32;
+    --accent-fg:     180 83 9;
+    --accent-50:     61 45 18;
+
+    --success:       22 132 64;
+    --success-50:    20 60 40;
+    --warning-fg:    161 98 7;
+    --warning-50:    60 48 15;
+    --danger:        200 45 45;
+    --danger-50:     69 26 26;
+    --info:          37 99 235;
+    --info-50:       23 42 82;
+
+    --ring:          125 175 235;
+
+    /* Mid-tone on white, muddy on a dark card — stepped up so slices stay
+       separable from each other and from the surface behind them. */
+    --chart-done:     74 222 128;
+    --chart-pending:  250 204 21;
+    --chart-declined: 248 113 113;
+    --chart-archived: 167 139 250;
+
+    /* Shadows do not read on dark; depth comes from near-black. */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
+    --shadow:    0 1px 3px 0 rgb(0 0 0 / 0.40), 0 1px 2px -1px rgb(0 0 0 / 0.30);
+    --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.55), 0 2px 6px -2px rgb(0 0 0 / 0.40);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas:        9 14 28;
+    --surface:       24 32 47;
+    --surface-2:     38 50 70;
+    --fg:            241 245 249;
+    --muted-fg:      148 163 184;
+    --subtle-fg:     125 140 160;
+    --border:        45 58 80;
+    --border-strong: 71 85 105;
+
+    /* The ramp keeps its direction. Inverting it was the obvious move — a
+       #003366 link is invisible on a dark card — but `bg-brand` carries white
+       text in a dozen places written inline, and a light fill under white text
+       is unreadable. No single value satisfies both: white needs a fill below
+       ~0.18 luminance, dark-surface text needs above ~0.27. So the fill stays
+       dark and legible under white, and the .text-* rules below move the text
+       to the light end of the ramp instead. */
+    --brand-50:      26 38 56;
+    --brand-100:     33 48 70;
+    --brand-200:     40 60 88;
+    --brand-300:     125 175 235;
+    --brand-400:     92 133 180;
+    --brand-500:     40 92 158;
+    --brand-600:     30 74 133;
+    --brand-700:     44 100 170;
+    --brand-800:     22 56 102;
+    --brand-900:     13 27 42;
+
+    --accent:        255 176 32;
+    --accent-fg:     180 83 9;
+    --accent-50:     61 45 18;
+
+    --success:       22 132 64;
+    --success-50:    20 60 40;
+    --warning-fg:    161 98 7;
+    --warning-50:    60 48 15;
+    --danger:        200 45 45;
+    --danger-50:     69 26 26;
+    --info:          37 99 235;
+    --info-50:       23 42 82;
+
+    --ring:          125 175 235;
+
+    /* Mid-tone on white, muddy on a dark card — stepped up so slices stay
+       separable from each other and from the surface behind them. */
+    --chart-done:     74 222 128;
+    --chart-pending:  250 204 21;
+    --chart-declined: 248 113 113;
+    --chart-archived: 167 139 250;
+
+    /* Shadows do not read on dark; depth comes from near-black. */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.30);
+    --shadow:    0 1px 3px 0 rgb(0 0 0 / 0.40), 0 1px 2px -1px rgb(0 0 0 / 0.30);
+    --shadow-lg: 0 8px 24px -6px rgb(0 0 0 / 0.55), 0 2px 6px -2px rgb(0 0 0 / 0.40);
+  }
 }
 
 @layer base {
@@ -139,13 +296,13 @@
            disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap;
   }
   .btn-sm      { @apply min-h-[36px] px-3 text-xs rounded-md; }
-  .btn-primary { @apply bg-brand text-white hover:bg-brand-700; }
+  .btn-primary { @apply bg-brand hover:bg-brand-700; color: rgb(var(--on-brand)); }
   .btn-accent  { @apply bg-accent text-brand-900 hover:brightness-95; }
   .btn-secondary {
     @apply bg-surface text-fg border border-border hover:bg-surface-2;
   }
   .btn-ghost   { @apply text-muted-fg hover:text-fg hover:bg-surface-2; }
-  .btn-danger  { @apply bg-danger text-white hover:brightness-95; }
+  .btn-danger  { @apply bg-danger hover:brightness-95; color: rgb(var(--on-danger)); }
 
   /* ── Surfaces ── */
   .card {

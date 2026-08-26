@@ -5,10 +5,10 @@ import {
   CheckCircle2, XCircle, Calendar, Download, Trash2, Bell,
   RefreshCw, ClipboardList, Sliders, BookOpen, Clock,
   Pencil, X, Check, User, Camera, CalendarCheck, FileText,
-  RotateCcw, AlertTriangle
+  RotateCcw, AlertTriangle, Palette
 } from "lucide-react";
 import {
-  URSHeader, StatusBadge, Badge, Button, IconButton, Alert, Card, EmptyState,
+  URSHeader, StatusBadge, Badge, Button, IconButton, Alert, Card, CardHeader, EmptyState,
   Toast, useToastState, PageWrapper, Modal, ConfirmModal, NumberField, Spinner,
   useScrollLock, ConfirmSplash,
 } from "./SharedUI.jsx";
@@ -16,6 +16,7 @@ import ScheduleModal from "./ScheduleModal.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
 import { teacherTour } from "./ui/tours.js";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
+import ThemeToggle from "./ui/ThemeToggle.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
@@ -887,6 +888,17 @@ export default function TeacherDashboard() {
                 </div>
               </>
             )}
+
+            {/* A per-device preference, so it lives with the other things you
+                set about yourself rather than in the bar, where at 390px it
+                pushed the university name into an ellipsis. */}
+            <Card>
+              <CardHeader title="Appearance" subtitle="How this app looks on this device" icon={Palette} />
+              <ThemeToggle />
+              <p className="text-xs text-muted-fg mt-3">
+                System follows your phone or computer, including its night schedule.
+              </p>
+            </Card>
           </div>
         )}
       </div>

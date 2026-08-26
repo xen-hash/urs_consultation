@@ -32,6 +32,18 @@ export default {
         danger:  { DEFAULT: rgb("danger"), 50: rgb("danger-50") },
         info:    { DEFAULT: rgb("info"), 50: rgb("info-50") },
       },
+      // text-* reads its own tokens. In dark mode a brand fill has to stay dark
+      // under white button text while brand text has to be light on a dark
+      // card; one scale cannot be both, so the text scale is its own.
+      textColor: {
+        brand:   { DEFAULT: rgb("brand-text"),
+                   ...ramp("brand", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]) },
+        success: rgb("success-text"),
+        danger:  rgb("danger-text"),
+        info:    rgb("info-text"),
+        warning: { DEFAULT: rgb("warning-text"), fg: rgb("warning-text") },
+        accent:  { DEFAULT: rgb("accent"), fg: rgb("accent-text") },
+      },
       borderColor:  { DEFAULT: rgb("border") },
       ringColor:    { DEFAULT: rgb("ring") },
       borderRadius: { sm: "var(--radius-sm)", DEFAULT: "var(--radius)",
