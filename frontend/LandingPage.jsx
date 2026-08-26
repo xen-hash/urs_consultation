@@ -31,14 +31,16 @@ export default function LandingPage() {
 
   return (
     <URSBackground>
-      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
+      <nav className="sticky top-0 z-30 header-on-backdrop pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
-          <HomeBrand subtitle="College of Engineering" className="flex-1" />
-          <span className={`badge ${online ? "badge-success" : "badge-warning"} hidden xs:inline-flex`}>
+          <HomeBrand tone="dark" subtitle="College of Engineering" className="flex-1" />
+          <span className={`badge hidden xs:inline-flex border
+            ${online ? "bg-success/15 text-success border-success/30"
+                     : "bg-warning/20 text-warning-fg border-warning/40"}`}>
             {online ? <Wifi size={13} aria-hidden="true" /> : <WifiOff size={13} aria-hidden="true" />}
             {online ? "Online" : "Offline"}
           </span>
-          <InstallAppButton />
+          <InstallAppButton tone="dark" />
         </div>
       </nav>
 

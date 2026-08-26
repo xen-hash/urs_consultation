@@ -259,6 +259,28 @@
       rgb(var(--canvas) / 0) 100%);
   }
 
+  /* The public screens sit on the navy campus backdrop, and a white bar there
+     does not blend — it is a slab with a hard edge, and `header-blend` only
+     makes it worse by smearing white haze down over the backdrop before giving
+     up. Joining the backdrop is the fix, not fading out of it: the same navy at
+     low opacity, blurred so the texture behind still reads through it. */
+  .header-on-backdrop {
+    background: rgb(var(--brand-900) / 0.55);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border-bottom: 1px solid rgb(255 255 255 / 0.09);
+  }
+  /* Without backdrop-filter the scrim is all there is, so it has to carry the
+     contrast on its own. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .header-on-backdrop { background: rgb(var(--brand-900) / 0.92); }
+  }
+
+  /* Ghost button for a dark bar — the standard one is dark-on-light. */
+  .btn-ghost-light {
+    @apply text-on-backdrop/75 hover:text-on-backdrop hover:bg-on-backdrop/10;
+  }
+
   /* Fine dot texture layered over the campus backdrop. */
   .dot-pattern {
     background-image: radial-gradient(circle, rgb(255 255 255 / 0.07) 1px, transparent 1px);

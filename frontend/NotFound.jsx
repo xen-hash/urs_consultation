@@ -19,9 +19,9 @@ export default function NotFound() {
 
   return (
     <URSBackground>
-      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
+      <nav className="sticky top-0 z-30 header-on-backdrop pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
-          <HomeBrand subtitle="College of Engineering" className="flex-1" />
+          <HomeBrand tone="dark" subtitle="College of Engineering" className="flex-1" />
         </div>
       </nav>
 

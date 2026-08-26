@@ -74,10 +74,10 @@ export default function StudentRegister() {
         onDone={() => setSplash(false)}
       />
 
-      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
+      <nav className="sticky top-0 z-30 header-on-backdrop pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
-          <HomeBrand subtitle="Student registration" className="flex-1" />
-          <Link to="/student" className="btn btn-ghost btn-sm shrink-0">
+          <HomeBrand tone="dark" subtitle="Student registration" className="flex-1" />
+          <Link to="/student" className="btn btn-ghost-light btn-sm shrink-0">
             <ArrowLeft size={15} aria-hidden="true" /> Back
           </Link>
         </div>
