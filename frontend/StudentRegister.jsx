@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, GraduationCap } from "lucide-react";
 import { Toast, useToastState, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
+import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import { DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
@@ -74,7 +75,7 @@ export default function StudentRegister() {
       />
 
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-3xl mx-auto w-full">
           <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm text-fg truncate">Student registration</p>
@@ -86,7 +87,8 @@ export default function StudentRegister() {
         </div>
       </nav>
 
-      <main className="flex-1 w-full max-w-md mx-auto px-4 pt-8 sm:pt-12 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+      <main className="flex-1 w-full max-w-md mx-auto px-4 flex flex-col justify-center
+                       pt-8 sm:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
 
         {result ? (
           <section className="animate-rise text-center" aria-labelledby="done">
@@ -184,6 +186,8 @@ export default function StudentRegister() {
                 </div>
               </div>
             )}
+
+            <PortalNav current="/student" className="mt-8" />
           </>
         )}
       </main>
