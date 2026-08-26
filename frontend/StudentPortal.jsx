@@ -5,6 +5,7 @@ import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
+import SiteFooter from "./ui/SiteFooter.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import ursLogo from "./URS_LOGO.png";
@@ -87,7 +88,7 @@ export default function StudentPortal() {
         onRetry={() => setFailure(null)}
       />
 
-      <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
           <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
           <div className="min-w-0 flex-1">
@@ -195,6 +196,8 @@ export default function StudentPortal() {
           />
         )}
       </main>
+
+      <SiteFooter />
     </URSBackground>
   );
 }

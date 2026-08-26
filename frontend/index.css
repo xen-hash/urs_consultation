@@ -156,6 +156,27 @@
            transition-all duration-200 active:scale-[0.99];
   }
 
+  /* A card with some light in it.
+     Flat white on flat white is correct for a dense table of rows, but the
+     entry screens are three or four large cards with air around them, and there
+     the same treatment reads as unfinished. This is a very shallow wash from
+     white into the brand tint — enough to catch the light at the top edge,
+     nowhere near enough to fight the text sitting on it. */
+  .card-tinted {
+    background-image: linear-gradient(155deg,
+      rgb(var(--surface)) 0%,
+      rgb(var(--surface)) 28%,
+      rgb(var(--brand-50)) 100%);
+  }
+  /* The same idea keyed to a hue, for cards that mean different things. The
+     hue comes in as --tint, so one class serves them all. */
+  .card-tinted-hue {
+    background-image: linear-gradient(155deg,
+      rgb(var(--surface)) 0%,
+      rgb(var(--surface)) 28%,
+      var(--tint, rgb(var(--brand-50))) 100%);
+  }
+
   .icon-tile {
     @apply w-11 h-11 rounded-lg grid place-items-center shrink-0;
   }
@@ -206,6 +227,38 @@
 }
 
 @layer utilities {
+  /* A top bar that meets what is under it.
+     On the backdrop screens a solid white bar over deep navy draws a hard
+     horizontal line across the page — it reads as a strip cut off the top
+     rather than as the top of the page. This keeps the bar readable but lets
+     its lower edge fade out, so the two surfaces meet instead of butting up.
+     The pseudo-element carries the fade; the bar itself stays opaque where the
+     text sits. */
+  .header-blend {
+    position: relative;
+    border-bottom: 0;
+  }
+  .header-blend::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 100%;
+    height: 28px;
+    pointer-events: none;
+    background: linear-gradient(to bottom,
+      rgb(var(--surface)) 0%,
+      rgb(var(--surface) / 0.72) 38%,
+      rgb(var(--surface) / 0) 100%);
+  }
+  /* On the light dashboards the same seam exists in miniature: a white header
+     over the near-white canvas, separated by a hairline. Softening it there
+     means fading into the canvas colour instead. */
+  .header-blend-canvas::after {
+    background: linear-gradient(to bottom,
+      rgb(var(--canvas)) 0%,
+      rgb(var(--canvas) / 0.7) 45%,
+      rgb(var(--canvas) / 0) 100%);
+  }
+
   /* Fine dot texture layered over the campus backdrop. */
   .dot-pattern {
     background-image: radial-gradient(circle, rgb(255 255 255 / 0.07) 1px, transparent 1px);

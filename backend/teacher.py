@@ -411,6 +411,46 @@ def decline_request(req_id):
     return jsonify({"message": "Request declined"})
 
 
+# ─── DELETE ONE REQUEST ───────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/requests/<int:req_id>", methods=["DELETE"])
+@require_role("teacher", "admin")
+def delete_request(req_id):
+    """Delete a consultation request outright, freeing the row.
+
+    Marking one done keeps it — which is right, it is a record of a consultation
+    that happened. This is for the rows that are not records of anything: a
+    duplicate a student filed three times because the page was slow, a test
+    entry, an obvious mistake. Those accumulate, and a teacher who cannot clear
+    them ends up scrolling past the same junk for a semester.
+
+    Ownership is checked the same way as marking one done, so a teacher can only
+    delete their own; an administrator can delete any. It is written to the
+    audit log with the student and professor names, because unlike a status
+    change this one cannot be looked at afterwards.
+    """
+    global _logs_cache, _requests_cache
+    req, denied = _own_request_or_error(req_id)
+    if denied:
+        return denied
+
+    full = query(
+        "SELECT student_name, student_id, professor_name, status, purpose "
+        "FROM consultation_requests WHERE id=%s",
+        (req_id,), fetchone=True
+    ) or {}
+
+    execute("DELETE FROM consultation_requests WHERE id=%s", (req_id,))
+    record_audit(
+        "request.delete", target=str(req_id),
+        detail=f"{full.get('student_name') or 'unknown student'} → "
+               f"{full.get('professor_name') or 'unknown'} ({full.get('status')})"
+    )
+    _logs_cache["ts"] = 0
+    _requests_cache["ts"] = 0
+    return jsonify({"message": "Request deleted."})
+
+
 # ─── CLEAR ALL LOGS ───────────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/clear-logs", methods=["POST"])

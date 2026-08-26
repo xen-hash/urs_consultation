@@ -7,7 +7,7 @@ import {
   Pencil, X, Check, User, Camera, CalendarCheck, FileText,
   RotateCcw, AlertTriangle
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, ConfirmModal, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
@@ -90,6 +90,8 @@ export default function TeacherDashboard() {
   const [savingAppt, setSavingAppt] = useState(false);
   const [consultLimit, setConsultLimit] = useState(10);
   const [accepted, setAccepted]         = useState(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteBusy, setDeleteBusy]     = useState(false);
   const [reqPage, setReqPage]           = useState(1);
   const REQ_PAGE_SIZE = 10;
   const [resettingSession, setResettingSession] = useState(false);
@@ -174,6 +176,25 @@ export default function TeacherDashboard() {
     _teacherSeenIds.delete(id);
     addToast("Consultation completed.","success");
     if (req) piperSpeak(`Consultation completed. ${getFirstName(req.student_name)} has been served.`);
+  };
+
+  // Deleting is not declining. Declining is an answer the student gets to see;
+  // this removes the row altogether, for the duplicates and mistakes that would
+  // otherwise sit in the list all semester taking up space.
+  const handleDelete = async (id) => {
+    setDeleteBusy(true);
+    try {
+      await api.delete(`/teacher/requests/${id}`);
+      setRequests(p => p.filter(r => r.id !== id));
+      setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
+      _teacherSeenIds.delete(id);
+      setConfirmDelete(null);
+      addToast("Request deleted.", "success");
+    } catch (e) {
+      addToast(apiError(e, "Could not delete that request."), "error");
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   const handleDecline = async (id) => {
@@ -295,6 +316,18 @@ export default function TeacherDashboard() {
         subtitle="See you next time"
         tone="brand"
         onDone={() => { clearSession(); navigate("/teacher", { replace: true }); }}
+      />
+      <ConfirmModal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => handleDelete(confirmDelete.id)}
+        title="Delete this request?"
+        description={confirmDelete
+          ? `${confirmDelete.student_name}'s request will be removed for good — it will not appear in exports or reports afterwards. Declining instead keeps the record and tells them the answer.`
+          : ""}
+        confirmLabel="Delete request"
+        tone="danger"
+        loading={deleteBusy}
       />
       <URSHeader subtitle="Teacher Dashboard" accent="orange"
         user={{ name: teacher.professor_name, sub: teacher.department }}
@@ -454,6 +487,11 @@ export default function TeacherDashboard() {
                       <button onClick={()=>handleDecline(req.id)}
                         className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
                         <XCircle size={15}/> Decline
+                      </button>
+                      <button onClick={()=>setConfirmDelete(req)}
+                        aria-label={`Delete the request from ${req.student_name}`}
+                        className="flex items-center gap-2 text-muted-fg hover:text-danger hover:bg-danger-50 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors ml-auto">
+                        <Trash2 size={15} aria-hidden="true"/> Delete
                       </button>
                     </div>
                   </div>

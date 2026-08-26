@@ -28,7 +28,7 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo }) {
   const person = typeof user === "string" ? { name: user } : user || null;
 
   return (
-    <header className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+    <header className="sticky top-0 z-30 bg-surface header-blend header-blend-canvas pt-safe">
       <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
         {backTo && (
           <Link to={backTo} aria-label="Back"

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Monitor } from "lucide-react";
 import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
+import SiteFooter from "./ui/SiteFooter.jsx";
 import URSBackground from "./URSBackground.jsx";
 import ursLogo from "./URS_LOGO.png";
 
@@ -9,16 +10,19 @@ const PORTALS = [
     to: "/student", icon: GraduationCap, title: "Student",
     description: "Check faculty availability and request a consultation.",
     cta: "Sign in or register",
+    tint: "rgb(var(--brand-100) / 0.85)",
   },
   {
     to: "/teacher", icon: BookOpen, title: "Faculty",
     description: "Manage your schedule, availability and incoming requests.",
     cta: "Sign in",
+    tint: "rgb(255 236 199)",
   },
   {
     to: "/dean", icon: Shield, title: "Administration",
     description: "Faculty credentials, consultation activity and reporting.",
     cta: "Administrator sign in",
+    tint: "rgb(var(--info-50))",
   },
 ];
 
@@ -27,7 +31,7 @@ export default function LandingPage() {
 
   return (
     <URSBackground>
-      <nav className="sticky top-0 z-30 bg-surface border-b border-border pt-safe">
+      <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-6xl mx-auto w-full">
           <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
           <div className="min-w-0 flex-1">
@@ -54,8 +58,9 @@ export default function LandingPage() {
         </header>
 
         <div className="grid gap-3 sm:grid-cols-3 mt-10 animate-rise">
-          {PORTALS.map(({ to, icon: Icon, title, description, cta }) => (
-            <Link key={to} to={to} className="card card-action group">
+          {PORTALS.map(({ to, icon: Icon, title, description, cta, tint }) => (
+            <Link key={to} to={to} className="card card-action card-tinted-hue group"
+              style={{ "--tint": tint }}>
               <span className="icon-tile icon-tile-brand"><Icon size={22} aria-hidden="true" /></span>
               <span className="font-semibold text-fg text-lg">{title}</span>
               <span className="text-sm text-muted-fg grow">{description}</span>
@@ -74,10 +79,9 @@ export default function LandingPage() {
           </Link>
         </div>
 
-        <p className="text-xs text-on-backdrop/50 mt-12">
-          URS College of Engineering · Faculty Consultation System
-        </p>
       </main>
+
+      <SiteFooter />
     </URSBackground>
   );
 }

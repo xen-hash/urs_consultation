@@ -107,3 +107,21 @@ export const TIME_OPTIONS = [
 
 export const YEAR_LEVELS = ["1st Year","2nd Year","3rd Year","4th Year","5th Year","Graduate"];
 
+
+/* ── Who built this ───────────────────────────────────────────────────────────
+   Shown in the footer on the public screens. Edit the names, roles and the
+   address here — nothing else needs touching, and no rebuild of the markup is
+   involved.
+
+   An entry with an empty name is skipped, so unused rows can simply be left
+   blank rather than deleted. Set PROJECT_CONTACT to "" to drop the contact
+   block entirely.
+
+   NOTE: these are placeholders. Replace them before the site goes out. */
+export const DEVELOPERS = [
+  { name: "", role: "Backend and database" },
+  { name: "", role: "Frontend and interface" },
+  { name: "", role: "Testing and documentation" },
+];
+
+export const PROJECT_CONTACT = "";

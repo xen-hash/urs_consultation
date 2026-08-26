@@ -10,7 +10,7 @@ import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession } from "./auth.js";
-import DepartmentIcon from "./ui/DepartmentIcon.jsx";
+import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
@@ -456,14 +456,19 @@ export default function StudentDashboard() {
                   className="flex items-center gap-2 text-muted-fg hover:text-fg text-sm mb-4 transition-colors">
                   <ChevronLeft size={16} /> Back to Departments
                 </button>
-                <div className="card rounded-xl p-4 mb-4 flex items-center gap-4">
-                  <div className="w-12 h-12 bg-surface-2 rounded-lg flex items-center justify-center text-2xl shrink-0">
+                <div className="card card-tinted-hue rounded-xl p-4 mb-4 flex items-center gap-4"
+                  style={{ "--tint": departmentColor(selectedDept).tint }}>
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: departmentColor(selectedDept).tint,
+                      color: departmentColor(selectedDept).ink,
+                    }}>
                     <DepartmentIcon department={selectedDept} size={26} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-semibold text-fg leading-tight">{selectedDept}</h2>
                     <p className="text-muted-fg text-xs mt-0.5">
-                      {currentDept.professors.length} professors · <span className="text-emerald-400 font-semibold">
+                      {currentDept.professors.length} professors · <span className="text-success font-semibold">
                         {currentDept.professors.filter(p => p.status === "Available").length} available
                       </span>
                     </p>
@@ -608,17 +613,28 @@ export default function StudentDashboard() {
                     return (
                       <button key={dept.department}
                         onClick={() => { setSelectedDept(dept.department); setSearch(""); setFilter("all"); setProfPage(1); }}
-                        className="group flex flex-col gap-3 p-5 text-left bg-surface-2 hover:bg-white/18 border border-border hover:border-border rounded-xl transition-all active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-2xl h-full min-h-[160px]"
-                        style={{ animationDelay: `${i * 60}ms` }}>
+                        className="group card card-action card-tinted-hue flex flex-col gap-3 p-5 text-left
+                          h-full min-h-[160px] hover:-translate-y-0.5"
+                        style={{
+                          animationDelay: `${i * 60}ms`,
+                          // Each department carries its own hue, so the grid reads
+                          // as six places rather than six identical white boxes.
+                          "--tint": departmentColor(dept.department).tint,
+                        }}>
                         <div className="flex items-start justify-between">
-                          <div className="w-14 h-14 bg-surface-2 rounded-lg flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-200">
+                          <div className="w-11 h-11 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200"
+                            style={{
+                              background: departmentColor(dept.department).tint,
+                              color: departmentColor(dept.department).ink,
+                            }}>
                             <DepartmentIcon department={dept.department} size={22} />
                           </div>
-                          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold
+ whitespace-nowrap shrink-0
  ${avail > 0
- ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+ ? "bg-success-50 text-success border border-success/20"
  : "bg-surface-2 text-muted-fg border border-border"}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${avail > 0 ? "bg-emerald-400 animate-pulse" : "bg-white/30"}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${avail > 0 ? "bg-success" : "bg-border-strong"}`} />
                             {avail} available
                           </div>
                         </div>
@@ -631,7 +647,7 @@ export default function StudentDashboard() {
                             <span>Availability</span><span>{pct}%</span>
                           </div>
                           <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-700 ${avail > 0 ? "bg-emerald-400" : "bg-surface-2"}`}
+                            <div className={`h-full rounded-full transition-all duration-700 ${avail > 0 ? "bg-success" : "bg-border"}`}
                               style={{ width: `${pct}%` }} />
                           </div>
                         </div>

@@ -412,22 +412,18 @@ def stats():
 
 # ─── ARCHIVE REQUESTS ─────────────────────────────────────────────────────────
 
-@admin_bp.route("/requests/archive", methods=["POST"])
-@require_role("admin")
-def archive_requests():
-    """Archive consultation requests instead of deleting them.
+def _request_filter(data, exclude_archived=False):
+    """Build the WHERE clause shared by archiving and deleting.
 
-    The dashboard's old "Delete All" ran /teacher/clear-logs, which also emptied
-    teacher_logs — every saved schedule and status override in the system. This
-    marks requests archived (they drop out of the active views but stay in the
-    exports) and touches nothing else.
+    Returns the clause, its arguments, and a human description of the scope for
+    the audit line — "1 January to 30 June, status=done" is what makes the log
+    readable a year later.
     """
-    data      = request.json or {}
     date_from = (data.get("from") or "").strip()
     date_to   = (data.get("to") or "").strip()
     status    = (data.get("status") or "").strip()
 
-    where = ["status <> 'archived'"]
+    where = ["status <> 'archived'"] if exclude_archived else []
     args  = []
     if status:
         where.append("status = %s")
@@ -438,17 +434,73 @@ def archive_requests():
     if date_to:
         where.append("request_time <= %s::timestamp")
         args.append(f"{date_to} 23:59:59")
-    clause = " WHERE " + " AND ".join(where)
+
+    clause = (" WHERE " + " AND ".join(where)) if where else ""
+    scope = ", ".join(filter(None, [
+        f"status={status}" if status else "",
+        f"from={date_from}" if date_from else "",
+        f"to={date_to}" if date_to else "",
+    ])) or ("all active requests" if exclude_archived else "everything")
+    return clause, args, scope
+
+
+@admin_bp.route("/requests/delete", methods=["POST"])
+@require_role("admin")
+def delete_requests():
+    """Delete consultation requests for good, to free the space they occupy.
+
+    Archiving hides rows but keeps them, which is the right default — they are a
+    record of consultations that happened, and they still appear in exports. It
+    is not a way to reclaim a database that is filling up, and on a free tier
+    that ceiling is real.
+
+    So this is the deliberate other half: same filters, permanent. A date range
+    is required rather than optional — an unbounded delete here would empty the
+    table on one mis-click, and "everything before last year" is what freeing
+    space actually means.
+    """
+    data = request.json or {}
+    if not (data.get("from") or "").strip() and not (data.get("to") or "").strip():
+        return jsonify({
+            "error": "Choose a date range. Deleting every request at once is not "
+                     "something this button will do."
+        }), 400
+
+    clause, args, scope = _request_filter(data)
+    affected = query(f"SELECT COUNT(*) AS c FROM consultation_requests{clause}",
+                     tuple(args), fetchone=True)["c"]
+    if not affected:
+        return jsonify({"message": "Nothing matched that range.", "deleted": 0})
+
+    execute(f"DELETE FROM consultation_requests{clause}", tuple(args))
+    record_audit("admin.delete_requests", detail=f"{affected} deleted permanently ({scope})")
+
+    import teacher as teacher_module
+    teacher_module._requests_cache["ts"] = 0
+    teacher_module._logs_cache["ts"] = 0
+
+    return jsonify({
+        "message": f"{affected} request(s) deleted permanently.",
+        "deleted": affected,
+    })
+
+
+@admin_bp.route("/requests/archive", methods=["POST"])
+@require_role("admin")
+def archive_requests():
+    """Archive consultation requests instead of deleting them.
+
+    The dashboard's old "Delete All" ran /teacher/clear-logs, which also emptied
+    teacher_logs — every saved schedule and status override in the system. This
+    marks requests archived (they drop out of the active views but stay in the
+    exports) and touches nothing else.
+    """
+    clause, args, scope = _request_filter(request.json or {}, exclude_archived=True)
 
     affected = query(f"SELECT COUNT(*) AS c FROM consultation_requests{clause}",
                      tuple(args), fetchone=True)["c"]
     execute(f"UPDATE consultation_requests SET status='archived'{clause}", tuple(args))
 
-    scope = ", ".join(filter(None, [
-        f"status={status}" if status else "",
-        f"from={date_from}" if date_from else "",
-        f"to={date_to}" if date_to else "",
-    ])) or "all active requests"
     record_audit("admin.archive_requests", detail=f"{affected} archived ({scope})")
 
     # Dashboards read through short-lived caches; drop them so the change shows.
