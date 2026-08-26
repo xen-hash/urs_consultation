@@ -7,7 +7,11 @@ import {
   Pencil, X, Check, User, Camera, CalendarCheck, FileText,
   RotateCcw, AlertTriangle
 } from "lucide-react";
-import { URSHeader, StatusBadge, Toast, useToastState, PageWrapper, Modal, ConfirmModal, NumberField, Spinner, useScrollLock , ConfirmSplash } from "./SharedUI.jsx";
+import {
+  URSHeader, StatusBadge, Badge, Button, IconButton, Alert, Card, EmptyState,
+  Toast, useToastState, PageWrapper, Modal, ConfirmModal, NumberField, Spinner,
+  useScrollLock, ConfirmSplash,
+} from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
 import { teacherTour } from "./ui/tours.js";
@@ -15,17 +19,17 @@ import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.js
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
-import { SOCKET_URL } from "./constants.js";
+import { SOCKET_URL, DAYS, DAY_LABELS } from "./constants.js";
 import QRCodeLib from "qrcode";
 
 let socket = null;
 const MANUAL_OPTIONS = ["Auto (use schedule)","Available","Unavailable","On Leave","In Meeting"];
 const STATUS_STYLES = {
-  "Available":"bg-emerald-50 border-emerald-200 text-emerald-700",
-  "Unavailable":"bg-gray-50 border-gray-200 text-gray-600",
+  "Available":"bg-success-50 border-success/25 text-success",
+  "Unavailable":"bg-surface-2 border-border text-muted-fg",
   "On Leave":"bg-amber-50 border-amber-200 text-amber-700",
   "In Meeting":"bg-orange-50 border-orange-200 text-orange-700",
-  "Auto (use schedule)":"bg-blue-50 border-blue-200 text-blue-700",
+  "Auto (use schedule)":"bg-info-50 border-info/25 text-info",
 };
 
 function formatTime(t) {
@@ -44,6 +48,30 @@ function ding() {
 
 const _teacherSeenIds = new Set();
 const LIMIT_KEY = "urs.teacher.dailyLimit";
+
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
+};
+
+/** One number, labelled. The row of these is what turns a list of cards into a
+ *  dashboard: how the day stands, before what to do about it. */
+function StatTile({ label, value, icon: Icon, tone = "default" }) {
+  const tones = {
+    default: "text-fg",
+    success: "text-success",
+    warning: "text-warning-fg",
+  };
+  return (
+    <div className="card p-3.5 sm:p-4">
+      <p className="flex items-center gap-2 text-muted-fg mb-1 text-xs font-semibold uppercase tracking-wide">
+        <Icon size={14} aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </p>
+      <p className={`text-xl sm:text-2xl font-bold tabular-nums ${tones[tone]}`}>{value}</p>
+    </div>
+  );
+}
 const _ttsQueue = [];
 let _ttsBusy = false;
 
@@ -107,6 +135,21 @@ export default function TeacherDashboard() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [tourOpen, setTourOpen]         = useState(() => !hasSeenTour("teacher"));
   const tourSteps = useMemo(() => teacherTour(setTab), []);
+  // What the board is showing right now. On Auto that is the schedule's
+  // verdict for today rather than the word "Auto", which is not a status
+  // anybody outside this screen would recognise.
+  const onAuto = myStatus === "Auto (use schedule)";
+  const todaySlots = (() => {
+    const day = DAYS[(new Date().getDay() + 6) % 7];
+    const d = mySchedule?.[day];
+    return (!d?.unavailable && d?.slots?.length) ? d.slots : null;
+  })();
+  const effectiveStatus = onAuto
+    ? (todaySlots ? "Available" : "Unavailable")
+    : myStatus;
+
+  const firstName = (teacher?.professor_name || "")
+    .replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i, "").split(" ")[0] || "there";
   const [deleteBusy, setDeleteBusy]     = useState(false);
   const [reqPage, setReqPage]           = useState(1);
   const REQ_PAGE_SIZE = 10;
@@ -415,48 +458,69 @@ export default function TeacherDashboard() {
         {/* ── REQUESTS TAB ── */}
         {tab==="requests" && (
           <div className="space-y-3 animate-rise">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-semibold text-xl text-fg" data-tour="teacher-requests">Consultation Requests</h2>
-              <button onClick={async()=>{setRefreshing(true);await fetchRequests();setRefreshing(false);}}
-                className="flex items-center gap-1.5 text-muted-fg hover:text-fg text-xs bg-surface-2 px-3 py-2 rounded-xl border border-border transition-all">
-                <RefreshCw size={12} className={refreshing?"animate-spin":""}/> Refresh
-              </button>
+            {/* What the day looks like, before the list of things to do about it.
+                The dashboard used to open on a bare heading and a form row —
+                a teacher had to read every card to learn how their day stood. */}
+            <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <h2 className="text-title font-bold text-fg" data-tour="teacher-requests">
+                  Good {greeting()}, {firstName}
+                </h2>
+                <p className="text-sm text-muted-fg mt-0.5">
+                  {requests.length === 0
+                    ? "Nothing waiting on you right now."
+                    : `${requests.length} request${requests.length === 1 ? "" : "s"} waiting on you.`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" icon={RefreshCw} loading={refreshing}
+                  onClick={async()=>{setRefreshing(true);await fetchRequests();setRefreshing(false);}}>
+                  Refresh
+                </Button>
+                <Button size="sm" icon={RotateCcw} loading={resettingSession}
+                  onClick={handleResetSession}
+                  title="Archive today's consultations and start a new session">
+                  New session
+                </Button>
+              </div>
             </div>
 
-            {/* Consultation Limit Banner */}
-            <div className="card rounded-lg px-4 py-3 flex items-center gap-3 flex-wrap"
-              data-tour="teacher-limit">
-              <span className="text-muted-fg text-sm font-semibold">Daily Limit:</span>
-              <NumberField
-                id="daily-limit"
-                value={consultLimit}
-                onCommit={saveLimit}
-                disabled={savingLimit}
-                min={1}
-                max={100}
-                aria-label="Daily consultation limit"
-                className="w-20 text-center bg-surface-2 border border-border text-fg font-bold text-sm rounded-xl px-2 py-1.5" />
-              <span className="text-muted-fg text-xs">consultations max</span>
-              <span className={`ml-auto text-xs font-bold px-3 py-1 rounded-full ${accepted.size >= consultLimit ? "bg-red-500/20 text-red-300 border border-red-400/30" : "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"}`}>
-                {accepted.size}/{consultLimit} accepted
-              </span>
-              {accepted.size > 0 && (
-                <button onClick={() => setAccepted(new Set())} className="text-xs text-muted-fg hover:text-fg bg-surface-2 px-2 py-1 rounded-lg">Reset</button>
-              )}
-              <button onClick={handleResetSession} disabled={resettingSession}
-                title="Archive today's consultations and start a new session"
-                className="flex items-center gap-1.5 text-xs font-semibold bg-surface-2 hover:bg-accent/20 border border-border hover:border-accent/40 text-muted-fg hover:text-accent-fg px-3 py-1.5 rounded-xl transition-all disabled:opacity-40">
-                {resettingSession ? <Spinner size={3} light /> : <RotateCcw size={14} aria-hidden="true" />}
-                {resettingSession ? "Resetting..." : "New Session"}
-              </button>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
+              <StatTile label="Waiting" value={requests.length} icon={ClipboardList} />
+              <StatTile label="Accepted today" value={`${accepted.size}/${consultLimit}`}
+                icon={CheckCircle2} tone={accepted.size >= consultLimit ? "warning" : "success"} />
+              <StatTile label="Slots left" value={Math.max(0, consultLimit - accepted.size)}
+                icon={Sliders} />
+              <div className="card p-3.5 sm:p-4" data-tour="teacher-limit">
+                <label htmlFor="daily-limit"
+                  className="flex items-center gap-2 text-muted-fg mb-1 text-xs font-semibold uppercase tracking-wide">
+                  <Sliders size={14} aria-hidden="true" /> Daily limit
+                </label>
+                <div className="flex items-center gap-2">
+                  <NumberField
+                    id="daily-limit"
+                    value={consultLimit}
+                    onCommit={saveLimit}
+                    disabled={savingLimit}
+                    min={1}
+                    max={100}
+                    aria-label="Daily consultation limit"
+                    className="input w-20 text-center font-bold tabular-nums py-1.5" />
+                  <span className="text-xs text-muted-fg">a day</span>
+                </div>
+              </div>
             </div>
 
             {requests.length===0 ? (
-              <div className="card rounded-xl p-10 text-center">
-                <ClipboardList size={40} className="text-subtle-fg mx-auto mb-3"/>
-                <p className="text-muted-fg font-semibold">No pending requests</p>
-                <p className="text-muted-fg text-sm mt-1">Student requests will appear here automatically</p>
-              </div>
+              <Card>
+                <EmptyState icon={ClipboardList} title="Nothing waiting"
+                  description="Requests appear here the moment a student sends one — you do not need to refresh."
+                  action={
+                    <Button size="sm" icon={Sliders} onClick={() => setTab("status")}>
+                      Check your availability
+                    </Button>
+                  } />
+              </Card>
             ) : (() => {
               const pagedReqs = requests.slice((reqPage-1)*REQ_PAGE_SIZE, reqPage*REQ_PAGE_SIZE);
               const reqTotalPages = Math.ceil(requests.length / REQ_PAGE_SIZE);
@@ -465,84 +529,97 @@ export default function TeacherDashboard() {
               const isAccepted = accepted.has(req.id);
               const isFull = accepted.size >= consultLimit && !isAccepted;
               return (
-              <div key={req.id} className="bg-surface rounded-xl border border-border shadow-xl p-6 hover:shadow-2xl transition-all">
-                <div className="flex items-start gap-5">
-                  <div className="w-16 h-16 bg-brand rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
+              <div key={req.id} className="card p-4 sm:p-5 transition-shadow hover:shadow">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 grid place-items-center
+                                  bg-brand-50 text-brand font-bold">
                     {req.student_photo
-                      ? <img src={req.student_photo} alt={req.student_name} className="w-full h-full object-cover"/>
-                      : <span className="text-fg font-semibold text-2xl">{req.student_name?.[0]||"S"}</span>}
+                      ? <img src={req.student_photo} alt="" className="w-full h-full object-cover"/>
+                      : (req.student_name?.[0] || "S")}
                   </div>
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div>
-                        <p className="font-bold text-gray-900 text-lg">{req.student_name}</p>
-                        <p className="text-gray-500 text-sm">{req.course}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-fg truncate">{req.student_name}</p>
+                        <p className="text-xs text-muted-fg truncate">{req.course}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-blue-100 text-blue-700 text-sm px-3 py-1 rounded-full font-semibold">{req.category}</span>
-                        <span className="text-gray-400 text-sm flex items-center gap-1">
-                          <Clock size={13}/>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isAccepted && <Badge tone="success" icon={CheckCircle2}>Accepted</Badge>}
+                        <Badge tone="neutral">{req.category}</Badge>
+                        <span className="text-xs text-subtle-fg inline-flex items-center gap-1">
+                          <Clock size={12} aria-hidden="true" />
                           {req.request_time ? new Date(req.request_time).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : ""}
                         </span>
                       </div>
                     </div>
-                    <p className="text-gray-700 text-base mt-3 bg-gray-50 rounded-xl px-4 py-3 italic font-medium">"{req.purpose}"</p>
+
+                    <p className="text-sm text-muted-fg mt-3 bg-surface-2 rounded-lg px-3.5 py-3 leading-relaxed">
+                      {req.purpose}
+                    </p>
+
                     {req.appointment_date && (
-                      <div className="mt-3 flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-xl px-4 py-2.5">
-                        <CalendarCheck size={16} className="text-accent-fg"/>
-                        <p className="text-sm text-gray-700 font-semibold">
-                          Appointment: {new Date(req.appointment_date).toLocaleDateString("en-PH",{month:"short",day:"numeric"})} at {formatTime(req.appointment_time)}
+                      <div className="mt-3 flex items-center gap-2 flex-wrap bg-accent-50 border border-accent/25 rounded-lg px-3.5 py-2.5">
+                        <CalendarCheck size={15} className="text-accent-fg shrink-0" aria-hidden="true" />
+                        <p className="text-sm font-medium text-fg">
+                          {new Date(req.appointment_date).toLocaleDateString("en-PH",{month:"short",day:"numeric"})} at {formatTime(req.appointment_time)}
                         </p>
-                        {req.appointment_notes && <p className="text-gray-500 text-xs italic">— "{req.appointment_notes}"</p>}
+                        {req.appointment_notes && (
+                          <p className="text-xs text-muted-fg">— {req.appointment_notes}</p>
+                        )}
                       </div>
                     )}
+
                     {isFull && (
-                      <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-center">
-                        <p className="text-danger text-xs font-semibold flex items-center gap-1.5"><AlertTriangle size={13} aria-hidden="true" /> Daily limit reached. Decline a request or increase the limit.</p>
-                      </div>
+                      <Alert tone="warning" icon={AlertTriangle}>
+                        You have accepted {consultLimit} today, which is your limit. Decline one,
+                        or raise the limit above.
+                      </Alert>
                     )}
-                    <div className="flex gap-3 mt-4 flex-wrap">
-                      <button
-                        onClick={() => {
-                          if (isAccepted) {
-                            addToast("This request has already been accepted.", "info");
-                          } else if (!isFull) {
+
+                    {/* One primary action at a time. Four coloured buttons of
+                        equal weight is four decisions; the next step is either
+                        "accept this" or, once accepted, "we have met". */}
+                    <div className="flex flex-wrap items-center gap-2 mt-4">
+                      {!isAccepted ? (
+                        <Button
+                          variant="primary" size="sm" icon={CheckCircle2} disabled={isFull}
+                          onClick={() => {
+                            if (isFull) {
+                              addToast(`You are at your limit of ${consultLimit} for today.`, "warning");
+                              return;
+                            }
                             setAccepted(prev => { const n = new Set(prev); n.add(req.id); return n; });
-                          } else {
-                            addToast(`Daily limit of ${consultLimit} reached. Increase limit or decline a request first.`, "warning");
-                          }
-                        }}
-                        className={`flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all
- ${isAccepted
- ? "bg-emerald-600 text-fg cursor-default"
- : isFull
- ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
- : "bg-gray-100 hover:bg-emerald-50 text-gray-600 border border-gray-200 active:scale-95"}`}>
-                        <CheckCircle2 size={15}/> {isAccepted ? "Accepted" : "Accept"}
-                      </button>
-                      {req.appointment_date ? (
-                        <div className="flex items-center gap-2 bg-accent/20 border border-accent/40 text-[var(--accent-fg)] text-sm font-semibold px-5 py-2.5 rounded-xl">
-                          <CalendarCheck size={15}/> Appointment set
-                        </div>
+                          }}>
+                          Accept
+                        </Button>
                       ) : (
-                        <button onClick={() => { setApptModal(req); setApptForm({date:"",time:"",notes:""}); }}
-                          className="flex items-center gap-2 bg-accent hover:bg-accent text-fg text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
-                          <CalendarCheck size={15}/> Set Appointment
-                        </button>
+                        <Button variant="primary" size="sm" icon={CheckCircle2}
+                          onClick={()=>handleDone(req.id)}>
+                          Mark done
+                        </Button>
                       )}
-                      <button onClick={()=>handleDone(req.id)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-fg text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
-                        <CheckCircle2 size={15}/> Mark Done
-                      </button>
-                      <button onClick={()=>handleDecline(req.id)}
-                        className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
-                        <XCircle size={15}/> Decline
-                      </button>
-                      <button onClick={()=>setConfirmDelete(req)}
-                        aria-label={`Delete the request from ${req.student_name}`}
-                        className="flex items-center gap-2 text-muted-fg hover:text-danger hover:bg-danger-50 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors ml-auto">
-                        <Trash2 size={15} aria-hidden="true"/> Delete
-                      </button>
+
+                      <Button size="sm" icon={CalendarCheck}
+                        onClick={() => { setApptModal(req); setApptForm({date:"",time:"",notes:""}); }}>
+                        {req.appointment_date ? "Change time" : "Set appointment"}
+                      </Button>
+
+                      {!isAccepted && (
+                        <Button size="sm" icon={CheckCircle2} onClick={()=>handleDone(req.id)}>
+                          Mark done
+                        </Button>
+                      )}
+
+                      <Button size="sm" variant="ghost" icon={XCircle}
+                        className="text-danger hover:bg-danger-50"
+                        onClick={()=>handleDecline(req.id)}>
+                        Decline
+                      </Button>
+
+                      <IconButton icon={Trash2} label={`Delete the request from ${req.student_name}`}
+                        onClick={()=>setConfirmDelete(req)}
+                        className="ml-auto hover:text-danger hover:bg-danger-50" size={16} />
                     </div>
                   </div>
                 </div>
@@ -570,27 +647,84 @@ export default function TeacherDashboard() {
         {/* ── STATUS TAB ── */}
         {tab==="status" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-rise">
-            <div className="bg-surface rounded-xl border border-border shadow-xl p-7">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-accent rounded-xl flex items-center justify-center"><Sliders size={20} className="text-fg"/></div>
-                <h3 className="font-semibold text-xl text-brand">My Availability Status</h3>
+            {/* What students currently see, said plainly, before the control
+                that changes it. The old card showed a dropdown and a button and
+                left you to work out which state you were actually in. */}
+            <Card className="p-0 overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center gap-3">
+                <span className="icon-tile icon-tile-accent w-10 h-10 shrink-0">
+                  <Sliders size={19} aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-fg">Your availability</h3>
+                  <p className="text-xs text-muted-fg mt-0.5">What students see on the board right now</p>
+                </div>
+                <StatusBadge status={effectiveStatus} />
               </div>
-              <select value={myStatus} onChange={e=>setMyStatus(e.target.value)} data-tour="teacher-status"
-                className={`w-full border rounded-lg px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-brand/20 mb-3 ${STATUS_STYLES[myStatus]||"border-gray-200 bg-gray-50"}`}>
-                {MANUAL_OPTIONS.map(o=><option key={o}>{o}</option>)}
-              </select>
-              <button onClick={handleSaveStatus} disabled={savingStatus}
-                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm disabled:opacity-50">
-                {savingStatus?<Spinner size={4} light/>:<Sliders size={14}/>}
-                {savingStatus?"Saving...":"Update Status"}
-              </button>
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <button onClick={()=>setSchedModal(true)} data-tour="teacher-schedule"
-                  className="w-full flex items-center justify-center gap-2 border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-2.5 px-5 rounded-lg transition-all text-sm">
-                  <Calendar size={14}/> Edit Weekly Schedule
-                </button>
+
+              <div className="p-5 space-y-4">
+                <div>
+                  <label htmlFor="my-status" className="label">Set it by hand</label>
+                  <select id="my-status" className="input" data-tour="teacher-status"
+                    value={myStatus} onChange={e=>setMyStatus(e.target.value)}>
+                    {MANUAL_OPTIONS.map(o=><option key={o}>{o}</option>)}
+                  </select>
+                  <p className="text-xs text-muted-fg mt-1.5">
+                    On Auto your weekly schedule decides, and you never have to
+                    remember to switch it back.
+                  </p>
+                </div>
+                <Button variant="primary" icon={Sliders} loading={savingStatus}
+                  onClick={handleSaveStatus} className="w-full">
+                  {savingStatus ? "Saving…" : "Update status"}
+                </Button>
               </div>
-            </div>
+            </Card>
+
+            <Card className="p-0 overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center gap-3">
+                <span className="icon-tile icon-tile-brand w-10 h-10 shrink-0">
+                  <Calendar size={19} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-fg">Weekly consultation hours</h3>
+                  <p className="text-xs text-muted-fg mt-0.5">Set once — the board follows it every week</p>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <ul className="divide-y divide-border -my-1">
+                  {DAYS.map(day => {
+                    const d = mySchedule?.[day];
+                    const slots = (!d?.unavailable && d?.slots?.length) ? d.slots : null;
+                    return (
+                      <li key={day} className="flex items-center gap-3 py-2">
+                        <span className="w-10 text-xs font-semibold uppercase tracking-wide text-muted-fg shrink-0">
+                          {DAY_LABELS[day] || day.slice(0, 3)}
+                        </span>
+                        {slots ? (
+                          <>
+                            <span className="text-sm text-fg tabular-nums min-w-0 truncate">
+                              {slots[0].start} – {slots[0].end}
+                              {slots.length > 1 && ` +${slots.length - 1} more`}
+                            </span>
+                            {d.limit > 0 && (
+                              <span className="ml-auto text-xs text-muted-fg shrink-0">{d.limit} max</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-sm text-subtle-fg">Not available</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Button icon={Calendar} data-tour="teacher-schedule"
+                  onClick={()=>setSchedModal(true)} className="w-full">
+                  Edit weekly schedule
+                </Button>
+              </div>
+            </Card>
           </div>
         )}
 
@@ -602,7 +736,7 @@ export default function TeacherDashboard() {
               <p className="text-muted-fg text-base mt-1">Update your name, photo, and download your Faculty ID</p>
             </div>
             {showCamera ? (
-              <div className="bg-white rounded-xl p-6 shadow-2xl animate-rise">
+              <div className="bg-surface rounded-xl p-6 shadow-2xl animate-rise">
                 <WebcamCapture title="Take Your ID Photo" onCapture={handleSavePhoto} onCancel={()=>setShowCamera(false)} />
               </div>
             ) : (
@@ -635,7 +769,7 @@ export default function TeacherDashboard() {
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-brand">Edit Name</h3>
                     <button onClick={()=>{setEditName(v=>!v);setNewName(teacher.professor_name);}}
-                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-brand transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-subtle-fg hover:text-brand transition-colors">
                       <Pencil size={12}/> {editName?"Cancel":"Edit"}
                     </button>
                   </div>
@@ -645,7 +779,7 @@ export default function TeacherDashboard() {
                         <p className="text-amber-700 text-xs font-semibold">Current name:</p>
                         <p className="text-amber-900 text-sm font-bold">{teacher.professor_name}</p>
                       </div>
-                      <input className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
+                      <input className="w-full border border-border bg-surface-2 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-surface transition-all"
                         placeholder="e.g. Engr. Maria Santos-Cruz"
                         value={newName} onChange={e=>setNewName(e.target.value)}
                         onKeyDown={e=>e.key==="Enter"&&handleSaveName()} autoFocus />
@@ -656,7 +790,7 @@ export default function TeacherDashboard() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-gray-600 text-sm">Use the Edit button to correct misspellings or update your surname.</p>
+                    <p className="text-muted-fg text-sm">Use the Edit button to correct misspellings or update your surname.</p>
                   )}
                 </div>
 
@@ -665,42 +799,42 @@ export default function TeacherDashboard() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <h3 className="font-semibold text-brand">Login PIN</h3>
-                      <p className="text-gray-400 text-xs mt-0.5">
+                      <p className="text-subtle-fg text-xs mt-0.5">
                         {hasPin
                         ? <><CheckCircle2 size={13} aria-hidden="true" className="inline mr-1.5 -mt-0.5" />PIN is set — you can sign in with your ID and PIN</>
                         : <><AlertTriangle size={13} aria-hidden="true" className="inline mr-1.5 -mt-0.5" />No PIN set yet</>}
                       </p>
                     </div>
                     <button onClick={() => { setSettingPin(v => !v); setPinForm({ pin: '', confirm: '' }); }}
-                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-brand transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-subtle-fg hover:text-brand transition-colors">
                       <Pencil size={12}/> {settingPin ? "Cancel" : hasPin ? "Change PIN" : "Set PIN"}
                     </button>
                   </div>
                   {settingPin ? (
                     <div className="space-y-4">
                       <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-2">Your Employee ID (share this with no one):</p>
+                        <p className="text-xs font-semibold text-muted-fg mb-2">Your Employee ID (share this with no one):</p>
                         <div className="bg-brand/10 border border-brand/20 rounded-xl px-4 py-2.5 flex items-center gap-2">
                           <span className="font-mono font-bold text-brand text-lg tracking-widest">{teacher.employee_id}</span>
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">Enter 4-digit PIN</label>
+                        <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-3 block">Enter 4-digit PIN</label>
                         <div className="flex gap-3 justify-center">
                           {[0,1,2,3].map(i => (
-                            <div key={i} className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-xl font-bold text-brand">
+                            <div key={i} className="w-12 h-12 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-xl font-bold text-brand">
                               {pinForm.pin[i] ? "●" : ""}
                             </div>
                           ))}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">Confirm PIN</label>
+                        <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-3 block">Confirm PIN</label>
                         <div className="flex gap-3 justify-center">
                           {[0,1,2,3].map(i => (
                             <div key={i} className={`w-12 h-12 rounded-xl border flex items-center justify-center text-xl font-bold
  ${pinForm.confirm.length > 0 && pinForm.pin !== pinForm.confirm.slice(0,pinForm.pin.length) && i < pinForm.confirm.length
- ? "bg-red-50 border-red-300 text-red-600" : "bg-gray-100 border-gray-200 text-brand"}`}>
+ ? "bg-danger-50 border-danger/40 text-danger" : "bg-surface-2 border-border text-brand"}`}>
                               {pinForm.confirm[i] ? "●" : ""}
                             </div>
                           ))}
@@ -713,7 +847,7 @@ export default function TeacherDashboard() {
                             if (pinForm.pin.length < 4) setPinForm(p => ({ ...p, pin: p.pin + n }));
                             else if (pinForm.confirm.length < 4) setPinForm(p => ({ ...p, confirm: p.confirm + n }));
                           }}
-                            className="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-lg font-bold transition-colors active:scale-95">
+                            className="h-12 rounded-xl bg-surface-2 hover:bg-border text-fg text-lg font-bold transition-colors active:scale-95">
                             {n}
                           </button>
                         ))}
@@ -721,18 +855,18 @@ export default function TeacherDashboard() {
                           if (pinForm.confirm.length > 0) setPinForm(p => ({ ...p, confirm: p.confirm.slice(0,-1) }));
                           else if (pinForm.pin.length > 0) { setPinForm(p => ({ ...p, pin: p.pin.slice(0,-1), confirm: '' })); }
                         }}
-                          className="h-12 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 text-lg transition-colors flex items-center justify-center">
+                          className="h-12 rounded-xl bg-danger-50 hover:brightness-95 text-danger text-lg transition-colors flex items-center justify-center">
                           ⌫
                         </button>
                         <button onPointerDown={e => { e.preventDefault();
                           if (pinForm.pin.length < 4) setPinForm(p => ({ ...p, pin: p.pin + '0' }));
                           else if (pinForm.confirm.length < 4) setPinForm(p => ({ ...p, confirm: p.confirm + '0' }));
                         }}
-                          className="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-lg font-bold transition-colors">
+                          className="h-12 rounded-xl bg-surface-2 hover:bg-border text-fg text-lg font-bold transition-colors">
                           0
                         </button>
                         <button onPointerDown={e => { e.preventDefault(); setPinForm({ pin: '', confirm: '' }); }}
-                          className="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-semibold transition-colors">
+                          className="h-12 rounded-xl bg-surface-2 hover:bg-border text-muted-fg text-xs font-semibold transition-colors">
                           CLR
                         </button>
                       </div>
@@ -743,7 +877,7 @@ export default function TeacherDashboard() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-muted-fg text-sm">
                       {hasPin
                         ? `Your Employee ID is: `
                         : "Set a 4-digit PIN so you can log in quickly using your Employee ID + PIN instead of scanning QR."}
@@ -761,38 +895,38 @@ export default function TeacherDashboard() {
       {apptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={()=>setApptModal(null)}/>
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md animate-rise">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="relative bg-surface rounded-xl shadow-2xl w-full max-w-md animate-rise">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <div>
                 <h2 className="font-semibold text-lg text-brand">Set Appointment</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Assign a date and time for this consultation</p>
+                <p className="text-subtle-fg text-xs mt-0.5">Assign a date and time for this consultation</p>
               </div>
-              <button onClick={()=>setApptModal(null)} className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                <X size={14} className="text-gray-500"/>
+              <button onClick={()=>setApptModal(null)} className="w-7 h-7 rounded-full bg-surface-2 hover:bg-border flex items-center justify-center transition-colors">
+                <X size={14} className="text-muted-fg"/>
               </button>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+              <div className="bg-info-50 border border-info/20 rounded-lg p-3">
                 <p className="font-semibold text-brand text-sm">{apptModal.student_name}</p>
-                <p className="text-gray-500 text-xs">{apptModal.course} · {apptModal.category}</p>
-                <p className="text-gray-600 text-xs italic mt-1">"{apptModal.purpose}"</p>
+                <p className="text-muted-fg text-xs">{apptModal.course} · {apptModal.category}</p>
+                <p className="text-muted-fg text-xs italic mt-1">"{apptModal.purpose}"</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Date *</label>
-                  <input type="date" className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
+                  <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-1.5 block">Date *</label>
+                  <input type="date" className="w-full border border-border bg-surface-2 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-surface transition-all"
                     value={apptForm.date} onChange={e=>setApptForm(p=>({...p,date:e.target.value}))}
                     min={new Date().toISOString().split("T")[0]} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Time *</label>
-                  <input type="time" className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
+                  <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-1.5 block">Time *</label>
+                  <input type="time" className="w-full border border-border bg-surface-2 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-surface transition-all"
                     value={apptForm.time} onChange={e=>setApptForm(p=>({...p,time:e.target.value}))} />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Notes (optional)</label>
-                <input className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
+                <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-1.5 block">Notes (optional)</label>
+                <input className="w-full border border-border bg-surface-2 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-surface transition-all"
                   placeholder="e.g. Please bring your thesis draft"
                   value={apptForm.notes} onChange={e=>setApptForm(p=>({...p,notes:e.target.value}))} />
               </div>
