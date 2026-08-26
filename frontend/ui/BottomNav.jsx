@@ -13,20 +13,18 @@ import { MoreHorizontal } from "lucide-react";
  * 320px. A longer list keeps its first four items and hands the rest to a
  * "More" action, which is expected to open the full navigation.
  */
-export default function BottomNav({ items, active, onSelect, onMore, alwaysShowMore = false, className = "" }) {
+export default function BottomNav({ items, active, onSelect, onMore, action, className = "" }) {
   // Six slots is the ceiling: at 320px that is ~53px each, which still clears
   // a comfortable touch target once the labels are kept short. Five sections
   // show and the sixth slot becomes More; below that everything fits.
-  // `alwaysShowMore` is for a screen whose sections all fit but which still
-  // needs the sheet for something else — the administration dashboard keeps
-  // sign out, refresh and the guide there, and with nowhere else to reach them
-  // a bar that hides More strands them.
+  // `action` is a trailing slot that is not a section — the administration bar
+  // ends in Sign out. It costs a slot, so it counts against the ceiling.
   const MAX_SLOTS = 6;
-  const withMore = alwaysShowMore ? items.length + 1 : items.length;
-  const fits = withMore <= MAX_SLOTS;
-  const visible = fits ? items.length : MAX_SLOTS - 1;
+  const reserved = action ? 1 : 0;
+  const fits = items.length + reserved <= MAX_SLOTS;
+  const visible = fits ? items.length : MAX_SLOTS - 1 - reserved;
   const shown = items.slice(0, visible);
-  const showMore = !fits || alwaysShowMore;
+  const showMore = !fits;
   const overflowActive = items.slice(visible).some(i => i.id === active);
 
   return (
@@ -93,6 +91,22 @@ export default function BottomNav({ items, active, onSelect, onMore, alwaysShowM
               <span className={`text-[10px] xs:text-xs leading-none
                 ${overflowActive ? "font-semibold" : "font-medium"}`}>
                 More
+              </span>
+            </button>
+          </li>
+        )}
+        {action && (
+          <li className="flex-1 min-w-0">
+            <button
+              onClick={action.onClick}
+              className="w-full h-full min-h-[64px] flex flex-col items-center justify-center gap-1.5
+                         px-0.5 pt-2.5 pb-2 text-muted-fg hover:text-danger
+                         transition-colors duration-150"
+            >
+              <action.icon size={22} className="xs:hidden shrink-0" aria-hidden="true" />
+              <action.icon size={24} className="hidden xs:block shrink-0" aria-hidden="true" />
+              <span className="text-[10px] xs:text-xs leading-none font-medium truncate max-w-full">
+                {action.label}
               </span>
             </button>
           </li>

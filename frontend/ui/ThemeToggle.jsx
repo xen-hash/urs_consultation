@@ -73,31 +73,3 @@ export default function ThemeToggle({ tone = "light", className = "" }) {
     </div>
   );
 }
-
-/**
- * The same choice as full-width rows, for the phone sheet where the segmented
- * control would sit alone on a line looking like a stray fragment.
- */
-export function ThemeRows({ onPick }) {
-  const [theme, choose] = useThemeChoice();
-
-  return (
-    <>
-      {OPTIONS.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          onClick={() => { choose(id); onPick?.(); }}
-          aria-pressed={theme === id}
-          className={`w-full flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm
-                      transition-colors ${theme === id
-                        ? "bg-surface-2 text-fg font-semibold"
-                        : "text-muted-fg hover:bg-surface-2"}`}
-        >
-          <Icon size={17} aria-hidden="true" className="shrink-0" />
-          {label}
-          {theme === id && <span className="ml-auto text-xs text-muted-fg">Selected</span>}
-        </button>
-      ))}
-    </>
-  );
-}
