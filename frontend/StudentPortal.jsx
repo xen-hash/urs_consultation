@@ -5,7 +5,6 @@ import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import URSBackground from "./URSBackground.jsx";
-import SiteFooter from "./ui/SiteFooter.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import ursLogo from "./URS_LOGO.png";
@@ -211,8 +210,6 @@ export default function StudentPortal() {
           />
         )}
       </main>
-
-      <SiteFooter />
     </URSBackground>
   );
 }

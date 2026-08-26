@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
 import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
-import SiteFooter from "./ui/SiteFooter.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 
@@ -80,7 +79,8 @@ export default function DeanLogin() {
         <p className="text-white/30 text-xs">Restricted — authorised personnel only</p>
       </aside>
 
-      <main className="flex-1 flex flex-col justify-center px-5 pt-10 pt-safe">
+      <main className="flex-1 flex flex-col justify-center px-5 py-10 pt-safe
+                       pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
         <div className="w-full max-w-sm mx-auto">
           <Link to="/" className="lg:hidden inline-flex items-center gap-1.5 text-muted-fg hover:text-fg text-sm mb-8">
             <ArrowLeft size={15} aria-hidden="true" /> Back
@@ -123,8 +123,6 @@ export default function DeanLogin() {
             </button>
           </div>
         </div>
-
-        <SiteFooter tone="light" />
       </main>
     </div>
   );
