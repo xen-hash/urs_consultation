@@ -8,7 +8,7 @@ import StudentDashboard from "./StudentDashboard.jsx";
 import TeacherDashboard from "./TeacherDashboard.jsx";
 import DeanLogin        from "./DeanLogin.jsx";
 import DeanDashboard    from "./DeanDashboard.jsx";
-import KioskView        from "./KioskView.jsx";
+import AvailabilityBoard from "./AvailabilityBoard.jsx";
 
 export default function App() {
   // One place for every role, rather than three copies that drift apart.
@@ -24,10 +24,10 @@ export default function App() {
       <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
       <Route path="/dean"              element={<DeanLogin />} />
       <Route path="/dean/dashboard"    element={<DeanDashboard />} />
-      {/* The same board, twice. /availability is the public one anybody can
-          open; /kiosk is it locked to a corridor display. */}
-      <Route path="/availability"      element={<KioskView mode="public" />} />
-      <Route path="/kiosk"             element={<KioskView mode="kiosk" />} />
+      <Route path="/availability"      element={<AvailabilityBoard />} />
+      {/* The corridor display is gone; anything still pointing at it lands on
+          the public board, which is what it showed anyway. */}
+      <Route path="/kiosk"             element={<Navigate to="/availability" replace />} />
       <Route path="*"                  element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -47,7 +47,7 @@ export default defineConfig({
             icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }] },
           { name: "Dean's Office", short_name: "Dean", url: "/dean",
             icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }] },
-          { name: "Public Kiosk", short_name: "Kiosk", url: "/kiosk",
+          { name: "Who's Available", short_name: "Available", url: "/availability",
             icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }] }
         ]
       },

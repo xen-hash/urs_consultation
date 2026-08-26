@@ -14,7 +14,7 @@ from export import export_bp
 from tts import tts_bp
 from biometric import biometric_bp
 from admin import admin_bp
-from config import SECRET_KEY, KIOSK_PASSWORD
+from config import SECRET_KEY
 from security import read_token, too_many_attempts, client_ip
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
@@ -108,28 +108,9 @@ def health():
     })
 
 
-# ─── Kiosk exit ───────────────────────────────────────────────────────────────
-
-@app.route("/api/kiosk/exit", methods=["POST"])
-def kiosk_exit():
-    """Verify the kiosk exit code on the server.
-
-    The kiosk is a shared unattended screen, so this is a low-value secret — but
-    it used to be a constant in the frontend bundle, which meant it was not a
-    secret at all.
-    """
-    throttled = too_many_attempts(f"kiosk-exit:{client_ip()}", 5, 15 * 60)
-    if throttled:
-        return throttled
-    password = (request.json or {}).get("password") or ""
-    if password != KIOSK_PASSWORD:
-        return jsonify({"error": "Incorrect password."}), 401
-    return jsonify({"message": "ok"})
-
-
 # ─── Socket.IO Events ─────────────────────────────────────────────────────────
-# Anonymous sockets may connect and listen — the kiosk board is a read-only
-# display with no session. Emitting is another matter: these handlers rebroadcast
+# Anonymous sockets may connect and listen — the availability board is a
+# read-only public view with no session. Emitting is another matter: these handlers rebroadcast
 # to every client, so an unauthenticated emitter could forge availability
 # changes and fake consultation requests on every screen in the building.
 

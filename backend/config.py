@@ -195,7 +195,6 @@ def build_ssl_context():
 
 DEFAULT_SECRET_KEY     = "urs-consultation-secret-2024"
 DEFAULT_ADMIN_PASSWORD = "admin123"
-DEFAULT_KIOSK_PASSWORD = "admin123"
 
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
 
@@ -255,7 +254,6 @@ WORKING_HOURS_END   = "19:30"
 
 ADMIN_USERNAME      = os.getenv("ADMIN_USERNAME", "admin").strip()
 ADMIN_PASSWORD      = os.getenv("ADMIN_PASSWORD", DEFAULT_ADMIN_PASSWORD)
-KIOSK_PASSWORD      = os.getenv("KIOSK_PASSWORD", DEFAULT_KIOSK_PASSWORD)
 
 _admin_hash_env = (os.getenv("ADMIN_PASSWORD_HASH") or "").strip()
 
@@ -307,8 +305,6 @@ def _assert_secrets_configured():
         weak.append("SECRET_KEY")
     if not _admin_hash_env and ADMIN_PASSWORD == DEFAULT_ADMIN_PASSWORD:
         weak.append("ADMIN_PASSWORD (or ADMIN_PASSWORD_HASH)")
-    if KIOSK_PASSWORD == DEFAULT_KIOSK_PASSWORD:
-        weak.append("KIOSK_PASSWORD")
 
     if not weak:
         return
@@ -326,7 +322,6 @@ def _assert_secrets_configured():
         "deployment configured this way. Set them in the environment:\n"
         "  SECRET_KEY          a long random string\n"
         "  ADMIN_PASSWORD_HASH a bcrypt hash (or ADMIN_PASSWORD)\n"
-        "  KIOSK_PASSWORD      the kiosk exit code\n"
         "For local development only, set ALLOW_INSECURE_DEFAULTS=1."
     )
 

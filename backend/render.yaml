@@ -35,10 +35,6 @@ services:
       - key: ADMIN_PASSWORD_HASH
         sync: false
 
-      # Exit code for the public kiosk display.
-      - key: KIOSK_PASSWORD
-        sync: false
-
       # Optional. Defaults are in config.py.
       #   SESSION_TTL_HOURS  how long a session token stays valid (default 12)
       #   MAX_CONTENT_MB     largest accepted request body (default 8); profile

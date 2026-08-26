@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Monitor, Radio } from "lucide-react";
+import { GraduationCap, BookOpen, ArrowRight, Wifi, WifiOff, Shield, Radio } from "lucide-react";
 import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
 import SiteFooter from "./ui/SiteFooter.jsx";
 import URSBackground from "./URSBackground.jsx";
@@ -92,11 +92,6 @@ export default function LandingPage() {
             className="text-brand shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
         </Link>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Link to="/kiosk" className="btn btn-secondary">
-            <Monitor size={16} aria-hidden="true" /> Open corridor display
-          </Link>
-        </div>
 
       </main>
 
