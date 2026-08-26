@@ -41,8 +41,9 @@ DATABASE_URL = postgresql://neondb_owner:npg_xxxx@ep-xxx.neon.tech/neondb?sslmod
 ```
 
 Then delete the now-unused `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` and
-`DB_PORT`. Keep `SECRET_KEY`, `ALLOWED_ORIGINS`, `KIOSK_PASSWORD` and
-`ADMIN_PASSWORD` exactly as they were.
+`DB_PORT`. Keep `SECRET_KEY`, `ALLOWED_ORIGINS` and `ADMIN_PASSWORD` exactly
+as they were. (`KIOSK_PASSWORD` is no longer read — the corridor display it
+unlocked has been removed — so it can be deleted too.)
 
 Redeploy. On boot the app creates every table and seeds the professor roster
 from `config.py`, so an empty database is fine — no SQL to run by hand.

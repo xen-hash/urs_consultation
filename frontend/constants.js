@@ -120,7 +120,7 @@ export const YEAR_LEVELS = ["1st Year","2nd Year","3rd Year","4th Year","5th Yea
    rather than deleted. Set PROJECT_CONTACT to "" to drop the contact block. */
 export const DEVELOPERS = [
   { name: "Nathaniel Bautista", role: "Full Stack Developer" },
-  { name: "Luke Bañare",      role: "Full Stack Developer" },
+  { name: "Luke Bañares",     role: "Full Stack Developer" },
 ];
 
 export const PROJECT_CONTACT = "jnathbj@gmail.com";
