@@ -119,7 +119,8 @@ export const YEAR_LEVELS = ["1st Year","2nd Year","3rd Year","4th Year","5th Yea
    An entry with an empty name is skipped, so a spare row can be left blank
    rather than deleted. Set PROJECT_CONTACT to "" to drop the contact block. */
 export const DEVELOPERS = [
-  { name: "Bautista et al.", role: "" },
+  { name: "Nathaniel Bautista", role: "Full Stack Developer" },
+  { name: "Luke Bañare",      role: "Full Stack Developer" },
 ];
 
 export const PROJECT_CONTACT = "jnathbj@gmail.com";
