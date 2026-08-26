@@ -66,12 +66,22 @@ export function usePagedResource(path, { params = {}, limit = 20, enabled = true
 export function useStats(refreshMs = 30000) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const { data } = await api.get("/admin/stats");
       setStats(data);
-    } catch { /* keep the last good numbers on screen */ }
+      setError(null);
+    } catch (e) {
+      // The numbers already on screen stay: a failed refresh should not blank a
+      // dashboard that was reading correctly a moment ago. But the failure is
+      // reported rather than swallowed — on the *first* load there are no last
+      // good numbers, and silence there left the screen showing "—" over
+      // "0 with an active card", which reads as a school with no faculty in it
+      // rather than as a server that did not answer.
+      setError(e);
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -82,19 +92,23 @@ export function useStats(refreshMs = 30000) {
     return () => clearInterval(id);
   }, [load, refreshMs]);
 
-  return { stats, loading, reload: load };
+  return { stats, loading, error, reload: load };
 }
 
 /** Faculty availability board, shared by the overview and faculty tabs. */
 export function useDepartments(refreshMs = 30000) {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const { data } = await api.get("/teacher-logs");
       setDepartments(data || []);
-    } catch { /* keep last good */ }
+      setError(null);
+    } catch (e) {
+      setError(e);   // Same reasoning as useStats: keep the rows, report the failure.
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -105,5 +119,5 @@ export function useDepartments(refreshMs = 30000) {
     return () => clearInterval(id);
   }, [load, refreshMs]);
 
-  return { departments, loading, reload: load };
+  return { departments, loading, error, reload: load };
 }

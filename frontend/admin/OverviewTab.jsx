@@ -13,6 +13,11 @@ import ActiveStudentsCard from "./ActiveStudentsCard.jsx";
  *  table. They used to be `students.length` on the current page, so every
  *  figure was wrong the moment there was more than one page of data. */
 function StatCard({ icon: Icon, label, value, sub, loading }) {
+  // A figure that was never read is not a figure. The subtitle used to be
+  // rendered from the same missing payload as the number above it, so an
+  // unreachable server produced "—" over "0 with an active card" — a dash
+  // admitting there is no number, above a zero asserting one.
+  const missing = value === undefined || value === null;
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 text-muted-fg mb-2">
@@ -21,8 +26,9 @@ function StatCard({ icon: Icon, label, value, sub, loading }) {
       </div>
       {loading
         ? <Skeleton className="h-8 w-16" />
-        : <p className="text-2xl sm:text-3xl font-bold text-fg tabular-nums">{value?.toLocaleString() ?? "—"}</p>}
-      {sub && <p className="text-xs text-muted-fg mt-1">{sub}</p>}
+        : <p className="text-2xl sm:text-3xl font-bold text-fg tabular-nums">{missing ? "—" : value.toLocaleString()}</p>}
+      {sub && !missing && <p className="text-xs text-muted-fg mt-1">{sub}</p>}
+      {missing && !loading && <p className="text-xs text-subtle-fg mt-1">not available</p>}
     </Card>
   );
 }
@@ -49,6 +55,7 @@ function DepartmentBar({ dept }) {
 
 export default function OverviewTab({
   stats, statsLoading, departments, requests, onSeeAll, onSeeActivity, onExport, addToast,
+  offline = false,
 }) {
   const categories = stats?.categories || [];
   const maxCategory = Math.max(1, ...categories.map(c => c.count));
@@ -73,7 +80,7 @@ export default function OverviewTab({
           sub={`${stats?.pending ?? 0} still pending`} loading={statsLoading} />
       </div>
 
-      <ActiveStudentsCard />
+      <ActiveStudentsCard offline={offline} />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -81,14 +88,18 @@ export default function OverviewTab({
             subtitle="Last 14 days" icon={TrendingUp} />
           {statsLoading
             ? <Skeleton className="h-40 rounded-lg" />
-            : <TrendChart data={stats?.daily || []} />}
+            : offline
+              ? <p className="text-sm text-muted-fg py-6 text-center">Waiting for the server.</p>
+              : <TrendChart data={stats?.daily || []} />}
         </Card>
 
         <Card>
           <CardHeader title="By status" subtitle="All requests" icon={PieChart} />
           {statsLoading
             ? <Skeleton className="h-40 rounded-lg" />
-            : <StatusDonut segments={statusSegments} />}
+            : offline
+              ? <p className="text-sm text-muted-fg py-6 text-center">Waiting for the server.</p>
+              : <StatusDonut segments={statusSegments} />}
         </Card>
       </div>
 
@@ -97,7 +108,12 @@ export default function OverviewTab({
           <CardHeader title="Availability by department"
             subtitle="Live faculty status" icon={BookOpen} />
           {departments.length === 0
-            ? <div className="space-y-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-8" />)}</div>
+            ? offline
+              // Skeletons say "this is arriving". Nothing is arriving.
+              ? <p className="text-sm text-muted-fg py-6 text-center">
+                  Faculty availability isn't available while the server is unreachable.
+                </p>
+              : <div className="space-y-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-8" />)}</div>
             : <div className="space-y-4">
                 {departments.map(d => <DepartmentBar key={d.department} dept={d} />)}
               </div>}
@@ -106,7 +122,9 @@ export default function OverviewTab({
         <Card>
           <CardHeader title="Requests by category" subtitle="All time" icon={ClipboardList} />
           {categories.length === 0 ? (
-            <p className="text-sm text-muted-fg py-6 text-center">No data yet</p>
+            <p className="text-sm text-muted-fg py-6 text-center">
+              {offline ? "Waiting for the server." : "No data yet"}
+            </p>
           ) : (
             <div className="space-y-3">
               {categories.map(c => (
@@ -126,7 +144,7 @@ export default function OverviewTab({
           <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-border text-center">
             {[["Pending", stats?.pending], ["Done", stats?.done], ["Declined", stats?.declined]].map(([l, v]) => (
               <div key={l}>
-                <p className="text-lg font-bold text-fg tabular-nums">{v ?? 0}</p>
+                <p className="text-lg font-bold text-fg tabular-nums">{v ?? (offline ? "—" : 0)}</p>
                 <p className="text-[11px] text-muted-fg uppercase tracking-wide">{l}</p>
               </div>
             ))}
@@ -150,7 +168,7 @@ export default function OverviewTab({
               }
             />
           </div>
-          <AuditFeed limit={8} />
+          <AuditFeed limit={8} offline={offline} />
         </Card>
 
         <Card>
@@ -166,7 +184,7 @@ export default function OverviewTab({
           </p>
         </Card>
 
-        <StorageCard addToast={addToast} />
+        <StorageCard addToast={addToast} offline={offline} />
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -183,8 +201,12 @@ export default function OverviewTab({
           />
         </div>
         {requests.length === 0 ? (
-          <EmptyState icon={ClipboardList} title="No requests yet"
-            description="Consultation requests will appear here as students file them." />
+          offline ? (
+            <p className="text-sm text-muted-fg py-8 text-center">Waiting for the server.</p>
+          ) : (
+            <EmptyState icon={ClipboardList} title="No requests yet"
+              description="Consultation requests will appear here as students file them." />
+          )
         ) : (
           <ul className="divide-y divide-border border-t border-border">
             {requests.slice(0, 8).map(r => (

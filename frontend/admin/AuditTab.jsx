@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { ScrollText, Search } from "lucide-react";
+import { ScrollText, Search, CloudOff } from "lucide-react";
 import { Card, Badge, EmptyState, SkeletonRows, Pagination } from "../SharedUI.jsx";
 import { usePagedResource, useDebounced } from "./hooks.js";
 import { meta } from "./AuditFeed.jsx";
 import { formatWhen, formatDateTime } from "../ui/datetime.js";
-import api from "../httpClient.js";
+import api, { isUnreachable } from "../httpClient.js";
 
 /**
  * The audit trail.
@@ -20,8 +20,9 @@ export default function AuditTab() {
   const [actions, setActions] = useState([]);
   const debounced = useDebounced(search);
 
-  const { data, total, pages, page, setPage, loading, limit } =
+  const { data, total, pages, page, setPage, loading, limit, error } =
     usePagedResource("/admin/audit", { params: { search: debounced, action }, limit: 25 });
+  const offline = !!error && isUnreachable(error);
 
   // The action list comes back with the first page; keep it stable so the
   // filter dropdown doesn't shrink to whatever the current page happens to hold.
@@ -53,10 +54,15 @@ export default function AuditTab() {
         {loading ? (
           <SkeletonRows rows={8} cols={3} />
         ) : data.length === 0 ? (
-          <EmptyState icon={ScrollText} title="Nothing recorded yet"
-            description={search || action
-              ? "No entries match these filters."
-              : "Sign-ins, credential changes and exports will appear here."} />
+          offline ? (
+            <EmptyState icon={CloudOff} title="Can't reach the server"
+              description="The activity log couldn't be loaded. This is not an empty log — nothing answered." />
+          ) : (
+            <EmptyState icon={ScrollText} title="Nothing recorded yet"
+              description={search || action
+                ? "No entries match these filters."
+                : "Sign-ins, credential changes and exports will appear here."} />
+          )
         ) : (
           <ul className="divide-y divide-border">
             {data.map(row => {

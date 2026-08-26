@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Users, Circle, RefreshCw } from "lucide-react";
 import { Card, CardHeader, Button, Skeleton, EmptyState, Alert } from "../SharedUI.jsx";
 import { formatAgo, formatDuration, formatDateTime } from "../ui/datetime.js";
-import api from "../httpClient.js";
+import api, { isUnreachable } from "../httpClient.js";
 
 /**
  * Who is on the system right now, and how long they have been.
@@ -21,8 +21,15 @@ import api from "../httpClient.js";
 
 const POLL_MS = 30000;
 
-/** Faculty and administrators are not counted — this is deliberately students. */
-export default function ActiveStudentsCard() {
+/**
+ * Faculty and administrators are not counted — this is deliberately students.
+ *
+ * `offline` is the whole dashboard already reporting that nothing reached the
+ * server. This card then says nothing about it: five panels each announcing the
+ * same outage in their own words is noise, and it buries the one message that
+ * explains all of them.
+ */
+export default function ActiveStudentsCard({ offline = false }) {
   const [usage, setUsage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [unavailable, setUnavailable] = useState(false);
@@ -37,11 +44,13 @@ export default function ActiveStudentsCard() {
       setUsage(data);
       everLoaded.current = true;
       setUnavailable(false);
-    } catch {
-      // A 404 is the ordinary case right after a merge: Vercel has the new
-      // frontend, Render is still serving the previous backend. Say so rather
-      // than rendering a confident "0 students online".
-      if (!everLoaded.current) setUnavailable(true);
+    } catch (e) {
+      // A 404 is this card's own problem to explain: right after a merge Vercel
+      // has the new frontend while Render is still serving the previous
+      // backend, so the route genuinely is not there yet. Anything that never
+      // reached a server is the dashboard's outage, not this card's, and the
+      // banner above already says so.
+      if (!everLoaded.current) setUnavailable(!isUnreachable(e));
     } finally { setLoading(false); }
   }, []);
 
@@ -59,6 +68,15 @@ export default function ActiveStudentsCard() {
       <Card>
         <CardHeader title="Students online" subtitle="Right now" icon={Users} />
         <Skeleton className="h-24 rounded-lg" />
+      </Card>
+    );
+  }
+
+  if (offline) {
+    return (
+      <Card>
+        <CardHeader title="Students online" subtitle="Right now" icon={Users} />
+        <p className="text-sm text-muted-fg">Waiting for the server.</p>
       </Card>
     );
   }
