@@ -211,8 +211,10 @@ SESSION_TTL_HOURS = int(os.getenv("SESSION_TTL_HOURS", 12))
 # only sensible while the school's own domain is being sorted out.
 #
 # STUDENT_ID_PATTERN: a regular expression the student number must match. The
-# default accepts the common Philippine forms — 2021-00123, 21-00123, or a
-# plain run of digits — and rejects free text.
+# default accepts the forms URS actually issues — M2022-0247 with its campus
+# letter, and the plainer 2021-00123 and 21-00123 — while still rejecting free
+# text. Tighten it if your campus only issues one shape, e.g. require the
+# letter: STUDENT_ID_PATTERN=^M\\d{4}-\\d{4}$
 #
 # STUDENT_AUTO_VERIFY: when true, accounts skip the administrator's queue. Off
 # by default: an unverified account can look around but cannot file a request.
@@ -221,7 +223,7 @@ STUDENT_EMAIL_DOMAINS = [
     for d in (os.getenv("STUDENT_EMAIL_DOMAINS", "") or "").split(",")
     if d.strip()
 ]
-STUDENT_ID_PATTERN = os.getenv("STUDENT_ID_PATTERN", r"^\d{2,4}-?\d{3,6}$")
+STUDENT_ID_PATTERN = os.getenv("STUDENT_ID_PATTERN", r"^[A-Za-z]{0,2}\d{2,4}-?\d{3,6}$")
 STUDENT_AUTO_VERIFY = os.getenv("STUDENT_AUTO_VERIFY", "").strip().lower() in (
     "1", "true", "yes", "on"
 )
