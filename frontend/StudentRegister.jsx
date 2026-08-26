@@ -12,7 +12,8 @@ export default function StudentRegister() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [form, setForm] = useState({
-    student_id: "", full_name: "", course: "", year_level: "", department: DEPARTMENTS[0],
+    student_id: "", full_name: "", email: "", course: "", year_level: "",
+    department: DEPARTMENTS[0],
   });
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -26,6 +27,12 @@ export default function StudentRegister() {
   const next = () => {
     if (!form.student_id.trim() || !form.full_name.trim() || !form.course.trim() || !form.year_level)
       return addToast("Fill in all fields to continue.", "warning");
+    // The shape is checked here for a quick answer and again on the server,
+    // which is the one that counts — this side of it can be edited by anyone.
+    if (!/^\d{2,4}-?\d{3,6}$/.test(form.student_id.trim()))
+      return addToast("Check your student number — it should look like 2021-00123.", "warning");
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim()))
+      return addToast("Enter your school email address.", "warning");
     setStep(2);
   };
 
@@ -128,6 +135,10 @@ export default function StudentRegister() {
                 <Field label="Full name" id="reg-name" value={form.full_name}
                   onChange={v => set("full_name", v)} placeholder="Juan Dela Cruz"
                   autoComplete="name" autoCapitalize="words" />
+                <Field label="School email" id="reg-email" value={form.email}
+                  onChange={v => set("email", v)} placeholder="juan.delacruz@urs.edu.ph"
+                  type="email" autoComplete="email" autoCapitalize="none"
+                  hint="The admin office uses this to confirm you are enrolled." />
                 <Field label="Course" id="reg-course" value={form.course}
                   onChange={v => set("course", v)} placeholder="BS Computer Engineering" />
                 <div>
@@ -175,12 +186,14 @@ export default function StudentRegister() {
   );
 }
 
-function Field({ label, id, value, onChange, className = "", ...rest }) {
+function Field({ label, id, value, onChange, className = "", hint, ...rest }) {
   return (
     <div>
       <label htmlFor={id} className="label">{label}</label>
       <input id={id} className={`input ${className}`} value={value}
-        onChange={e => onChange(e.target.value)} spellCheck="false" {...rest} />
+        onChange={e => onChange(e.target.value)} spellCheck="false"
+        aria-describedby={hint ? `${id}-hint` : undefined} {...rest} />
+      {hint && <p id={`${id}-hint`} className="text-xs text-muted-fg mt-1.5">{hint}</p>}
     </div>
   );
 }

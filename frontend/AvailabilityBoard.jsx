@@ -90,7 +90,7 @@ export default function AvailabilityBoard() {
       <Toast toasts={toasts} removeToast={removeToast} />
 
       <header className="bg-brand-900 text-white pt-safe shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 max-w-6xl mx-auto w-full">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 max-w-[1200px] mx-auto w-full">
           <div className="min-w-0">
             <h1 className="font-bold text-base sm:text-lg leading-tight truncate">
               Who is available right now
@@ -119,7 +119,7 @@ export default function AvailabilityBoard() {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+      <main className="flex-1 w-full max-w-[1200px] mx-auto px-3 sm:px-6 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         {/* One column on a phone, four on a wall display — this was a hard
             grid-cols-4 that crushed on anything small. */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">

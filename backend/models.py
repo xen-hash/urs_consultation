@@ -164,9 +164,23 @@ LATE_COLUMNS = [
     # How many consultations this teacher will take in a day. 0 means "no limit
     # of my own" — the per-day figure in the weekly schedule is used instead.
     ("teacher_accounts",      "daily_limit",        "INT DEFAULT 0"),
+    # Identity beyond the name. Two professors can share a name; an email and a
+    # school-issued staff number cannot be shared, and the position is what an
+    # administrator recognises someone by on a roster of forty.
+    ("teacher_accounts",      "email",              "VARCHAR(255)"),
+    ("teacher_accounts",      "position",           "VARCHAR(120)"),
+    ("teacher_accounts",      "staff_no",           "VARCHAR(60)"),
     ("teacher_accounts",      "removed_at",         "TIMESTAMP"),
     ("teacher_accounts",      "removed_reason",     "TEXT"),
     ("students",              "last_login",         "TIMESTAMP"),
+    # Anyone could register as a student and start filing requests at faculty:
+    # the form asked for a name and an ID, and neither was checked against
+    # anything. An account is now unverified until an administrator confirms the
+    # person is enrolled; unverified accounts can look, not book.
+    ("students",              "email",              "VARCHAR(255)"),
+    ("students",              "verified",           "BOOLEAN DEFAULT FALSE"),
+    ("students",              "verified_at",        "TIMESTAMP"),
+    ("students",              "verified_by",        "VARCHAR(120)"),
 ]
 
 # The status column used to be a MySQL ENUM. It is a plain VARCHAR here, with a

@@ -67,26 +67,68 @@ def _student_payload(student):
         "course":     student["course"],
         "year_level": student["year_level"],
         "department": student["department"],
+        "email":      student.get("email"),
         "photo":      student.get("photo"),
         "has_pin":    bool(student.get("pin_hash")),
+        # The dashboard tells the student where they stand rather than letting
+        # them find out when a request is refused.
+        "verified":   bool(student.get("verified")),
     }
+
+
+def _check_registration(student_id, email):
+    """The checks that stand between the roster and anyone who finds the URL.
+
+    Registration is open by design — students sign themselves up — so this is
+    the whole of it: the student number has to look like a student number, and
+    the address has to be on the school's domain when one is configured.
+    Neither proves enrolment on its own, which is why an account still waits
+    for an administrator unless STUDENT_AUTO_VERIFY is set.
+    """
+    import re
+    from config import STUDENT_ID_PATTERN, STUDENT_EMAIL_DOMAINS
+
+    if STUDENT_ID_PATTERN:
+        try:
+            if not re.match(STUDENT_ID_PATTERN, student_id):
+                return ("That student number doesn't look right. Use the one on your "
+                        "registration form, like 2021-00123.")
+        except re.error:
+            pass   # a bad pattern in the environment must not lock everyone out
+
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return "Enter a valid email address."
+
+    if STUDENT_EMAIL_DOMAINS:
+        domain = email.split("@")[-1].lower()
+        if not any(domain == d or domain.endswith("." + d) for d in STUDENT_EMAIL_DOMAINS):
+            allowed = " or ".join("@" + d for d in STUDENT_EMAIL_DOMAINS)
+            return f"Use your school email address ({allowed})."
+    return None
 
 
 # ─── STUDENT REGISTER ─────────────────────────────────────────────────────────
 
 @auth_bp.route("/student/register", methods=["POST"])
 def student_register():
+    from config import STUDENT_AUTO_VERIFY
+
     data = request.json or {}
-    required = ["student_id", "full_name", "course", "year_level", "department", "pin"]
+    required = ["student_id", "full_name", "course", "year_level", "department", "pin", "email"]
     for field in required:
         if not data.get(field):
             return jsonify({"error": f"Missing field: {field}"}), 400
 
     student_id = data["student_id"].strip()
+    email      = data["email"].strip().lower()
     pin        = str(data["pin"]).strip()
 
     if len(pin) != 4 or not pin.isdigit():
         return jsonify({"error": "PIN must be exactly 4 digits."}), 400
+
+    problem = _check_registration(student_id, email)
+    if problem:
+        return jsonify({"error": problem}), 400
 
     throttled = too_many_attempts(f"register:{client_ip()}", STUDENT_LIMIT, STUDENT_WINDOW)
     if throttled:
@@ -96,12 +138,19 @@ def student_register():
     if existing:
         return jsonify({"error": "Student ID already registered."}), 409
 
+    # One account per address, so a single person cannot quietly hold several.
+    if query("SELECT id FROM students WHERE LOWER(email)=LOWER(%s)", (email,), fetchone=True):
+        return jsonify({"error": "That email address is already registered."}), 409
+
     pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
     execute(
-        "INSERT INTO students (student_id, full_name, course, year_level, department, pin_hash) "
-        "VALUES (%s,%s,%s,%s,%s,%s)",
+        "INSERT INTO students (student_id, full_name, course, year_level, department, "
+        "pin_hash, email, verified, verified_at, verified_by) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
         (student_id, data["full_name"].strip(), data["course"].strip(),
-         data["year_level"].strip(), data["department"].strip(), pin_hash)
+         data["year_level"].strip(), data["department"].strip(), pin_hash, email,
+         STUDENT_AUTO_VERIFY, _now_ph_str() if STUDENT_AUTO_VERIFY else None,
+         "auto" if STUDENT_AUTO_VERIFY else None)
     )
     student = query("SELECT * FROM students WHERE student_id=%s", (student_id,), fetchone=True)
     token = issue_token("student", student_id, student["full_name"])
@@ -112,7 +161,9 @@ def student_register():
     # card it is not a login credential — student login is ID + PIN — so
     # returning it here gives away nothing.
     return jsonify({
-        "message":    "Registered successfully!",
+        "message":    "Registered successfully!" if student.get("verified")
+                      else "Registered. The admin office will confirm your enrolment — "
+                           "you can look around in the meantime.",
         "token":      token,
         "student":    _student_payload(student),
         "student_id": student_id,

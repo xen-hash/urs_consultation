@@ -35,6 +35,11 @@ services:
       - key: ADMIN_PASSWORD_HASH
         sync: false
 
+      # Who may register as a student. Empty accepts any address; set this to
+      # the school's domain and only school addresses get through.
+      - key: STUDENT_EMAIL_DOMAINS
+        sync: false
+
       # Optional. Defaults are in config.py.
       #   SESSION_TTL_HOURS  how long a session token stays valid (default 12)
       #   MAX_CONTENT_MB     largest accepted request body (default 8); profile
