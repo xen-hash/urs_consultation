@@ -145,6 +145,7 @@ export default function DeanDashboard() {
               requests={recent.data}
               onSeeAll={() => setTab("requests")}
               onExport={exportData}
+              addToast={addToast}
             />
           )}
           {tab === "credentials" && <CredentialsTab addToast={addToast} />}

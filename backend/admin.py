@@ -18,8 +18,10 @@ import bcrypt
 import pytz
 from flask import Blueprint, request, jsonify, g
 
+from config import AUDIT_RETENTION_DAYS
 from db import query, execute
 from security import require_role, record_audit, generate_qr_b64
+import storage
 
 admin_bp = Blueprint("admin", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -222,9 +224,16 @@ def remove_teacher(employee_id):
 
     # Their card and PIN die with the account, so nothing is left that could
     # sign in even if the row were later restored by hand.
+    #
+    # The photo goes too. Removal is a soft delete — the row, the date and the
+    # reason stay as the record of what happened — but the photo is the one
+    # heavy column here, base64 in TEXT at around 80-100KB, and it was the one
+    # thing the soft delete kept forever. It serves nothing once the account is
+    # gone, and holding a former staff member's face indefinitely is its own
+    # problem quite apart from the storage.
     execute(
         "UPDATE teacher_accounts SET removed_at=%s::timestamp, removed_reason=%s, "
-        "active=FALSE, qr_serial=NULL, qr_issued_at=NULL, pin_hash=NULL "
+        "active=FALSE, qr_serial=NULL, qr_issued_at=NULL, pin_hash=NULL, photo=NULL "
         "WHERE employee_id=%s",
         (_now_ph(), reason, teacher["employee_id"])
     )
@@ -235,6 +244,7 @@ def remove_teacher(employee_id):
 
     record_audit("admin.remove_teacher", target=teacher["employee_id"],
                  detail=f"{teacher['professor_name']} ({teacher['department']}) — {reason}")
+    storage.vacuum("teacher_accounts", "professors")
 
     import teacher as teacher_module
     teacher_module._logs_cache["ts"] = 0
@@ -346,6 +356,7 @@ def delete_student(student_id):
     execute("DELETE FROM students WHERE student_id=%s", (student["student_id"],))
     record_audit("admin.delete_student", target=student["student_id"],
                  detail=f"{student['full_name']} — {requests_removed} request(s) removed")
+    storage.vacuum("students", "consultation_requests")
 
     import teacher as teacher_module
     teacher_module._students_cache["ts"] = 0
@@ -522,6 +533,7 @@ def delete_requests():
 
     execute(f"DELETE FROM consultation_requests{clause}", tuple(args))
     record_audit("admin.delete_requests", detail=f"{affected} deleted permanently ({scope})")
+    storage.vacuum("consultation_requests")
 
     import teacher as teacher_module
     teacher_module._requests_cache["ts"] = 0
@@ -557,3 +569,47 @@ def archive_requests():
     teacher_module._logs_cache["ts"] = 0
 
     return jsonify({"message": f"{affected} requests archived.", "archived": affected})
+
+
+# ─── Storage ──────────────────────────────────────────────────────────────────
+# Deleting is not freeing. Postgres marks deleted rows dead and leaves the file
+# the size it was; only a rewrite hands the space back. On a free tier with a
+# fixed ceiling that is the difference between a database that recovers and one
+# that fills up regardless of how much is removed.
+
+@admin_bp.route("/storage", methods=["GET"])
+@require_role("admin")
+def storage_usage():
+    """Where the space has actually gone, per table."""
+    usage = storage.sizes()
+    oldest = query(
+        "SELECT MIN(created_at) AS oldest, COUNT(*) AS rows FROM audit_log",
+        fetchone=True
+    ) or {}
+    usage["audit"] = {
+        "rows": int(oldest.get("rows") or 0),
+        "oldest": oldest.get("oldest").isoformat() if oldest.get("oldest") else None,
+        "retention_days": AUDIT_RETENTION_DAYS,
+    }
+    return jsonify(usage)
+
+
+@admin_bp.route("/storage/reclaim", methods=["POST"])
+@require_role("admin")
+def storage_reclaim():
+    """Rewrite the tables so the freed space returns to the filesystem.
+
+    Every table is locked for the length of its own rewrite, which at this scale
+    is well under a second each, so this is an explicit action rather than
+    something a delete triggers on its own.
+
+    It reports what it measured rather than what it attempted: the caller gets
+    the real before and after, and any table that refused is named.
+    """
+    result = storage.vacuum_full()
+    record_audit(
+        "admin.storage_reclaim",
+        detail=(f"{result['freed_bytes']} bytes freed, "
+                f"{result['audit_rows_pruned']} audit row(s) pruned")
+    )
+    return jsonify(result)

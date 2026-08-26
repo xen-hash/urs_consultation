@@ -352,4 +352,13 @@ def _assert_secrets_configured():
     )
 
 
+
+# How long audit entries are kept. Nothing pruned this table before, so it grew
+# without limit — every sign-in, every failed attempt, every admin action, for
+# the life of the deployment. A year is still a real audit trail, and on a free
+# tier the alternative is the log quietly consuming the storage the students
+# need. Set 0 to keep everything and accept that.
+AUDIT_RETENTION_DAYS = int(os.getenv("AUDIT_RETENTION_DAYS", 365))
+
+
 _assert_secrets_configured()

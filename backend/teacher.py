@@ -520,6 +520,11 @@ def clear_logs():
     _requests_cache["ts"] = 0
     _students_cache["ts"] = 0
     record_audit("admin.clear_requests", detail=f"{total} requests deleted")
+    # Emptying the table frees nothing on its own — the rows are only marked
+    # dead. This hands the space back for reuse now rather than whenever
+    # autovacuum next looks.
+    import storage
+    storage.vacuum("consultation_requests")
     return jsonify({"message": f"{total} consultation requests deleted"})
 
 
