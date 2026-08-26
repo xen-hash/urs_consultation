@@ -476,13 +476,13 @@ export default function StudentDashboard() {
                   </div>
                   <div>
                     <p className="font-semibold text-lg leading-tight">{student.full_name}</p>
-                    <p className="text-white/70 text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
+                    <p className="text-white/80 text-xs mt-0.5">{student.course} · {student.year_level} · {student.student_id}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-3xl font-bold text-accent">{totalAvail}</p>
-                    <p className="text-white/70 text-xs">available now</p>
+                    <p className="text-white/80 text-xs">available now</p>
                   </div>
                   <button onClick={() => { setLoading(true); fetchProfessors(); }}
                     className="w-10 h-10 bg-white/15 hover:bg-white/25 border border-white/20 text-white rounded-xl flex items-center justify-center transition-all">
@@ -526,7 +526,7 @@ export default function StudentDashboard() {
                     {[["all", "All"], ["available", "Available"]].map(([v, l]) => (
                       <button key={v} onClick={() => setFilter(v)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all
- ${filter === v ? "bg-white text-brand shadow" : "text-muted-fg hover:text-fg"}`}>{l}</button>
+ ${filter === v ? "bg-surface text-brand shadow" : "text-muted-fg hover:text-fg"}`}>{l}</button>
                     ))}
                   </div>
                 </div>
@@ -562,7 +562,8 @@ export default function StudentDashboard() {
  ${isAvail ? "bg-brand" : "bg-surface-2"}`}>
                           {prof.photo
                             ? <img src={prof.photo} alt={prof.name} className="w-full h-full object-cover" />
-                            : <span className="text-fg font-semibold text-4xl leading-none">{initials}</span>
+                            : <span className={`font-semibold text-4xl leading-none
+ ${isAvail ? "text-white" : "text-muted-fg"}`}>{initials}</span>
                           }
 
                           {/* Dark gradient overlay at bottom for text readability */}
@@ -570,20 +571,20 @@ export default function StudentDashboard() {
 
                           {/* Name + status overlaid on image */}
                           <div className="absolute bottom-0 inset-x-0 px-2 pb-2 pt-4 flex flex-col items-center gap-1">
-                            <p className="text-fg text-xs font-bold text-center leading-tight line-clamp-2 drop-shadow">
+                            <p className="text-white text-xs font-bold text-center leading-tight line-clamp-2 drop-shadow">
                               {prof.name.replace(/^(Engr\.|Dr\.|Prof\.|AR\.)\s*/i, "")}
                             </p>
                             {isAvail
-                              ? <span className="text-[9px] font-bold text-emerald-300 bg-emerald-500/30 border border-emerald-400/50 px-2 py-0.5 rounded-full">Available</span>
-                              : <span className="text-[9px] font-medium text-muted-fg">{prof.status}</span>
+                              ? <span className="text-[9px] font-bold text-emerald-200 bg-emerald-500/30 border border-emerald-400/50 px-2 py-0.5 rounded-full">Available</span>
+                              : <span className="text-[9px] font-medium text-white/70">{prof.status}</span>
                             }
                             {prof.day_limit > 0 && prof.slots_left !== null && prof.slots_left !== undefined && (
                               <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full 
  ${prof.slots_left === 0
- ? "text-red-300 bg-red-500/30 border border-red-400/50"
+ ? "text-red-200 bg-red-500/30 border border-red-400/50"
  : prof.slots_left <= 2
- ? "text-yellow-300 bg-yellow-500/30 border border-yellow-400/50"
- : "text-blue-300 bg-blue-500/30 border border-blue-400/50"}`}>
+ ? "text-yellow-200 bg-yellow-500/30 border border-yellow-400/50"
+ : "text-blue-200 bg-blue-500/30 border border-blue-400/50"}`}>
                                 {prof.slots_left === 0 ? "Full" : `${prof.slots_left}/${prof.day_limit} left`}
                               </span>
                             )}
@@ -834,7 +835,7 @@ export default function StudentDashboard() {
               <p className="text-muted-fg text-sm mt-0.5">Edit your information and generate your ID card</p>
             </div>
             {showCamera ? (
-              <div className="bg-white rounded-xl p-6 shadow-2xl animate-rise">
+              <div className="bg-surface rounded-xl p-6 shadow-2xl animate-rise">
                 <WebcamCapture
                   title="Take Your ID Photo"
                   onCapture={(dataUrl) => { setProfilePhoto(dataUrl); setShowCamera(false); savePhotoOnly(dataUrl); }}
@@ -872,7 +873,7 @@ export default function StudentDashboard() {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-brand">Edit Information</h3>
                     <button onClick={() => { setEditingProfile(v => !v); }}
-                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-brand transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-muted-fg hover:text-brand transition-colors">
                       <Pencil size={12} /> {editingProfile ? "Cancel" : "Edit"}
                     </button>
                   </div>
@@ -882,11 +883,11 @@ export default function StudentDashboard() {
                       { label: "Course / Program", key: "course",    placeholder: "e.g. BS Computer Engineering", max: 100 },
                     ].map(f => (
                       <div key={f.key}>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">{f.label}</label>
+                        <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-1 block">{f.label}</label>
                         {editingProfile ? (
                           <input
                             type="text"
-                            className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-white transition-all"
+                            className="w-full border border-border bg-surface-2 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:bg-surface transition-all"
                             placeholder={f.placeholder}
                             value={profile[f.key] || ""}
                             onChange={e => setProfile(p => ({ ...p, [f.key]: e.target.value.slice(0, f.max) }))}
@@ -894,7 +895,7 @@ export default function StudentDashboard() {
                           />
                         ) : (
                           /* Read-only display when not editing */
-                          <div className="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-500 opacity-60 min-h-[42px]">
+                          <div className="w-full border border-border bg-surface-2 rounded-xl px-4 py-2.5 text-sm text-muted-fg opacity-60 min-h-[42px]">
                             {profile[f.key] || f.placeholder}
                           </div>
                         )}
@@ -902,16 +903,16 @@ export default function StudentDashboard() {
                     ))}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Year Level</label>
-                        <select className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
+                        <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-1 block">Year Level</label>
+                        <select className="w-full border border-border bg-surface-2 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
                           value={profile.year_level} disabled={!editingProfile}
                           onChange={e => setProfile(p => ({ ...p, year_level: e.target.value }))}>
                           {YEAR_LEVELS.map(y => <option key={y}>{y}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Department</label>
-                        <select className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
+                        <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-1 block">Department</label>
+                        <select className="w-full border border-border bg-surface-2 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60"
                           value={profile.department} disabled={!editingProfile}
                           onChange={e => setProfile(p => ({ ...p, department: e.target.value }))}>
                           {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
@@ -956,21 +957,21 @@ export default function StudentDashboard() {
       {reqModal && (
         <div
           data-tour="request-form"
-          className="fixed inset-0 z-50 flex flex-col bg-white"
+          className="fixed inset-0 z-50 flex flex-col bg-surface"
           style={{ animation: "reqIn 0.18s ease both" }}>
           <style>{`@keyframes reqIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}`}</style>
 
           {/* ① Header ── fixed height, never scrolls */}
           <div data-tour="request-header"
-            className="shrink-0 flex items-center gap-3 px-5 pt-5 pb-3 bg-white">
+            className="shrink-0 flex items-center gap-3 px-5 pt-safe-5 pb-3 bg-surface">
             <button
               onPointerDown={e => { e.preventDefault(); setReqModal(null); }}
-              className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-              <ChevronLeft size={18} className="text-gray-600" />
+              className="w-9 h-9 rounded-full bg-surface-2 hover:bg-border flex items-center justify-center transition-colors">
+              <ChevronLeft size={18} className="text-muted-fg" />
             </button>
             <div className="flex-1 min-w-0">
               <h2 className="font-semibold text-base text-brand">Request Consultation</h2>
-              <p className="text-gray-400 text-xs truncate">{reqModal.name} · {reqModal.department}</p>
+              <p className="text-subtle-fg text-xs truncate">{reqModal.name} · {reqModal.department}</p>
             </div>
             <StatusBadge status={reqModal.status} />
           </div>
@@ -997,9 +998,9 @@ export default function StudentDashboard() {
                 </div>
                 {/* Name & dept — left aligned */}
                 <div className="flex flex-col gap-1">
-                  <p className="font-semibold text-fg text-xl leading-tight">{reqModal.name}</p>
-                  <p className="text-muted-fg text-sm">{reqModal.department}</p>
-                  <span className="inline-flex items-center gap-1.5 mt-1 text-[11px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full w-fit">
+                  <p className="font-semibold text-white text-xl leading-tight">{reqModal.name}</p>
+                  <p className="text-white/75 text-sm">{reqModal.department}</p>
+                  <span className="inline-flex items-center gap-1.5 mt-1 text-[11px] font-bold text-emerald-100 bg-emerald-500/25 border border-emerald-400/40 px-3 py-1 rounded-full w-fit">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Available
                   </span>
@@ -1009,7 +1010,7 @@ export default function StudentDashboard() {
 
             {/* Category */}
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">Category</label>
+              <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide mb-3 block">Category</label>
               <div className="flex flex-wrap gap-2">
                 {CONSULTATION_CATEGORIES.map(c => (
                   <button key={c}
@@ -1017,7 +1018,7 @@ export default function StudentDashboard() {
                     className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border
  ${reqForm.category === c
  ? "bg-brand text-white border-brand shadow"
- : "bg-gray-50 text-gray-600 border-gray-200 hover:border-brand/40"}`}>
+ : "bg-surface-2 text-muted-fg border-border hover:border-brand/40"}`}>
                     {c}
                   </button>
                 ))}
@@ -1027,9 +1028,9 @@ export default function StudentDashboard() {
             {/* Purpose */}
             <div data-tour="request-purpose">
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Purpose</label>
+                <label className="text-xs font-semibold text-muted-fg uppercase tracking-wide">Purpose</label>
                 <span className={`text-xs font-semibold tabular-nums
- ${(300 - reqForm.purpose.length) < 50 ? "text-red-400" : "text-gray-300"}`}>
+ ${(300 - reqForm.purpose.length) < 50 ? "text-danger" : "text-subtle-fg"}`}>
                   {reqForm.purpose.length}/300
                 </span>
               </div>
@@ -1039,13 +1040,13 @@ export default function StudentDashboard() {
                 onChange={e => setReqForm(p => ({ ...p, purpose: e.target.value.slice(0, 300) }))}
                 placeholder="Describe your consultation purpose…"
                 rows={4}
-                className="w-full border border-gray-200 bg-gray-50 hover:border-brand/40 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:bg-white rounded-lg px-4 py-4 text-sm text-gray-800 placeholder:text-gray-400 transition-all resize-none outline-none leading-relaxed"
+                className="w-full border border-border bg-surface-2 hover:border-brand/40 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:bg-surface rounded-lg px-4 py-4 text-sm text-fg placeholder:text-subtle-fg transition-all resize-none outline-none leading-relaxed"
               />
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="shrink-0 flex gap-3 px-5 py-4 bg-white">
+          <div className="shrink-0 flex gap-3 px-5 pt-4 pb-safe-4 bg-surface">
             <button
               onPointerDown={e => { e.preventDefault(); setReqModal(null); }}
               className="flex-1 border-2 border-brand text-brand hover:bg-brand hover:text-white font-semibold py-3.5 rounded-lg transition-all text-sm">
@@ -1086,7 +1087,7 @@ export default function StudentDashboard() {
               onClick={() => setSelectedReq(null)} />
 
             {/* Sheet */}
-            <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-xl shadow-2xl overflow-hidden"
+            <div className="relative w-full sm:max-w-sm bg-surface rounded-t-3xl sm:rounded-xl shadow-2xl overflow-hidden"
               style={{ animation: "sheetUp 0.22s cubic-bezier(0.34,1.2,0.64,1) both" }}>
               <style>{`@keyframes sheetUp{from{transform:translateY(100%);opacity:0}to{transform:none;opacity:1}}`}</style>
 
@@ -1094,7 +1095,7 @@ export default function StudentDashboard() {
               <div className={`h-1.5 w-full ${statusCfg.bar}`} />
 
               {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
+              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
                 <div className="flex items-center gap-2">
                   <statusCfg.icon size={18} aria-hidden="true" className={statusCfg.text} />
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text}`}>
@@ -1102,8 +1103,8 @@ export default function StudentDashboard() {
                   </span>
                 </div>
                 <button onClick={() => setSelectedReq(null)}
-                  className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
-                  <X size={14} className="text-gray-500" />
+                  className="w-7 h-7 rounded-full bg-surface-2 hover:bg-border flex items-center justify-center transition-colors">
+                  <X size={14} className="text-muted-fg" />
                 </button>
               </div>
 
@@ -1112,28 +1113,28 @@ export default function StudentDashboard() {
 
                 {/* Professor */}
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Professor</p>
+                  <p className="text-[10px] font-bold text-subtle-fg uppercase tracking-widest mb-1">Professor</p>
                   <p className="font-semibold text-brand text-base">{req.professor_name}</p>
-                  <p className="text-gray-400 text-xs">{req.department}</p>
+                  <p className="text-subtle-fg text-xs">{req.department}</p>
                 </div>
 
                 {/* Category + Purpose */}
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Category</p>
+                  <p className="text-[10px] font-bold text-subtle-fg uppercase tracking-widest mb-1">Category</p>
                   <span className="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full">
                     {req.category}
                   </span>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Purpose</p>
-                  <p className="text-gray-700 text-sm leading-relaxed italic">"{req.purpose}"</p>
+                  <p className="text-[10px] font-bold text-subtle-fg uppercase tracking-widest mb-1">Purpose</p>
+                  <p className="text-fg text-sm leading-relaxed italic">"{req.purpose}"</p>
                 </div>
 
                 {/* Request time */}
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Requested On</p>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-[10px] font-bold text-subtle-fg uppercase tracking-widest mb-1">Requested On</p>
+                  <p className="text-muted-fg text-sm">
                     {req.request_time ? new Date(req.request_time).toLocaleString("en-PH", {
                       month: "long", day: "numeric", year: "numeric",
                       hour: "numeric", minute: "2-digit", hour12: true
@@ -1147,22 +1148,22 @@ export default function StudentDashboard() {
                     <p className="text-[10px] font-bold text-accent-fg uppercase tracking-widest flex items-center gap-1.5"><CalendarCheck size={11} aria-hidden="true" />Appointment details</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="text-[10px] text-gray-400 font-semibold mb-0.5">Date</p>
-                        <p className="text-gray-800 text-sm font-bold">
+                        <p className="text-[10px] text-subtle-fg font-semibold mb-0.5">Date</p>
+                        <p className="text-fg text-sm font-bold">
                           {new Date(req.appointment_date).toLocaleDateString("en-PH", {
                             weekday: "short", month: "short", day: "numeric", year: "numeric"
                           })}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] text-gray-400 font-semibold mb-0.5">Time</p>
-                        <p className="text-gray-800 text-sm font-bold">{formatTime(req.appointment_time) || "—"}</p>
+                        <p className="text-[10px] text-subtle-fg font-semibold mb-0.5">Time</p>
+                        <p className="text-fg text-sm font-bold">{formatTime(req.appointment_time) || "—"}</p>
                       </div>
                     </div>
                     {req.appointment_notes && (
                       <div>
-                        <p className="text-[10px] text-gray-400 font-semibold mb-0.5">Notes from Professor</p>
-                        <p className="text-gray-700 text-xs italic">"{req.appointment_notes}"</p>
+                        <p className="text-[10px] text-subtle-fg font-semibold mb-0.5">Notes from Professor</p>
+                        <p className="text-fg text-xs italic">"{req.appointment_notes}"</p>
                       </div>
                     )}
                   </div>

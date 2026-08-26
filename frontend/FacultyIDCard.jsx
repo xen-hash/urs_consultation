@@ -71,7 +71,7 @@ export function WebcamCapture({ onCapture, onSkip }) {
         <canvas ref={canvasRef} className="hidden" />
 
         {!active && !loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-fg gap-3">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-3">
             <User size={48} className="text-muted-fg" />
             <p className="text-muted-fg text-sm">Camera not active</p>
           </div>
@@ -83,7 +83,7 @@ export function WebcamCapture({ onCapture, onSkip }) {
         )}
         {countdown !== null && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <span className="text-fg font-bold text-8xl animate-rise">{countdown}</span>
+            <span className="text-white font-bold text-8xl animate-rise">{countdown}</span>
           </div>
         )}
         {active && countdown === null && (
@@ -101,18 +101,18 @@ export function WebcamCapture({ onCapture, onSkip }) {
         )}
       </div>
 
-      {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+      {error && <p className="text-danger text-xs text-center">{error}</p>}
 
       <div className="flex gap-3 w-full max-w-sm">
         {!active ? (
           <button onClick={startCamera} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all disabled:opacity-50">
+            className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50">
             {loading ? <Spinner size={4} light /> : <Camera size={18} />}
             {loading ? "Starting..." : "Open Camera"}
           </button>
         ) : (
           <button onClick={capturePhoto} disabled={countdown !== null}
-            className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-fg font-semibold py-3 rounded-lg transition-all disabled:opacity-60">
+            className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-60">
             <Camera size={18} />
             {countdown !== null ? `Taking photo in ${countdown}...` : "Take Photo"}
           </button>
@@ -252,7 +252,7 @@ export function FacultyIDCard({ name, department, employeeId, photo, qrBase64, o
 
         {/* Header */}
         <div className="px-5 py-3 border-b border-border">
-          <p className="text-fg font-semibold text-sm">UNIVERSITY OF RIZAL SYSTEM</p>
+          <p className="text-white font-semibold text-sm">UNIVERSITY OF RIZAL SYSTEM</p>
           <p className="text-muted-fg text-xs">College of Engineering — Faculty Identification Card</p>
         </div>
 
@@ -271,18 +271,18 @@ export function FacultyIDCard({ name, department, employeeId, photo, qrBase64, o
 
           {/* Info */}
           <div className="flex-1 min-w-0 py-1">
-            <p className="font-semibold text-fg text-lg leading-tight truncate">{name}</p>
+            <p className="font-semibold text-white text-lg leading-tight truncate">{name}</p>
             <p className="text-accent-fg font-bold text-xs uppercase mt-1 tracking-wider">{department}</p>
             <p className="text-muted-fg text-xs mt-2">FACULTY</p>
             <div className="mt-3">
               <p className="text-muted-fg text-[10px] uppercase tracking-wider">Employee ID</p>
-              <p className="text-fg font-mono font-bold text-sm">{employeeId}</p>
+              <p className="text-white font-mono font-bold text-sm">{employeeId}</p>
             </div>
           </div>
 
           {/* QR */}
           <div className="shrink-0 flex flex-col items-center gap-1.5">
-            <div className="w-36 h-36 bg-white rounded-lg p-2 shadow-xl border border-border">
+            <div className="w-36 h-36 bg-surface rounded-lg p-2 shadow-xl border border-border">
               {qrBase64 && <img src={`data:image/png;base64,${qrBase64}`} alt="QR" className="w-full h-full" />}
             </div>
             <p className="text-muted-fg text-[9px] text-center">Scan to verify</p>
@@ -300,12 +300,12 @@ export function FacultyIDCard({ name, department, employeeId, photo, qrBase64, o
       {/* Actions */}
       <div className="flex gap-3 w-full max-w-lg">
         <button onClick={downloadID}
-          className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-fg font-semibold py-3 rounded-lg transition-all shadow-lg">
+          className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg">
           <Download size={16} /> Download ID Card
         </button>
         {onDownload && (
           <button onClick={onDownload}
-            className="flex items-center justify-center gap-2 glass text-fg font-semibold py-3 px-5 rounded-lg transition-all text-sm">
+            className="flex items-center justify-center gap-2 glass text-white font-semibold py-3 px-5 rounded-lg transition-all text-sm">
             <Check size={15} /> Done
           </button>
         )}
