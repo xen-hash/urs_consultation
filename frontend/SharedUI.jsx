@@ -5,7 +5,7 @@
 // pieces that only make sense here.
 
 import { Link } from "react-router-dom";
-import { LogOut, ArrowLeft } from "lucide-react";
+import { LogOut, ArrowLeft, HelpCircle } from "lucide-react";
 import ursLogo from "./URS_LOGO.png";
 import { IconButton } from "./ui/index.jsx";
 
@@ -15,12 +15,12 @@ export {
   Button, IconButton, Card, CardHeader, StatusBadge, RequestBadge, Badge,
   Spinner, Skeleton, SkeletonRows, EmptyState, Alert, Modal, ConfirmModal,
   Drawer, Tabs, Pagination, Toast, useToastState, useScrollLock,
-  ConfirmMark, AlertMark, useConfirmed,
+  ConfirmMark, AlertMark, useConfirmed, NumberField,
 } from "./ui/index.jsx";
 
 /** Top bar for a signed-in area. `pt-safe` keeps it clear of the iOS notch —
  *  the PWA draws behind a translucent status bar. */
-export function URSHeader({ title, subtitle, user, onLogout, backTo }) {
+export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp }) {
   // Callers pass either a display string or { name, sub } — the dashboards use
   // the object form to show who is signed in and their ID or department.
   // Rendering the object directly is a React crash, which unmounts the whole
@@ -41,8 +41,11 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo }) {
           <p className="font-semibold text-sm text-fg truncate">{title || "University of Rizal System"}</p>
           {subtitle && <p className="text-xs text-muted-fg truncate">{subtitle}</p>}
         </div>
-        {(person || onLogout) && (
+        {(person || onLogout || onHelp) && (
           <div className="flex items-center gap-2 min-w-0">
+            {/* The walkthrough has to be reachable after it is dismissed —
+                otherwise the only way back to it is clearing site data. */}
+            {onHelp && <IconButton icon={HelpCircle} label="Show the guide" onClick={onHelp} />}
             {person?.name && (
               <div className="hidden sm:block text-right min-w-0">
                 <p className="text-sm font-medium text-fg truncate max-w-[200px]">{person.name}</p>

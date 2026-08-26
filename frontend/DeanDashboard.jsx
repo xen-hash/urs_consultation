@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, BookOpen, GraduationCap, ClipboardList, UserPlus,
-  QrCode, LogOut, Shield, Download, RefreshCw,
+  QrCode, LogOut, Shield, Download, RefreshCw, HelpCircle,
   Volume2, VolumeX, X,
 } from "lucide-react";
 import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
@@ -11,6 +11,8 @@ import ConfirmSplash from "./ui/ConfirmSplash.jsx";
 import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
+import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
+import { ADMIN_TOUR } from "./ui/tours.js";
 import { useStats, useDepartments, usePagedResource } from "./admin/hooks.js";
 import { announceNew, resetAnnounced, setMuted } from "./admin/announcer.js";
 
@@ -42,6 +44,7 @@ export default function DeanDashboard() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [muted, setMutedState] = useState(true);
+  const [tourOpen, setTourOpen] = useState(() => !hasSeenTour("admin"));
 
   const { stats, loading: statsLoading, reload: reloadStats } = useStats();
   const { departments, reload: reloadDepts, loading: deptsLoading } = useDepartments();
@@ -136,6 +139,7 @@ export default function DeanDashboard() {
             {stats?.pending > 0 && (
               <span className="badge badge-warning">{stats.pending} pending</span>
             )}
+            <IconButton icon={HelpCircle} label="Show the guide" onClick={() => setTourOpen(true)} />
             <IconButton icon={RefreshCw} label="Refresh" onClick={refreshAll} />
             <IconButton icon={LogOut} label="Sign out" onClick={signOut}
               className="hover:text-danger hover:bg-danger-50" />
@@ -177,6 +181,9 @@ export default function DeanDashboard() {
           onSelect={setTab}
           onMore={() => setSheetOpen(true)}
         />
+
+        <Walkthrough id="admin" steps={ADMIN_TOUR} open={tourOpen}
+          onClose={() => setTourOpen(false)} />
 
         <MoreSheet
           open={sheetOpen}

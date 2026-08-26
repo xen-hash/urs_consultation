@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck } from "lucide-react";
+import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, Radio, ChevronRight } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
@@ -130,6 +130,21 @@ export default function StudentPortal() {
 
             {/* A note rather than a card, so it is not mistaken for a third
                 sign-in option alongside the two above. */}
+            <Link to="/availability"
+              className="mt-6 flex items-center gap-3 rounded-xl border border-on-backdrop/20
+                         bg-on-backdrop/5 px-4 py-3.5 hover:bg-on-backdrop/10 transition-colors">
+              <Radio size={19} aria-hidden="true" className="text-success shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-on-backdrop">
+                  Just checking who's available?
+                </span>
+                <span className="block text-xs text-on-backdrop/65">
+                  See the live board without signing in.
+                </span>
+              </span>
+              <ChevronRight size={17} aria-hidden="true" className="text-on-backdrop/50 shrink-0" />
+            </Link>
+
             <div className="mt-8 pl-3.5 border-l-2 border-on-backdrop/25">
               <p className="text-sm font-semibold text-on-backdrop/90">New here?</p>
               <p className="text-sm text-on-backdrop/65 mt-1 leading-relaxed">

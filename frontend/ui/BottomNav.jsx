@@ -36,6 +36,7 @@ export default function BottomNav({ items, active, onSelect, onMore, className =
               <button
                 onClick={() => onSelect(item.id)}
                 aria-current={selected ? "page" : undefined}
+                data-tour={`nav-${item.id}`}
                 className={`w-full h-full min-h-[64px] flex flex-col items-center justify-center gap-1.5
                   px-0.5 pt-2.5 pb-2 transition-colors duration-150 relative
                   ${selected ? "text-brand" : "text-muted-fg"}`}

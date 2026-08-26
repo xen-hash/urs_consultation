@@ -24,7 +24,10 @@ export default function App() {
       <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
       <Route path="/dean"              element={<DeanLogin />} />
       <Route path="/dean/dashboard"    element={<DeanDashboard />} />
-      <Route path="/kiosk"             element={<KioskView />} />
+      {/* The same board, twice. /availability is the public one anybody can
+          open; /kiosk is it locked to a corridor display. */}
+      <Route path="/availability"      element={<KioskView mode="public" />} />
+      <Route path="/kiosk"             element={<KioskView mode="kiosk" />} />
       <Route path="*"                  element={<Navigate to="/" replace />} />
     </Routes>
   );
