@@ -157,20 +157,33 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
   // highlight if it fits there, above it if it fits there, and centred only
   // when neither has room — at which point covering part of the target is the
   // least bad option, and the card is still whole and reachable.
-  const cardStyle = (() => {
+  //
+  // `side` is which way the arrow points: the card sits below the target and
+  // points up at it, or sits above and points down.
+  const { cardStyle, side } = (() => {
     const vh = window.innerHeight;
     const h = cardH || 240;
-    const GAP = 14, EDGE = 12;
+    const GAP = 16, EDGE = 12;
+    const centred = { cardStyle: { top: Math.max(EDGE, Math.round((vh - h) / 2)) }, side: null };
 
-    if (!rect) return { top: Math.max(EDGE, Math.round((vh - h) / 2)) };
+    if (!rect) return centred;
 
     const roomBelow = vh - (rect.top + rect.height) - GAP - EDGE;
     const roomAbove = rect.top - GAP - EDGE;
 
-    if (roomBelow >= h) return { top: rect.top + rect.height + GAP };
-    if (roomAbove >= h) return { top: Math.max(EDGE, rect.top - GAP - h) };
-    return { top: Math.max(EDGE, Math.round((vh - h) / 2)) };
+    if (roomBelow >= h) return { cardStyle: { top: rect.top + rect.height + GAP }, side: "up" };
+    if (roomAbove >= h) return { cardStyle: { top: Math.max(EDGE, rect.top - GAP - h) }, side: "down" };
+    return centred;
   })();
+
+  // The arrow sits over the middle of the target, so the line from the words to
+  // the thing they describe is drawn rather than left to be worked out. Clamped
+  // to the card so it cannot detach from its own corner.
+  const cardLeft = Math.max(12, (window.innerWidth - Math.min(352, window.innerWidth - 32)) / 2);
+  const cardWidth = Math.min(352, window.innerWidth - 32);
+  const arrowX = rect
+    ? Math.min(cardWidth - 26, Math.max(14, rect.left + rect.width / 2 - cardLeft - 7))
+    : 0;
 
   return createPortal(
     <div className="fixed inset-0 z-[95]" role="dialog" aria-modal="true"
@@ -186,11 +199,8 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
           <Dim style={{ top: rect.top + rect.height, left: 0, right: 0, bottom: 0 }} />
           <span
             aria-hidden="true"
-            className="absolute rounded-xl ring-2 ring-accent pointer-events-none animate-fade"
-            style={{
-              top: rect.top, left: rect.left, width: rect.width, height: rect.height,
-              boxShadow: "0 0 0 3px rgb(var(--accent) / 0.25)",
-            }}
+            className="tour-ring absolute rounded-xl border-2 border-accent pointer-events-none animate-fade"
+            style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
           />
         </>
       ) : (
@@ -205,7 +215,17 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
                    bg-surface rounded-xl shadow-lg p-5 animate-rise focus:outline-none"
         style={cardStyle}
       >
-        <div className="flex items-start gap-3">
+        {side && (
+          <span
+            aria-hidden="true"
+            className="absolute w-3.5 h-3.5 bg-surface rotate-45"
+            style={side === "up"
+              ? { top: -6, left: arrowX }
+              : { bottom: -6, left: arrowX }}
+          />
+        )}
+
+        <div className="relative flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-widest text-subtle-fg">
               Step {index + 1} of {live.length}
@@ -246,6 +266,6 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
 
 function Dim({ style }) {
   return (
-    <div aria-hidden="true" className="absolute bg-brand-900/70 animate-fade" style={style} />
+    <div aria-hidden="true" className="absolute bg-brand-900/80 animate-fade" style={style} />
   );
 }

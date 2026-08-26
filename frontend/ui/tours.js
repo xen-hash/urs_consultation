@@ -1,15 +1,21 @@
 /**
- * What the first-run guide says, per screen.
+ * What the first-run guide says.
  *
  * Kept out of the components so the wording can be edited without touching the
- * dashboards, and so the three tours read as one voice rather than three
- * different people writing help text.
+ * dashboards, and so the three tours read as one voice.
  *
- * Each step names the control the way it is labelled on screen — "the Cards
- * tab", not "credential management" — because the point is to connect a word
- * you just read to a thing you can see. A step whose target is missing is
- * skipped automatically, so it is safe to describe controls that only appear
- * in some states.
+ * House rules for the writing, learned from a first draft nobody could skim:
+ *
+ *   - Short sentences. Two or three, and none of them long.
+ *   - Name the control exactly as the screen labels it — "the Cards tab", not
+ *     "credential management" — so the word you just read is findable.
+ *   - Say what it does, then what to do. Explanation with no action leaves the
+ *     reader nodding and none the wiser.
+ *   - Plain words. Not "consultation slots remaining", just "how many are
+ *     left". Not "is not undoable", just "you cannot get it back".
+ *
+ * Each step points at one control rather than a whole region: a highlight the
+ * size of the screen is the same as no highlight at all.
  */
 
 /**
@@ -31,24 +37,26 @@ export function studentTour({
 
   return [
     {
-      title: "Start with the departments",
-      body: "Each card is a department, coloured so they are easy to tell apart. The number on it is how many of its faculty are free right now.",
-      target: '[data-tour="student-departments"]',
+      title: "Pick a department",
+      body: "These cards are the departments. Tap one to see its professors. The number tells you how many are free right now.",
+      target: ['[data-tour="student-first-department"]', '[data-tour="student-departments"]'],
       before: showDepartments,
     },
     {
-      title: "Open one to see the faculty",
-      body: professor
-        ? `Here is ${demo.department}, opened for you. Every professor shows whether they are available, and their consultation slots for today.`
-        : "Tap a department and you get its faculty, each showing whether they are available and how many consultation slots are left today.",
-      target: '[data-tour="student-professors"]',
+      title: "Then pick a professor",
+      body: demo
+        ? `We opened ${demo.department} for you. Green means free now. Tap whoever you need.`
+        : "Green means the professor is free now. Tap whoever you need.",
+      // One card, not the whole grid — a highlight the size of the list does
+      // not tell anybody what to press.
+      target: ['[data-tour="student-first-professor"]', '[data-tour="student-professors"]'],
       before: openDepartment,
     },
     {
       title: "This is the request form",
       body: professor
-        ? `Opened against ${professor}, exactly as it would be if you tapped them. Nothing has been sent — this is your own form to look at.`
-        : "Tapping a professor opens this form. It is how a consultation is requested.",
+        ? `We opened it against ${professor}, so you can see what it looks like. Nothing has been sent.`
+        : "Tapping a professor opens this form. Nothing has been sent.",
       // The professor being requested, not the whole overlay. Pointing at the
       // form itself highlighted the entire screen, which dims nothing and
       // singles out nothing.
@@ -56,31 +64,31 @@ export function studentTour({
       before: openRequestFor,
     },
     {
-      title: "Say what it is about",
-      body: "Pick a category, then write what you need in a sentence or two. The professor sees this before they accept, so it is worth being specific.",
+      title: "Say what you need",
+      body: "Pick a category, then write it in a sentence or two. Your professor reads this before saying yes, so be clear.",
       target: '[data-tour="request-purpose"]',
     },
     {
-      title: "Then send it — when it is real",
-      body: "This is the button. We have not pressed it, and this form will close empty when the guide ends. Do this for real and the request goes straight to them.",
+      title: "Send it when it is real",
+      body: "This is the send button. We have not pressed it. When you do, your professor gets the request straight away.",
       target: '[data-tour="request-submit"]',
     },
     {
-      title: "Their answer arrives in Inbox",
-      body: "Accepted, declined, or accepted with a date and time. A dot on the tab means something is waiting to be read.",
+      title: "Their answer comes here",
+      body: "Yes, no, or yes with a date and time. A dot on this tab means you have something unread.",
       // Both navigations: the bar on a phone, the tab strip on a desktop.
       target: ['[data-tour="nav-inbox"]', '[data-tour="tab-inbox"]'],
       before: showInbox,
     },
     {
-      title: "Profile holds your ID",
-      body: "Your student QR code, your photo and your PIN. That QR is how you sign in without typing your ID.",
+      title: "Your ID lives here",
+      body: "Your QR code, your photo and your PIN. Scan that QR next time instead of typing your student number.",
       target: ['[data-tour="nav-profile"]', '[data-tour="tab-profile"]'],
       before: showProfile,
     },
     {
-      title: "No sign-in needed to just look",
-      body: "Only checking whether someone is in? The live board on the front page is open to everyone, no account required.",
+      title: "That is everything",
+      body: "Only want to check if someone is in? The front page has a live board that needs no sign-in at all.",
     },
   ];
 }
@@ -95,31 +103,31 @@ export function studentTour({
 export function teacherTour(setTab) {
   return [
     {
-      title: "Your status is the top control",
-      body: "Available, Unavailable, On Leave or In Meeting. Leave it on Auto and it follows the schedule you set; change it by hand when the day does not go to plan.",
+      title: "Set whether you are free",
+      body: "Available, Unavailable, On Leave or In Meeting. Leave it on Auto and it follows your schedule by itself.",
       target: '[data-tour="teacher-status"]',
       before: () => setTab("status"),
     },
     {
-      title: "Set how many you will take",
-      body: "The daily limit stops requests piling up past what you can actually see. Type a number and press Enter — it is saved to your account, so it holds on any device.",
+      title: "Cap your day",
+      body: "This is how many students you will see today. Type a number and press Enter. It is saved to your account, so it holds on any device.",
       target: '[data-tour="teacher-limit"]',
       before: () => setTab("requests"),
     },
     {
-      title: "Requests come in below",
-      body: "Accept one to hold a slot, mark it Done when the consultation has happened, or Decline it with the student notified either way.",
+      title: "Requests land here",
+      body: "Accept one to hold a slot. Mark it Done once you have met. Decline it if you cannot — either way the student is told.",
       target: '[data-tour="teacher-requests"]',
       before: () => setTab("requests"),
     },
     {
-      title: "Delete is for mistakes only",
-      body: "Duplicates and test entries can be removed outright. Declining is the answer a student sees; deleting removes the row and is not undoable.",
+      title: "Delete is only for mistakes",
+      body: "Use it on duplicates and test entries. Decline is the answer a student sees; delete removes the row and you cannot get it back.",
       target: '[data-tour="teacher-requests"]',
     },
     {
-      title: "Your schedule drives everything",
-      body: "Set your weekly consultation hours and the board shows you as available during them automatically, without you touching anything.",
+      title: "Your schedule does the work",
+      body: "Set your weekly consultation hours once. The board then shows you as free during them without you touching anything.",
       target: '[data-tour="teacher-schedule"]',
       before: () => setTab("status"),
     },
@@ -145,15 +153,15 @@ export function adminTour(setTab) {
   });
 
   return [
-    step("overview", "Dashboard is the summary",
-      "Totals, activity over time and the newest requests. Exports live here too — today only, or the whole record."),
-    step("credentials", "Cards is where you issue IDs",
-      "A faculty QR card is created here and shown once. Issuing a replacement kills the old card automatically, which is how a lost one is revoked."),
-    step("requests", "Requests, and clearing them out",
-      "Filter by status, department or date. Archive hides old rows but keeps them; Free space deletes them for good when the database is filling up."),
-    step("students", "Students and forgotten PINs",
-      "Reset a student's PIN when they are locked out — they choose a new one on their next sign-in. You can remove an account from here too."),
-    step("faculty", "Faculty is the roster",
-      "Add someone new, and see who is available at a glance. Removing a faculty member asks why, and the reason goes into the audit log."),
+    step("overview", "Start here",
+      "Your totals, the activity graph and the newest requests. Exports are here too — today only, or everything."),
+    step("credentials", "Give faculty their ID card",
+      "Issue a QR card here. It is shown once, so print it there and then. Issuing a new one kills the old card — that is how you replace a lost one."),
+    step("requests", "Every consultation",
+      "Filter by status, department or date. Archive tidies old rows away but keeps them. Free space deletes them when the database is filling up."),
+    step("students", "When a student is locked out",
+      "Reset their PIN here and they pick a new one next time they sign in. You can remove an account from here too."),
+    step("faculty", "Your roster",
+      "Add a new faculty member, and see who is free at a glance. Removing one asks you why, and that answer is kept."),
   ];
 }

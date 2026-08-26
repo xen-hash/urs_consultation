@@ -368,6 +368,29 @@
    first rather than racing it, so the cross draws as one gesture. */
 .confirm-mark.mark-cross path:last-child { animation-delay: 0.26s; }
 
+/* ── Walkthrough highlight ────────────────────────────────────────────────────
+   A thin static outline was easy to miss on a busy screen — people could not
+   tell what the guide was pointing at. This is a bright ring that breathes:
+   movement is what the eye catches first, and one slow pulse reads as "look
+   here" without turning into a distraction. */
+
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgb(var(--accent) / 0.55), 0 0 0 9px rgb(var(--accent) / 0.18); }
+  50%      { box-shadow: 0 0 0 5px rgb(var(--accent) / 0.85), 0 0 0 16px rgb(var(--accent) / 0.10); }
+}
+
+.tour-ring {
+  animation: tour-pulse 1.8s ease-in-out infinite;
+}
+
+/* Reduced motion keeps the ring, loses the breathing. */
+@media (prefers-reduced-motion: reduce) {
+  .tour-ring {
+    animation: none;
+    box-shadow: 0 0 0 4px rgb(var(--accent) / 0.8), 0 0 0 12px rgb(var(--accent) / 0.15);
+  }
+}
+
 /* Reduced motion already flattens durations globally, but the check must not
    be left mid-draw with part of the tick missing. */
 @media (prefers-reduced-motion: reduce) {
