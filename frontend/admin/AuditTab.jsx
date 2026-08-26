@@ -3,6 +3,7 @@ import { ScrollText, Search } from "lucide-react";
 import { Card, Badge, EmptyState, SkeletonRows, Pagination } from "../SharedUI.jsx";
 import { usePagedResource, useDebounced } from "./hooks.js";
 import { meta } from "./AuditFeed.jsx";
+import { formatWhen, formatDateTime } from "../ui/datetime.js";
 import api from "../httpClient.js";
 
 /**
@@ -80,9 +81,9 @@ export default function AuditTab() {
                     </p>
                     {row.detail && <p className="text-xs text-muted-fg mt-1 italic">{row.detail}</p>}
                   </div>
-                  <time className="text-xs text-subtle-fg whitespace-nowrap shrink-0 tabular-nums"
-                    dateTime={row.created_at}>
-                    {row.created_at?.slice(5, 16).replace(" ", " · ")}
+                  <time className="text-xs text-subtle-fg whitespace-nowrap shrink-0 text-right"
+                    dateTime={row.created_at} title={formatDateTime(row.created_at)}>
+                    {formatWhen(row.created_at)}
                   </time>
                 </li>
               );
@@ -94,7 +95,7 @@ export default function AuditTab() {
       </Card>
 
       <p className="text-xs text-muted-fg mt-3">
-        Times are UTC, matching how the database records them.
+        Times are Philippine Standard Time (UTC+8).
       </p>
     </div>
   );

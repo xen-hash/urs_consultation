@@ -1,8 +1,10 @@
 import { usePagedResource } from "./hooks.js";
+import { formatAgo, formatDateTime } from "../ui/datetime.js";
 import { EmptyState, SkeletonRows } from "../SharedUI.jsx";
 import {
   ScrollText, LogIn, QrCode, KeyRound, Ban, FileDown, UserPlus,
   Archive, ShieldAlert, Pencil, Trash2, ScanLine, CircleSlash,
+  ShieldCheck, UserMinus, Undo2, Recycle,
 } from "lucide-react";
 
 // Each action gets an icon and a tone so a page of rows is scannable — the
@@ -21,6 +23,12 @@ const ACTION_META = {
   "admin.export":             { icon: FileDown,    tone: "info",    label: "Data exported" },
   "admin.archive_requests":   { icon: Archive,     tone: "warning", label: "Requests archived" },
   "admin.clear_requests":     { icon: Trash2,      tone: "danger",  label: "Requests deleted" },
+  "admin.delete_requests":    { icon: Trash2,      tone: "danger",  label: "Requests deleted" },
+  "admin.verify_student":     { icon: ShieldCheck, tone: "success", label: "Student enrolment confirmed" },
+  "admin.unverify_student":   { icon: ShieldAlert, tone: "warning", label: "Student confirmation withdrawn" },
+  "admin.remove_teacher":     { icon: UserMinus,   tone: "danger",  label: "Faculty removed" },
+  "admin.restore_teacher":    { icon: Undo2,       tone: "info",    label: "Faculty restored" },
+  "admin.reclaim_storage":    { icon: Recycle,     tone: "info",    label: "Database space reclaimed" },
   "teacher.login":            { icon: LogIn,       tone: "neutral", label: "Faculty signed in" },
   "teacher.login_throttled":  { icon: ShieldAlert, tone: "danger",  label: "Faculty sign-in throttled" },
   "teacher.qr_login_failed":  { icon: ScanLine,    tone: "warning", label: "Unrecognised card scanned" },
@@ -73,9 +81,9 @@ export default function AuditFeed({ limit = 6 }) {
                 {row.target && ` · ${row.target}`}
               </p>
             </div>
-            <time className="text-xs text-subtle-fg whitespace-nowrap shrink-0 tabular-nums"
-              dateTime={row.created_at}>
-              {row.created_at?.slice(5, 16).replace(" ", " · ")}
+            <time className="text-xs text-subtle-fg whitespace-nowrap shrink-0"
+              dateTime={row.created_at} title={formatDateTime(row.created_at)}>
+              {formatAgo(row.created_at)}
             </time>
           </li>
         );

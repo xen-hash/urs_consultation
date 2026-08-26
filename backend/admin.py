@@ -22,28 +22,21 @@ from config import AUDIT_RETENTION_DAYS
 from db import query, execute
 from security import require_role, record_audit, generate_qr_b64
 import storage
+from phtime import serialize_row
 
 admin_bp = Blueprint("admin", __name__)
 PH = pytz.timezone("Asia/Manila")
 
 
 def _serialize(row):
-    if not row:
-        return row
-    out = {}
-    for k, v in row.items():
-        if isinstance(v, datetime):
-            out[k] = v.strftime("%Y-%m-%d %H:%M:%S")
-        elif isinstance(v, date):
-            out[k] = v.isoformat()
-        elif isinstance(v, timedelta):
-            total = int(v.total_seconds())
-            h, rem = divmod(total, 3600)
-            m, s = divmod(rem, 60)
-            out[k] = f"{h:02}:{m:02}:{s:02}"
-        else:
-            out[k] = v
-    return out
+    """One row, JSON-safe, timestamps carrying the Manila offset.
+
+    Three copies of this loop used to live in admin, teacher and student, and
+    none of them knew that half the timestamp columns are written by the
+    database in UTC and half by the app in Manila time. phtime is the one place
+    that does.
+    """
+    return serialize_row(row)
 
 
 def _now_ph():
@@ -402,6 +395,71 @@ def audit_log():
         "total":   total,
         "pages":   -(-total // limit) if total else 1,
         "actions": [r["action"] for r in actions],
+    })
+
+
+# ─── WHO IS USING IT RIGHT NOW ────────────────────────────────────────────────
+
+@admin_bp.route("/active-students", methods=["GET"])
+@require_role("admin")
+def active_students():
+    """Students currently using the app, and how long they have been at it.
+
+    The dashboard could say how many accounts existed and how many requests had
+    been filed, but not whether anybody was actually on it — so there was no way
+    to tell a quiet consultation period from an outage, or to know whether the
+    queue was worth watching at four in the afternoon.
+
+    Presence is written by security.touch_presence on any authenticated student
+    request, so "online" means "made a request within the window", not "has a
+    tab open somewhere". A phone that went to sleep drops off by itself.
+    """
+    window = min(60, max(1, int(request.args.get("window", 5))))
+    today  = datetime.now(PH).strftime("%Y-%m-%d")
+
+    rows = query(
+        """SELECT student_id, full_name, course, year_level, department,
+                  verified, last_seen, session_started_at,
+                  GREATEST(0, ROUND(EXTRACT(EPOCH FROM
+                      (last_seen - COALESCE(session_started_at, last_seen))) / 60
+                  ))::int AS minutes_active,
+                  (last_seen >= (NOW() AT TIME ZONE 'Asia/Manila')
+                                - make_interval(mins => %s)) AS online
+             FROM students
+            WHERE last_seen IS NOT NULL
+            ORDER BY last_seen DESC
+            LIMIT 40""",
+        (window,), fetchall=True
+    ) or []
+
+    one = lambda sql, args=None: query(sql, args, fetchone=True)["c"]
+    online_now = one(
+        "SELECT COUNT(*) AS c FROM students WHERE last_seen >= "
+        "(NOW() AT TIME ZONE 'Asia/Manila') - make_interval(mins => %s)", (window,)
+    )
+    seen_today = one(
+        "SELECT COUNT(*) AS c FROM students WHERE last_seen::date = %s::date", (today,)
+    )
+    seen_week = one(
+        "SELECT COUNT(*) AS c FROM students WHERE last_seen >= "
+        "(NOW() AT TIME ZONE 'Asia/Manila') - INTERVAL '7 days'"
+    )
+    avg_row = query(
+        """SELECT ROUND(AVG(EXTRACT(EPOCH FROM
+                      (last_seen - session_started_at))) / 60)::int AS m
+             FROM students
+            WHERE session_started_at IS NOT NULL
+              AND last_seen::date = %s::date""",
+        (today,), fetchone=True
+    )
+
+    return jsonify({
+        "window_minutes":    window,
+        "online":            online_now,
+        "today":             seen_today,
+        "week":              seen_week,
+        "avg_minutes_today": (avg_row or {}).get("m") or 0,
+        "students":          [_serialize(r) for r in rows],
     })
 
 

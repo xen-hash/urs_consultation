@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, BookOpen, GraduationCap, ClipboardList, UserPlus,
   QrCode, LogOut, Shield, Download, RefreshCw, HelpCircle,
-  Volume2, VolumeX, X,
+  Volume2, VolumeX, X, ScrollText,
 } from "lucide-react";
 import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
@@ -21,6 +21,7 @@ import FacultyTab from "./admin/FacultyTab.jsx";
 import CredentialsTab from "./admin/CredentialsTab.jsx";
 import StudentsTab from "./admin/StudentsTab.jsx";
 import RequestsTab from "./admin/RequestsTab.jsx";
+import AuditTab from "./admin/AuditTab.jsx";
 
 const TABS = [
   { id: "overview",    label: "Dashboard",   short: "Home",     icon: LayoutDashboard },
@@ -28,11 +29,14 @@ const TABS = [
   { id: "faculty",     label: "Faculty",     short: "Faculty",  icon: BookOpen },
   { id: "students",    label: "Students",    short: "Students", icon: GraduationCap },
   { id: "requests",    label: "Requests",    short: "Requests", icon: ClipboardList },
+  { id: "activity",    label: "Activity",    short: "Activity", icon: ScrollText },
 ];
 
-// Bar order is by frequency of use, not the order of the sidebar: issuing and
-// revoking cards and triaging requests are the daily jobs. Five sections show;
-// only the audit log and adding faculty, both occasional, sit behind More.
+// The phone bar is by frequency of use: issuing and revoking cards and triaging
+// requests are the daily jobs. Six slots is its ceiling and Sign out holds one,
+// so five sections fit — Activity is the sixth, and it is reached from the
+// "View all" on the dashboard's recent-activity card instead. The desktop rail
+// has room for every section and lists them all.
 const BAR_ORDER = ["overview", "credentials", "requests", "students", "faculty"];
 
 export default function DeanDashboard() {
@@ -89,14 +93,17 @@ export default function DeanDashboard() {
 
   const sectionLabel = TABS.find(t => t.id === tab)?.label;
 
-  const NAV_TABS = [
-    ...BAR_ORDER.map(id => TABS.find(t => t.id === id)).filter(Boolean),
-    ...TABS.filter(t => !BAR_ORDER.includes(t.id)),
-  ].map(t => ({
-    ...t,
-    label: t.short || t.label,
-    ...(t.id === "requests" ? { badge: stats?.pending } : {}),
-  }));
+  // Only the bar sections. Appending the rest would push the list past the six
+  // slots BottomNav can draw, and it would answer by rendering a More button —
+  // which has had nothing behind it since the sheet was removed.
+  const NAV_TABS = BAR_ORDER
+    .map(id => TABS.find(t => t.id === id))
+    .filter(Boolean)
+    .map(t => ({
+      ...t,
+      label: t.short || t.label,
+      ...(t.id === "requests" ? { badge: stats?.pending } : {}),
+    }));
 
   const nav = (
     <NavContents
@@ -155,6 +162,7 @@ export default function DeanDashboard() {
               departments={departments}
               requests={recent.data}
               onSeeAll={() => setTab("requests")}
+              onSeeActivity={() => setTab("activity")}
               onExport={exportData}
               addToast={addToast}
             />
@@ -171,6 +179,7 @@ export default function DeanDashboard() {
           )}
           {tab === "students" && <StudentsTab addToast={addToast} />}
           {tab === "requests" && <RequestsTab addToast={addToast} onChanged={refreshAll} />}
+          {tab === "activity" && <AuditTab />}
 
           <BottomNavSpacer />
         </main>

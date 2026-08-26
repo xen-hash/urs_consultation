@@ -3,29 +3,15 @@ from datetime import datetime, date, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from db import query, execute
 from security import require_role, subject, forbid_unless_owner, is_admin
+from phtime import serialize_row
 
 student_bp = Blueprint("student", __name__)
 PH = pytz.timezone("Asia/Manila")
 
 
 def _serialize_row(row):
-    """Convert date/datetime/timedelta values to JSON-safe strings."""
-    if not row:
-        return row
-    result = {}
-    for k, v in row.items():
-        if isinstance(v, datetime):
-            result[k] = v.strftime("%Y-%m-%d %H:%M:%S")
-        elif isinstance(v, date):
-            result[k] = v.isoformat()
-        elif isinstance(v, timedelta):
-            total = int(v.total_seconds())
-            h, rem = divmod(total, 3600)
-            m, s   = divmod(rem, 60)
-            result[k] = f"{h:02}:{m:02}:{s:02}"
-        else:
-            result[k] = v
-    return result
+    """Row out with Manila-offset timestamps — see phtime for the two clocks."""
+    return serialize_row(row)
 
 
 @student_bp.route("/consultation/request", methods=["POST"])
@@ -164,7 +150,8 @@ def update_student_profile():
             "course": updated["course"],
             "year_level": updated["year_level"],
             "department": updated["department"],
-            "photo": updated.get("photo")
+            "photo": updated.get("photo"),
+            "verified": bool(updated.get("verified")),
         }
     })
 
@@ -185,5 +172,8 @@ def get_student_profile(student_id):
         "year_level": student["year_level"],
         "department": student["department"],
         "photo":      student.get("photo"),
-        "has_pin":    bool(student.get("pin_hash"))
+        "has_pin":    bool(student.get("pin_hash")),
+        # The dashboard re-reads this on load so a student who was confirmed
+        # while signed in stops being told to wait, without signing out first.
+        "verified":   bool(student.get("verified")),
     })
