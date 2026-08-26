@@ -53,15 +53,21 @@ export { ACTION_META, meta };
  * Shares its action vocabulary with the full audit tab so the two cannot
  * describe the same event differently.
  */
-export default function AuditFeed({ limit = 6 }) {
+export default function AuditFeed({ limit = 6, offline = false }) {
   const { data, loading } = usePagedResource("/admin/audit", { limit });
 
   if (loading) return <SkeletonRows rows={4} cols={2} />;
   if (!data.length) {
-    return (
-      <EmptyState icon={ScrollText} title="Nothing recorded yet"
-        description="Sign-ins, credential changes and exports appear here." />
-    );
+    // "Nothing recorded yet" is a claim about the log. When the request never
+    // reached the server there is no log to make claims about, and telling an
+    // administrator their audit trail is empty is worse than telling them
+    // nothing — it is the one screen they would check after an incident.
+    return offline
+      ? <p className="text-sm text-muted-fg px-5 py-6 text-center">Waiting for the server.</p>
+      : (
+        <EmptyState icon={ScrollText} title="Nothing recorded yet"
+          description="Sign-ins, credential changes and exports appear here." />
+      );
   }
 
   return (

@@ -8,8 +8,9 @@ import {
 import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
 import ConfirmSplash from "./ui/ConfirmSplash.jsx";
+import ServerDown from "./ui/ServerDown.jsx";
 import { getSession, clearSession } from "./auth.js";
-import api from "./httpClient.js";
+import api, { isUnreachable } from "./httpClient.js";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
 import { adminTour } from "./ui/tours.js";
@@ -50,8 +51,8 @@ export default function DeanDashboard() {
   const [tourOpen, setTourOpen] = useState(() => !hasSeenTour("admin"));
   const adminSteps = useMemo(() => adminTour(setTab), []);
 
-  const { stats, loading: statsLoading, reload: reloadStats } = useStats();
-  const { departments, reload: reloadDepts, loading: deptsLoading } = useDepartments();
+  const { stats, loading: statsLoading, error: statsError, reload: reloadStats } = useStats();
+  const { departments, reload: reloadDepts, loading: deptsLoading, error: deptsError } = useDepartments();
   // The overview's recent list only ever needs the newest few rows.
   const recent = usePagedResource("/dean/requests", { limit: 20, enabled: !!admin });
 
@@ -69,6 +70,23 @@ export default function DeanDashboard() {
   const refreshAll = useCallback(() => {
     reloadStats(); reloadDepts(); recent.reload();
   }, [reloadStats, reloadDepts, recent]);
+
+  // The two reads every section depends on. If neither reached the server then
+  // nothing on this screen is live, and that is worth saying once rather than
+  // letting each panel imply its own emptiness.
+  // Both must have failed, and failed by not reaching a server — isUnreachable
+  // reads a missing status as "no reply", so the errors themselves are checked
+  // first. Otherwise a dashboard with nothing wrong would declare itself down.
+  const offline = !!statsError && !!deptsError
+    && isUnreachable(statsError) && isUnreachable(deptsError);
+  const [retrying, setRetrying] = useState(false);
+  const retry = () => {
+    setRetrying(true);
+    refreshAll();
+    // The retry is three requests with their own backoff; this only stops the
+    // button spinning forever if one of them never settles.
+    setTimeout(() => setRetrying(false), 8000);
+  };
 
   const signOut = () => setSigningOut(true);
 
@@ -155,6 +173,10 @@ export default function DeanDashboard() {
         </header>
 
         <main className="flex-1 p-3 sm:p-5 w-full max-w-[1200px] mx-auto">
+          {offline && (
+            <ServerDown className="mb-4 animate-rise" onRetry={retry} retrying={retrying} />
+          )}
+
           {tab === "overview" && (
             <OverviewTab
               stats={stats}
@@ -165,6 +187,7 @@ export default function DeanDashboard() {
               onSeeActivity={() => setTab("activity")}
               onExport={exportData}
               addToast={addToast}
+              offline={offline}
             />
           )}
           {tab === "credentials" && <CredentialsTab addToast={addToast} />}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HardDrive, Recycle, RefreshCw } from "lucide-react";
 import { Card, CardHeader, Button, Skeleton, ConfirmModal, Alert } from "../SharedUI.jsx";
-import api, { apiError } from "../httpClient.js";
+import api, { apiError, isUnreachable } from "../httpClient.js";
 
 /**
  * What the database is actually holding, and the button that hands space back.
@@ -30,7 +30,7 @@ const LABELS = {
   audit_log: "Activity log",
 };
 
-export default function StorageCard({ addToast }) {
+export default function StorageCard({ addToast, offline = false }) {
   const [usage, setUsage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [asking, setAsking] = useState(false);
@@ -54,7 +54,9 @@ export default function StorageCard({ addToast }) {
       // A 404 here is the ordinary case: the frontend deploys from the merge,
       // the backend is a separate service, and for a while it is still the
       // older build with no /admin/storage on it.
-      if (!everLoaded.current) setUnavailable(true);
+      // Only a real 404 is this card's to explain; an unreachable server is
+      // the dashboard-wide banner's message, not a fifth copy of it.
+      if (!everLoaded.current) setUnavailable(!isUnreachable(e));
     } finally { setLoading(false); }
   }, []);
 
@@ -93,6 +95,8 @@ export default function StorageCard({ addToast }) {
 
       {loading ? (
         <Skeleton className="h-24 rounded-lg" />
+      ) : offline ? (
+        <p className="text-sm text-muted-fg">Waiting for the server.</p>
       ) : unavailable ? (
         <>
           <Alert tone="warning">
