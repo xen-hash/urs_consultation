@@ -6,9 +6,9 @@ import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorSplas
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
 import URSBackground from "./URSBackground.jsx";
+import HomeBrand from "./ui/HomeBrand.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
-import ursLogo from "./URS_LOGO.png";
 
 export default function StudentPortal() {
   const navigate = useNavigate();
@@ -22,7 +22,9 @@ export default function StudentPortal() {
   const [splash, setSplash] = useState(null);
   const [failure, setFailure] = useState(null);
 
-  const home = () => { setMode(null); setStudentId(""); setPending(null); setPin(""); setPinError(null); };
+  // No setPinError here: there is no such state, and calling it threw on every
+  // press of Back — the error surfaced as the button doing nothing at all.
+  const home = () => { setMode(null); setStudentId(""); setPending(null); setPin(""); };
 
   const findStudent = async (id) => {
     const sid = (id || studentId).trim();
@@ -88,17 +90,22 @@ export default function StudentPortal() {
         onRetry={() => setFailure(null)}
       />
 
+      {/* Full width, not a centred column: on a desktop the centred bar put the
+          logo out in the middle of the screen, nowhere near the corner people
+          look for it. */}
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 max-w-3xl mx-auto w-full">
-          <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-sm text-fg truncate">University of Rizal System</p>
-            <p className="text-xs text-muted-fg truncate">Student Portal</p>
-          </div>
-          {mode && (
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
+          <HomeBrand subtitle="Student Portal" className="flex-1" />
+          {/* Back was only drawn once a panel was open, so the first screen —
+              the one people land on — had no way out at all. */}
+          {mode ? (
             <button onClick={home} className="btn btn-ghost btn-sm shrink-0">
               <ArrowLeft size={15} aria-hidden="true" /> Back
             </button>
+          ) : (
+            <Link to="/" className="btn btn-ghost btn-sm shrink-0">
+              <ArrowLeft size={15} aria-hidden="true" /> Back
+            </Link>
           )}
         </div>
       </nav>
@@ -157,7 +164,7 @@ export default function StudentPortal() {
               </p>
             </div>
 
-            <PortalNav current="/student" className="mt-8" />
+            <PortalNav current="/student" hide={["/availability"]} className="mt-8" />
           </div>
         )}
 

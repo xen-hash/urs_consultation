@@ -8,6 +8,7 @@ import {
 import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
 import MoreSheet from "./ui/MoreSheet.jsx";
 import ConfirmSplash from "./ui/ConfirmSplash.jsx";
+import HomeBrand from "./ui/HomeBrand.jsx";
 import { getSession, clearSession } from "./auth.js";
 import api from "./httpClient.js";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
@@ -129,6 +130,13 @@ export default function DeanDashboard() {
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-30 bg-surface header-blend header-blend-canvas pt-safe">
           <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 w-full max-w-[1200px] mx-auto">
+            {/* The university name is the way back to the front page. Signed in
+                as an administrator it asks first, and going there signs you out
+                — this screen is often left open on an office machine. The name
+                itself is for wide screens; on a phone the crest is the target,
+                and the section title needs the room. */}
+            <HomeBrand className="shrink-0 mr-0.5" textClassName="hidden md:block" />
+            <span aria-hidden="true" className="hidden md:block w-px h-8 bg-border shrink-0" />
             <div className="min-w-0 flex-1">
               <h1 className="font-semibold text-fg truncate">
                 {TABS.find(t => t.id === tab)?.label}

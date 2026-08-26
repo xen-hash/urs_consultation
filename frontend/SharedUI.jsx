@@ -6,8 +6,8 @@
 
 import { Link } from "react-router-dom";
 import { LogOut, ArrowLeft, HelpCircle } from "lucide-react";
-import ursLogo from "./URS_LOGO.png";
 import { IconButton } from "./ui/index.jsx";
+import HomeBrand from "./ui/HomeBrand.jsx";
 
 export { default as ConfirmSplash } from "./ui/ConfirmSplash.jsx";
 export { default as ErrorSplash, classifyAuthError } from "./ui/ErrorSplash.jsx";
@@ -36,11 +36,10 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp }) {
             <ArrowLeft size={18} aria-hidden="true" />
           </Link>
         )}
-        <img src={ursLogo} alt="" aria-hidden="true" className="w-8 h-8 object-contain shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-sm text-fg truncate">{title || "University of Rizal System"}</p>
-          {subtitle && <p className="text-xs text-muted-fg truncate">{subtitle}</p>}
-        </div>
+        {/* The name is the way back to the front page — signed in, it asks
+            first and signs you out on the way. */}
+        <HomeBrand title={title || "University of Rizal System"} subtitle={subtitle}
+          className="flex-1" />
         {(person || onLogout || onHelp) && (
           <div className="flex items-center gap-2 min-w-0">
             {/* The walkthrough has to be reachable after it is dismissed —

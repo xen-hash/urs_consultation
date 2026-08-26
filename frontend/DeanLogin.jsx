@@ -124,7 +124,7 @@ export default function DeanLogin() {
             </button>
           </div>
 
-          <PortalNav current="/dean" tone="light" className="mt-8" />
+          <PortalNav current="/dean" hide={["/availability"]} tone="light" className="mt-8" />
         </div>
       </main>
     </div>

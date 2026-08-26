@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { QrCode, ScanLine, ChevronLeft, Lock, Delete, ArrowRight, ShieldCheck } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
 import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
 import URSBackground from "./URSBackground.jsx";
+import HomeBrand from "./ui/HomeBrand.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
-import ursLogo from "./URS_LOGO.png";
 
 // This screen used to offer a third option, "Get My ID", which let anyone pick
 // any professor from a list and receive that professor's employee ID and login
@@ -120,21 +120,25 @@ export default function TeacherPortal() {
       />
       <Toast toasts={toasts} removeToast={removeToast} />
 
+      {/* Full width, not a centred column: on a desktop the centred bar put the
+          logo out in the middle of the screen, nowhere near the corner people
+          look for it. */}
       <nav className="sticky top-0 z-30 bg-surface header-blend pt-safe">
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 max-w-3xl mx-auto w-full">
-          <div className="flex items-center gap-3 min-w-0">
-            <img src={ursLogo} alt="" aria-hidden="true"
-              className="w-8 h-8 object-contain shrink-0" />
-            <div className="min-w-0">
-              <p className="font-semibold text-sm text-fg truncate">University of Rizal System</p>
-              <p className="text-xs text-muted-fg">Faculty Portal</p>
-            </div>
-          </div>
-          {view !== "home" && view !== "setpin" && (
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 w-full">
+          <HomeBrand subtitle="Faculty Portal" className="flex-1" />
+          {/* Back was only drawn once a panel was open, so the first screen —
+              the one people land on — had no way out at all. Choosing a PIN is
+              the exception: the card scan has already signed you in, and there
+              is nothing behind it to go back to. */}
+          {view === "home" ? (
+            <Link to="/" className="btn btn-ghost btn-sm shrink-0">
+              <ChevronLeft size={16} aria-hidden="true" /> Back
+            </Link>
+          ) : view !== "setpin" ? (
             <button onClick={goHome} className="btn btn-ghost btn-sm shrink-0">
               <ChevronLeft size={16} aria-hidden="true" /> Back
             </button>
-          )}
+          ) : null}
         </div>
       </nav>
 
@@ -179,7 +183,7 @@ export default function TeacherPortal() {
               </p>
             </div>
 
-            <PortalNav current="/teacher" className="mt-8" />
+            <PortalNav current="/teacher" hide={["/availability"]} className="mt-8" />
           </div>
         )}
 
