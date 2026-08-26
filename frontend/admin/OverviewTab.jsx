@@ -6,6 +6,7 @@ import { Card, CardHeader, RequestBadge, EmptyState, Skeleton, Button } from "..
 import { shortDepartment } from "../ui/DepartmentIcon.jsx";
 import { TrendChart, StatusDonut } from "./Charts.jsx";
 import AuditFeed from "./AuditFeed.jsx";
+import StorageCard from "./StorageCard.jsx";
 
 /** Headline numbers. These come from /admin/stats — SQL counts over the whole
  *  table. They used to be `students.length` on the current page, so every
@@ -46,7 +47,7 @@ function DepartmentBar({ dept }) {
 }
 
 export default function OverviewTab({
-  stats, statsLoading, departments, requests, onSeeAll, onExport,
+  stats, statsLoading, departments, requests, onSeeAll, onExport, addToast,
 }) {
   const categories = stats?.categories || [];
   const maxCategory = Math.max(1, ...categories.map(c => c.count));
@@ -151,6 +152,8 @@ export default function OverviewTab({
             Every export is recorded in the activity log above.
           </p>
         </Card>
+
+        <StorageCard addToast={addToast} />
       </div>
 
       <Card className="p-0 overflow-hidden">
