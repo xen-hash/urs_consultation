@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { HardDrive, Recycle } from "lucide-react";
-import { Card, CardHeader, Button, Skeleton, ConfirmModal } from "../SharedUI.jsx";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { HardDrive, Recycle, RefreshCw } from "lucide-react";
+import { Card, CardHeader, Button, Skeleton, ConfirmModal, Alert } from "../SharedUI.jsx";
 import api, { apiError } from "../httpClient.js";
 
 /**
@@ -35,13 +35,27 @@ export default function StorageCard({ addToast }) {
   const [loading, setLoading] = useState(true);
   const [asking, setAsking] = useState(false);
   const [working, setWorking] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  // A ref, not the state: reading `usage` here would put it in this callback's
+  // dependencies, which changes the callback on every successful load, which
+  // re-fires the effect below — a refetch loop.
+  const everLoaded = useRef(false);
 
   const load = useCallback(async () => {
     try {
       const { data } = await api.get("/admin/storage");
       setUsage(data);
-    } catch { /* keep the last good reading */ }
-    finally { setLoading(false); }
+      everLoaded.current = true;
+      setUnavailable(false);
+    } catch (e) {
+      // Say so rather than falling through to the zero state. An unread
+      // figure rendered as "0 MB" claims the database is empty, which is the
+      // opposite of the truth and exactly the reading someone would act on.
+      // A 404 here is the ordinary case: the frontend deploys from the merge,
+      // the backend is a separate service, and for a while it is still the
+      // older build with no /admin/storage on it.
+      if (!everLoaded.current) setUnavailable(true);
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -79,6 +93,17 @@ export default function StorageCard({ addToast }) {
 
       {loading ? (
         <Skeleton className="h-24 rounded-lg" />
+      ) : unavailable ? (
+        <>
+          <Alert tone="warning">
+            Storage figures aren't available from the server yet. If the backend was
+            just updated it may still be restarting.
+          </Alert>
+          <Button className="w-full justify-start mt-3" icon={RefreshCw}
+            onClick={() => { setLoading(true); load(); }}>
+            Try again
+          </Button>
+        </>
       ) : (
         <>
           <div className="flex items-baseline justify-between gap-2">
