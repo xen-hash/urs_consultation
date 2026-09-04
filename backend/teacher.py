@@ -67,6 +67,32 @@ def _parse_time(t_str):
     return None
 
 
+def _parse_weekly(raw):
+    """A weekly_schedule column as a dict. JSONB may arrive decoded or as text."""
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except Exception:
+            return None
+    return raw if isinstance(raw, dict) else None
+
+
+def _latest_log(professor_name, department, action_type):
+    """The state one teacher_logs action currently carries for one teacher.
+
+    teacher_logs is append-only, so "current" is the newest row for that
+    (name, department, action_type). get_teacher_logs does the same thing in
+    bulk with a MAX(id) group-by; this is the single-teacher form of it.
+    """
+    return query(
+        """SELECT manual, manual_status, weekly_schedule
+           FROM teacher_logs
+           WHERE professor_name=%s AND department=%s AND action_type=%s
+           ORDER BY id DESC LIMIT 1""",
+        (professor_name, department, action_type), fetchone=True
+    )
+
+
 def _compute_status(log):
     if log is None:
         return "Unavailable"
@@ -84,12 +110,7 @@ def _compute_status(log):
         if not (work_start <= current_time <= work_end):
             return "Unavailable"
 
-    weekly = log.get("weekly_schedule")
-    if isinstance(weekly, str):
-        try:
-            weekly = json.loads(weekly)
-        except Exception:
-            weekly = None
+    weekly = _parse_weekly(log.get("weekly_schedule"))
 
     if weekly and day_name in weekly:
         day_sched = weekly[day_name]
@@ -827,13 +848,30 @@ def get_teacher_profile(employee_id):
     )
     if not teacher:
         return jsonify({"error": "Teacher not found"}), 404
+
+    # The dashboard has to be able to read back what it saved. Both of these
+    # live in teacher_logs rather than on the account, and leaving them out of
+    # this response meant the dashboard opened its schedule editor on a set of
+    # defaults and wrote those over the real schedule on the next save.
+    name, dept = teacher["professor_name"], teacher["department"]
+    sched_log  = _latest_log(name, dept, "schedule_update")
+    status_log = _latest_log(name, dept, "manual_status")
+
+    # save_manual_status stores NULL whenever the teacher is not overriding, so
+    # the absence of a manual status is what "follow my schedule" looks like.
+    # Spell it the way the dashboard's dropdown does.
+    manual_status = (status_log.get("manual_status")
+                     if status_log and _to_bool(status_log.get("manual")) else None)
+
     return jsonify({
         "employee_id": teacher["employee_id"],
-        "professor_name": teacher["professor_name"],
-        "department": teacher["department"],
+        "professor_name": name,
+        "department": dept,
         "photo": teacher.get("photo"),
         "has_pin": bool(teacher.get("pin_hash")),
         "daily_limit": teacher.get("daily_limit") or 0,
+        "weekly_schedule": _parse_weekly(sched_log.get("weekly_schedule")) if sched_log else None,
+        "manual_status": manual_status or "Auto (use schedule)",
     })
 
 
