@@ -9,6 +9,7 @@ import URSBackground from "./URSBackground.jsx";
 import HomeBrand from "./ui/HomeBrand.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
+import Mascot from "./ui/Mascot.jsx";
 
 export default function StudentPortal() {
   const navigate = useNavigate();
@@ -117,6 +118,7 @@ export default function StudentPortal() {
           <div className="animate-rise">
             <SignedOutNotice />
             <header className="mb-7">
+              <Mascot pose="happy" size="md" className="mb-3" />
               <h1 className="text-title font-bold text-on-backdrop">Student sign in</h1>
               <p className="text-on-backdrop/75 mt-1.5">Scan your student QR code, or enter your ID.</p>
             </header>

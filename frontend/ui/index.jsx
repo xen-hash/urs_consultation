@@ -299,12 +299,19 @@ export function SkeletonRows({ rows = 5, cols = 4 }) {
 
 /** An empty state should say what happened and what to do next, not just be
  *  blank space. */
-export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
+export function EmptyState({ icon: Icon = Inbox, title, description, action, illustration }) {
   return (
     <div className="text-center py-14 px-6">
-      <span className="icon-tile icon-tile-muted mx-auto mb-3 w-12 h-12">
-        <Icon size={22} aria-hidden="true" />
-      </span>
+      {/* An illustration where one is passed, the icon tile otherwise. Opt-in
+          per call site on purpose: most of this component's uses are on the
+          administration screens, which stay plain. */}
+      {illustration ? (
+        <div className="flex justify-center mb-3">{illustration}</div>
+      ) : (
+        <span className="icon-tile icon-tile-muted mx-auto mb-3 w-12 h-12">
+          <Icon size={22} aria-hidden="true" />
+        </span>
+      )}
       <p className="font-semibold text-fg">{title}</p>
       {description && <p className="text-sm text-muted-fg mt-1 max-w-sm mx-auto">{description}</p>}
       {action && <div className="mt-4">{action}</div>}

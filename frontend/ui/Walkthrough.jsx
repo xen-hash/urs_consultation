@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, ArrowLeft, X } from "lucide-react";
+import Mascot from "./Mascot.jsx";
 
 /**
  * The first-run walkthrough.
@@ -255,6 +256,10 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
         )}
 
         <div className="relative flex items-start gap-3">
+          {/* The tour already walks someone through the real screen step by
+              step. A face on it is the difference between a spotlight and a
+              guide, which is the whole of what Rizzy is for. */}
+          <Mascot pose="helpful" size="sm" className="mt-0.5 hidden xs:block" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-widest text-subtle-fg">
               Step {index + 1} of {live.length}

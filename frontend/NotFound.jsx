@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { Compass, Home } from "lucide-react";
+import { Home } from "lucide-react";
 import URSBackground from "./URSBackground.jsx";
 import PortalNav from "./ui/PortalNav.jsx";
 import HomeBrand from "./ui/HomeBrand.jsx";
+import Mascot from "./ui/Mascot.jsx";
 
 /**
  * A wrong address, answered rather than swallowed.
@@ -28,9 +29,7 @@ export default function NotFound() {
       <main className="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 flex flex-col justify-center
                        py-10 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
         <div className="animate-rise">
-          <span className="icon-tile w-12 h-12 mb-4 bg-on-backdrop/10 text-on-backdrop">
-            <Compass size={24} aria-hidden="true" />
-          </span>
+          <Mascot pose="working" size="lg" className="mb-4" />
 
           <h1 className="text-title font-bold text-on-backdrop">There's nothing at that address</h1>
           <p className="text-on-backdrop/75 mt-2 leading-relaxed">

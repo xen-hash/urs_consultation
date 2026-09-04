@@ -4,6 +4,7 @@ import { InstallAppButton, useOnlineStatus } from "./PWA.jsx";
 import SiteFooter from "./ui/SiteFooter.jsx";
 import URSBackground from "./URSBackground.jsx";
 import HomeBrand from "./ui/HomeBrand.jsx";
+import Mascot from "./ui/Mascot.jsx";
 
 const PORTALS = [
   {
@@ -45,14 +46,20 @@ export default function LandingPage() {
       </nav>
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
-        <header className="max-w-2xl animate-rise">
-          <h1 className="text-display font-bold text-on-backdrop">
-            Faculty consultation, without the guesswork
-          </h1>
-          <p className="text-on-backdrop/75 mt-3 text-base sm:text-lg leading-relaxed">
-            Live faculty availability, consultation requests and scheduling for the
-            URS College of Engineering.
-          </p>
+        <header className="animate-rise flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-10">
+          <div className="max-w-2xl">
+            <h1 className="text-display font-bold text-on-backdrop">
+              Faculty consultation, without the guesswork
+            </h1>
+            <p className="text-on-backdrop/75 mt-3 text-base sm:text-lg leading-relaxed">
+              Live faculty availability, consultation requests and scheduling for the
+              URS College of Engineering.
+            </p>
+          </div>
+          {/* Above the fold, so this one loads eagerly. Hidden on the narrowest
+              screens, where the headline should not have to share the width. */}
+          <Mascot pose="hero" size="lg" priority
+            className="hidden sm:block sm:-mb-2 lg:mr-4" />
         </header>
 
         <div className="grid gap-3 sm:grid-cols-3 mt-10 animate-rise">

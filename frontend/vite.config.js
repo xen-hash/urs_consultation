@@ -59,7 +59,11 @@ export default defineConfig({
           "**/icon-192.png",
           "**/icon-512.png",
           "**/icon-maskable-*.png",
-          "**/apple-touch-icon.png"
+          "**/apple-touch-icon.png",
+          // Rizzy is decorative and appears on a handful of screens. The shell
+          // has to work offline; a mascot arriving a moment later does not, and
+          // 229 KB is a sixth of what is left under the cap below.
+          "**/mascot/*.png"
         ],
         // The URS seal is ~1.7 MB; keep it in the shell so the app looks right offline.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
