@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 import pytz
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 
@@ -15,7 +15,6 @@ from tts import tts_bp
 from biometric import biometric_bp
 from admin import admin_bp
 from config import SECRET_KEY
-from security import read_token, too_many_attempts, client_ip
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder=None)

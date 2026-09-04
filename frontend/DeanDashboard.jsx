@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, BookOpen, GraduationCap, ClipboardList, UserPlus,
-  QrCode, LogOut, Shield, Download, RefreshCw, HelpCircle,
-  Volume2, VolumeX, X, ScrollText,
+  LayoutDashboard, BookOpen, GraduationCap, ClipboardList,   QrCode, LogOut, Shield, Download, RefreshCw, HelpCircle,
+  Volume2, VolumeX, ScrollText,
 } from "lucide-react";
-import { Toast, useToastState, IconButton, Button } from "./SharedUI.jsx";
+import { Toast, useToastState, IconButton } from "./SharedUI.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
 import ConfirmSplash from "./ui/ConfirmSplash.jsx";
 import ServerDown from "./ui/ServerDown.jsx";

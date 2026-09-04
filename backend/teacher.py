@@ -1,12 +1,12 @@
 import json
 import pytz
 import time as _time
-from datetime import datetime, date, timedelta
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from db import query, execute
 from config import PROFESSOR_LIST
 from security import (
-    require_role, subject, owns, forbid_unless_owner, is_admin,
+    require_role, subject, forbid_unless_owner, is_admin,
     current_claims, record_audit,
 )
 from phtime import serialize_row

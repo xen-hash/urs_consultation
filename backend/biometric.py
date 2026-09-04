@@ -5,7 +5,7 @@ import requests
 from flask import Blueprint, request, jsonify
 from db import query, execute
 from security import (
-    require_role, subject, is_admin, current_claims,
+    require_role, current_claims,
     too_many_attempts, client_ip, record_audit, issue_token,
 )
 

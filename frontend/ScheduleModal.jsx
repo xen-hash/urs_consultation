@@ -10,7 +10,9 @@ const DEFAULT_SCHEDULE = () =>
     DAYS.map(d => [d, { unavailable: false, slots: [DEFAULT_SLOT()], limit: 0 }])
   );
 
-function normalizeSchedule(raw) {
+// Exported for tests: this is the migration path from the legacy single-slot
+// shape, and the function the editor seeds itself from.
+export function normalizeSchedule(raw) {
   const base = DEFAULT_SCHEDULE();
   if (!raw || typeof raw !== "object") return base;
   const result = { ...base };
