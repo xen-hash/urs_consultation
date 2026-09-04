@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from db import query, execute
 from config import PROFESSOR_LIST
+from models import STATUS_VALUES
 from security import (
     require_role, subject, forbid_unless_owner, is_admin,
     current_claims, record_audit,
@@ -46,6 +47,16 @@ def _with_photos(result):
 DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
 WORKING_START = "06:00"
 WORKING_END   = "19:30"
+
+# Still on the teacher's plate: waiting for an answer, or answered and not yet
+# held. These are what the requests queue shows.
+OPEN_STATUSES = ("pending", "accepted")
+
+# What counts against the day's capacity. `accepted` has to be in here: it is a
+# consultation the teacher has committed to, so leaving it out would hand the
+# slot back out to someone else and quietly overbook them. Declined, cancelled
+# and archived rows free their slot again, which is the point of resolving them.
+CONSUMING_STATUSES = ("pending", "accepted", "done")
 
 
 def _to_bool(val):
@@ -193,11 +204,12 @@ def get_teacher_logs():
 
     today_ph = datetime.now(PH).strftime("%Y-%m-%d")
     consumed_rows = query(
-        """SELECT professor_name, COUNT(*) as cnt
-           FROM consultation_requests
-           WHERE status IN ('pending','done') AND request_time::date = %s::date
-           GROUP BY professor_name""",
-        (today_ph,), fetchall=True
+        f"""SELECT professor_name, COUNT(*) as cnt
+            FROM consultation_requests
+            WHERE status IN ({", ".join(["%s"] * len(CONSUMING_STATUSES))})
+              AND request_time::date = %s::date
+            GROUP BY professor_name""",
+        (*CONSUMING_STATUSES, today_ph), fetchall=True
     ) or []
     pending_map = {r["professor_name"]: r["cnt"] for r in consumed_rows}
 
@@ -409,13 +421,28 @@ def get_teacher_requests(employee_id):
     if not teacher:
         return jsonify({"error": "Teacher not found"}), 404
 
+    # The queue is what is still open: waiting, or taken on and not yet held.
+    # `?status=` widens it, because a teacher could previously never see what
+    # they had marked done or declined — the row left the screen and there was
+    # no way back to it. "history" is the settled counterpart to the queue.
+    wanted = (request.args.get("status") or "").strip().lower()
+    if wanted == "history":
+        statuses = ("done", "declined", "cancelled")
+    elif wanted == "all":
+        statuses = STATUS_VALUES
+    elif wanted in STATUS_VALUES:
+        statuses = (wanted,)
+    else:
+        statuses = OPEN_STATUSES
+
+    placeholders = ", ".join(["%s"] * len(statuses))
     reqs = query(
-        """SELECT cr.*, s.photo AS student_photo
-           FROM consultation_requests cr
-           LEFT JOIN students s ON cr.student_id = s.student_id
-           WHERE cr.professor_name=%s AND cr.status='pending'
-           ORDER BY cr.created_at DESC""",
-        (teacher["professor_name"],), fetchall=True
+        f"""SELECT cr.*, s.photo AS student_photo
+            FROM consultation_requests cr
+            LEFT JOIN students s ON cr.student_id = s.student_id
+            WHERE cr.professor_name=%s AND cr.status IN ({placeholders})
+            ORDER BY cr.created_at DESC""",
+        (teacher["professor_name"], *statuses), fetchall=True
     )
     return jsonify([_serialize_row(r) for r in (reqs or [])])
 
@@ -429,7 +456,8 @@ def _own_request_or_error(req_id):
     requests just by guessing the row id, which is a small integer.
     """
     req = query(
-        "SELECT id, professor_name, student_id FROM consultation_requests WHERE id=%s",
+        "SELECT id, professor_name, student_id, status "
+        "FROM consultation_requests WHERE id=%s",
         (req_id,), fetchone=True
     )
     if not req:
@@ -455,10 +483,49 @@ def mark_done(req_id):
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='done' WHERE id=%s", (req_id,))
+    record_audit("request.done", target=str(req_id),
+                 detail=f"{req['student_id']} -> {req['professor_name']}")
     realtime.request_resolved(
         req["student_id"], req["professor_name"], req_id, "done"
     )
     return jsonify({"message": "Marked as done"})
+
+
+# ─── ACCEPT REQUEST ───────────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/requests/<int:req_id>/accept", methods=["POST"])
+@require_role("teacher", "admin")
+def accept_request(req_id):
+    """Take a request on, without holding the consultation yet.
+
+    This state existed only as a Set in the teacher's browser, so it did not
+    survive a reload, did not follow them to another device, and — the part that
+    mattered — was never visible to the student, who could not tell "not looked
+    at yet" from "agreed to, waiting for a time".
+    """
+    global _logs_cache, _requests_cache
+    req, denied = _own_request_or_error(req_id)
+    if denied:
+        return denied
+    if req["status"] not in ("pending", "accepted"):
+        return jsonify({
+            "error": f"That request is already {req['status']}."
+        }), 409
+
+    now_ph = datetime.now(PH)
+    execute(
+        "UPDATE consultation_requests SET status='accepted', accepted_at=%s::timestamp "
+        "WHERE id=%s",
+        (now_ph.strftime("%Y-%m-%d %H:%M:%S"), req_id)
+    )
+    _logs_cache["ts"] = 0
+    _requests_cache["ts"] = 0
+    record_audit("request.accept", target=str(req_id),
+                 detail=f"{req['student_id']} -> {req['professor_name']}")
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "accepted"
+    )
+    return jsonify({"message": "Request accepted"})
 
 
 # ─── DECLINE REQUEST ──────────────────────────────────────────────────────────
@@ -473,6 +540,8 @@ def decline_request(req_id):
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='declined' WHERE id=%s", (req_id,))
+    record_audit("request.decline", target=str(req_id),
+                 detail=f"{req['student_id']} -> {req['professor_name']}")
     # A decline is an answer the student is waiting for, and until now they only
     # learned of it by reopening the app.
     realtime.request_resolved(
