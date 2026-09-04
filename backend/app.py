@@ -18,6 +18,7 @@ from export import export_bp
 from tts import tts_bp
 from biometric import biometric_bp
 from admin import admin_bp
+from notifications import notifications_bp
 from config import SECRET_KEY
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ app.register_blueprint(export_bp,    url_prefix="/api")
 app.register_blueprint(tts_bp,       url_prefix="/api")
 app.register_blueprint(biometric_bp, url_prefix="/api")
 app.register_blueprint(admin_bp,     url_prefix="/api/admin")
+app.register_blueprint(notifications_bp, url_prefix="/api")
 
 
 # ─── Security headers ─────────────────────────────────────────────────────────

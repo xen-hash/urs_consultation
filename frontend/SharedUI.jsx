@@ -20,7 +20,7 @@ export {
 
 /** Top bar for a signed-in area. `pt-safe` keeps it clear of the iOS notch —
  *  the PWA draws behind a translucent status bar. */
-export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp }) {
+export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp, actions }) {
   // Callers pass either a display string or { name, sub } — the dashboards use
   // the object form to show who is signed in and their ID or department.
   // Rendering the object directly is a React crash, which unmounts the whole
@@ -40,8 +40,12 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp }) {
             first and signs you out on the way. */}
         <HomeBrand title={title || "University of Rizal System"} subtitle={subtitle}
           className="flex-1" confirmSignOut />
-        {(person || onLogout || onHelp) && (
+        {(person || onLogout || onHelp || actions) && (
           <div className="flex items-center gap-2 min-w-0">
+            {/* Anything role-specific that belongs in the top bar — the
+                notification bell, today. Placed before the identity block
+                so sign-out stays the last thing on the row. */}
+            {actions}
             {/* The walkthrough has to be reachable after it is dismissed —
                 otherwise the only way back to it is clearing site data. */}
             {onHelp && <IconButton icon={HelpCircle} label="Show the guide" onClick={onHelp} />}

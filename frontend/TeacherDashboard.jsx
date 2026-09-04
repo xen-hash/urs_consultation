@@ -16,6 +16,7 @@ import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
 import { teacherTour } from "./ui/tours.js";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
+import NotificationBell from "./ui/NotificationBell.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
@@ -98,6 +99,7 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [signingOut, setSigningOut] = useState(false);
+  const [liveSocket, setLiveSocket] = useState(null);
   // getSession returns null once the session is gone. The redirect for that
   // used to sit here, above every useState below — which is a hooks-order
   // violation: a session expiring between two renders changed the number of
@@ -255,6 +257,7 @@ export default function TeacherDashboard() {
         transports: ["polling"], reconnectionAttempts: 3,
         auth: { token: getToken("teacher") },
       });
+      setLiveSocket(socket);
       socket.on("consultation_update", fetchRequests);
       socket.on("new_request", fetchRequests);
     } catch(e) { console.warn("Socket unavailable"); }
@@ -474,8 +477,9 @@ export default function TeacherDashboard() {
         onClose={() => setTourOpen(false)}
         onExit={() => setTab("requests")}
       />
-      <URSHeader subtitle="Teacher Dashboard" accent="orange"
+      <URSHeader subtitle="Teacher Dashboard"
         onHelp={() => setTourOpen(true)}
+        actions={<NotificationBell socket={liveSocket} />}
         user={{ name: teacher.professor_name, sub: teacher.department }}
         onLogout={() => setSigningOut(true)} />
 

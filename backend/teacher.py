@@ -12,6 +12,7 @@ from security import (
 )
 from phtime import serialize_row
 import realtime
+import notifications as notify_mod
 
 teacher_bp = Blueprint("teacher", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -488,6 +489,11 @@ def mark_done(req_id):
     realtime.request_resolved(
         req["student_id"], req["professor_name"], req_id, "done"
     )
+    notify_mod.notify(
+        "student", req["student_id"], notify_mod.REQUEST_DONE,
+        f"Your consultation with {req['professor_name']} is complete",
+        None, link="/student/dashboard",
+    )
     return jsonify({"message": "Marked as done"})
 
 
@@ -525,6 +531,12 @@ def accept_request(req_id):
     realtime.request_resolved(
         req["student_id"], req["professor_name"], req_id, "accepted"
     )
+    notify_mod.notify(
+        "student", req["student_id"], notify_mod.REQUEST_ACCEPTED,
+        f"{req['professor_name']} accepted your request",
+        "They will see you. Watch for a time if one has not been set yet.",
+        link="/student/dashboard",
+    )
     return jsonify({"message": "Request accepted"})
 
 
@@ -546,6 +558,14 @@ def decline_request(req_id):
     # learned of it by reopening the app.
     realtime.request_resolved(
         req["student_id"], req["professor_name"], req_id, "declined"
+    )
+    # The one people were most obviously left waiting on: a decline was
+    # invisible until the student next opened the app and looked.
+    notify_mod.notify(
+        "student", req["student_id"], notify_mod.REQUEST_DECLINED,
+        f"{req['professor_name']} declined your request",
+        "You can file another one, or try a different time.",
+        link="/student/dashboard",
     )
     return jsonify({"message": "Request declined"})
 
@@ -988,5 +1008,11 @@ def set_appointment(req_id):
     # point of this route.
     realtime.request_resolved(
         req["student_id"], req["professor_name"], req_id, "appointment_set"
+    )
+    notify_mod.notify(
+        "student", req["student_id"], notify_mod.APPOINTMENT_SET,
+        f"{req['professor_name']} set a time for you",
+        f"{appt_date} at {appt_time}" + (f" - {appt_notes}" if appt_notes else ""),
+        link="/student/dashboard",
     )
     return jsonify({"message": "Appointment set successfully"})
