@@ -152,6 +152,11 @@ LATE_COLUMNS = [
     ("consultation_requests", "appointment_time",   "VARCHAR(20)"),
     ("consultation_requests", "appointment_notes",  "TEXT"),
     ("consultation_requests", "appointment_set_at", "TIMESTAMP"),
+    # When the teacher took the request on, and when the student withdrew it.
+    # Written by the app clock, so Manila like the other two — phtime's default
+    # for a naive value, and only created_at is the database's UTC clock.
+    ("consultation_requests", "accepted_at",        "TIMESTAMP"),
+    ("consultation_requests", "cancelled_at",       "TIMESTAMP"),
     # Credential + session columns. qr_serial is the random value a faculty QR
     # card actually encodes; it starts NULL, and a NULL serial can never match a
     # scan, so no account has a working card until an admin issues one.
@@ -195,7 +200,15 @@ LATE_COLUMNS = [
 
 # The status column used to be a MySQL ENUM. It is a plain VARCHAR here, with a
 # CHECK constraint doing the same job.
-STATUS_VALUES = ("pending", "done", "declined", "archived")
+#
+# `accepted` sits between pending and done: the teacher has taken the request on
+# but the consultation has not happened yet. It used to live in a Set in the
+# teacher's browser, so it was lost on reload and the student never saw it.
+#
+# `cancelled` is the student withdrawing their own request. It is a status
+# rather than a DELETE because "they changed their mind" and "it never existed"
+# are different facts, and only one of them should be visible afterwards.
+STATUS_VALUES = ("pending", "accepted", "done", "declined", "cancelled", "archived")
 
 
 def init_db():
@@ -302,14 +315,36 @@ def _add_missing_columns(cur):
 
 
 def _ensure_status_check(cur):
-    """Replace the old MySQL ENUM with an equivalent CHECK constraint."""
+    """Replace the old MySQL ENUM with an equivalent CHECK constraint.
+
+    This used to return as soon as a constraint by that name existed, which
+    meant adding a value to STATUS_VALUES had no effect on any database that had
+    already been started once — every deployment, in other words. The new value
+    would be rejected in production while passing on a freshly created test
+    database, which is the worst way for it to fail.
+
+    So compare against what is actually installed and replace it when it has
+    drifted. Dropping and re-adding is safe: the drop only loosens the column
+    for the moment between the two statements, and both run in the same
+    transaction.
+    """
     values = ", ".join(f"'{v}'" for v in STATUS_VALUES)
     cur.execute(
-        "SELECT 1 FROM pg_constraint WHERE conname = 'ck_cr_status' "
+        "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+        "WHERE conname = 'ck_cr_status' "
         "AND conrelid = 'consultation_requests'::regclass"
     )
-    if cur.fetchone():
-        return
+    row = cur.fetchone()
+    if row:
+        installed = row[0] or ""
+        # Every current value already named means the constraint is current.
+        # Comparing the rendered SQL directly would be fragile: Postgres
+        # normalises the expression it echoes back.
+        if all(f"'{v}'" in installed for v in STATUS_VALUES):
+            return
+        print("[DB] Status CHECK constraint is out of date; replacing it")
+        cur.execute("ALTER TABLE consultation_requests DROP CONSTRAINT ck_cr_status")
+
     try:
         cur.execute(
             f"ALTER TABLE consultation_requests ADD CONSTRAINT ck_cr_status "

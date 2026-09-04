@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Clock, CheckCircle2, XCircle, CalendarCheck, Inbox, AlertTriangle,
-  Archive, CircleDot,
+  Archive, CircleDot, UserCheck, Ban,
 } from "lucide-react";
 
 /* ── Button ───────────────────────────────────────────────────────────────── */
@@ -103,7 +103,11 @@ export function CardHeader({ title, subtitle, action, icon: Icon }) {
 
 const REQUEST_STATUS = {
   pending:     { label: "Pending",     icon: Clock,         cls: "badge-warning" },
+  // Taken on by the teacher, not yet held. The student could previously not
+  // tell this apart from "nobody has looked at it".
+  accepted:    { label: "Accepted",    icon: UserCheck,     cls: "badge-accent" },
   done:        { label: "Done",        icon: CheckCircle2,  cls: "badge-success" },
+  cancelled:   { label: "Withdrawn",   icon: Ban,           cls: "badge-neutral" },
   declined:    { label: "Declined",    icon: XCircle,       cls: "badge-danger" },
   archived:    { label: "Archived",    icon: Archive,       cls: "badge-neutral" },
   appointment: { label: "Appointment", icon: CalendarCheck, cls: "badge-accent" },
@@ -127,7 +131,8 @@ export function StatusBadge({ status }) {
 }
 
 export function RequestBadge({ status, hasAppointment = false }) {
-  const key  = hasAppointment && status === "pending" ? "appointment" : status;
+  const key  = hasAppointment && (status === "pending" || status === "accepted")
+    ? "appointment" : status;
   const meta = REQUEST_STATUS[key] || REQUEST_STATUS.pending;
   const Icon = meta.icon;
   return (

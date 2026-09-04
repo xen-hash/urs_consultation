@@ -134,7 +134,10 @@ export default function TeacherDashboard() {
     } catch { return 10; }
   });
   const [savingLimit, setSavingLimit] = useState(false);
-  const [accepted, setAccepted]         = useState(new Set());
+  // Acceptance used to live in a Set here, which meant it was lost on reload
+  // and invisible to the student. It is a row status now; these derive the
+  // day's figures from what the server actually holds.
+  const acceptedCount = requests.filter(r => r.status === "accepted").length;
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [tourOpen, setTourOpen]         = useState(() => !hasSeenTour("teacher"));
   const tourSteps = useMemo(() => teacherTour(setTab), []);
@@ -270,6 +273,20 @@ export default function TeacherDashboard() {
   // and pushed another — the back gesture could never escape.
   if (!session) return <Navigate to="/teacher" replace />;
 
+  // Accepting is a write now, not a local flag. Re-fetch rather than patch the
+  // row by hand: the server decides whether the transition was allowed, and a
+  // request someone else already resolved must not look accepted here.
+  const handleAccept = async (id) => {
+    try {
+      await api.post(`/teacher/requests/${id}/accept`);
+    } catch (e) {
+      addToast(apiError(e, "Could not accept that request."), "error");
+      return;
+    }
+    fetchRequests();
+    addToast("Request accepted. The student can see it.", "success");
+  };
+
   const handleDone = async (id) => {
     const req = requests.find(r => r.id === id);
     try {
@@ -279,7 +296,6 @@ export default function TeacherDashboard() {
       return;
     }
     setRequests(p=>p.filter(r=>r.id!==id));
-    setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
     _teacherSeenIds.delete(id);
     addToast("Consultation completed.","success");
     if (req) piperSpeak(`Consultation completed. ${getFirstName(req.student_name)} has been served.`);
@@ -293,8 +309,7 @@ export default function TeacherDashboard() {
     try {
       await api.delete(`/teacher/requests/${id}`);
       setRequests(p => p.filter(r => r.id !== id));
-      setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
-      _teacherSeenIds.delete(id);
+        _teacherSeenIds.delete(id);
       setConfirmDelete(null);
       addToast("Request deleted.", "success");
     } catch (e) {
@@ -313,7 +328,6 @@ export default function TeacherDashboard() {
     }
     _teacherSeenIds.delete(id);
     setRequests(p=>p.filter(r=>r.id!==id));
-    setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
     addToast("Request declined.","info");
   };
 
@@ -409,7 +423,6 @@ export default function TeacherDashboard() {
     try {
       await api.post("/teacher/reset-daily-count");
       setRequests([]);
-      setAccepted(new Set());
       addToast("Session reset! You can now accept a new batch of consultations.", "success");
       fetchRequests();
     } catch(e) { addToast("Failed to reset session.", "error"); }
@@ -534,9 +547,9 @@ export default function TeacherDashboard() {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
               <StatTile label="Waiting" value={requests.length} icon={ClipboardList} />
-              <StatTile label="Accepted today" value={`${accepted.size}/${consultLimit}`}
-                icon={CheckCircle2} tone={accepted.size >= consultLimit ? "warning" : "success"} />
-              <StatTile label="Slots left" value={Math.max(0, consultLimit - accepted.size)}
+              <StatTile label="Accepted today" value={`${acceptedCount}/${consultLimit}`}
+                icon={CheckCircle2} tone={acceptedCount >= consultLimit ? "warning" : "success"} />
+              <StatTile label="Slots left" value={Math.max(0, consultLimit - acceptedCount)}
                 icon={Sliders} />
               <div className="card p-3.5 sm:p-4" data-tour="teacher-limit">
                 <label htmlFor="daily-limit"
@@ -573,8 +586,8 @@ export default function TeacherDashboard() {
               const reqTotalPages = Math.ceil(requests.length / REQ_PAGE_SIZE);
               return (<>
                 {pagedReqs.map(req => {
-              const isAccepted = accepted.has(req.id);
-              const isFull = accepted.size >= consultLimit && !isAccepted;
+              const isAccepted = req.status === "accepted";
+              const isFull = acceptedCount >= consultLimit && !isAccepted;
               return (
               <div key={req.id} className="card p-4 sm:p-5 transition-shadow hover:shadow">
                 <div className="flex items-start gap-3 sm:gap-4">
@@ -636,7 +649,7 @@ export default function TeacherDashboard() {
                               addToast(`You are at your limit of ${consultLimit} for today.`, "warning");
                               return;
                             }
-                            setAccepted(prev => { const n = new Set(prev); n.add(req.id); return n; });
+                            handleAccept(req.id);
                           }}>
                           Accept
                         </Button>
