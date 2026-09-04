@@ -319,6 +319,18 @@ def verify_student(student_id):
     import teacher as teacher_module
     teacher_module._students_cache["ts"] = 0
 
+    # Being confirmed is the thing an unverified student is waiting for — it is
+    # what stands between them and booking anything — and until now the only way
+    # to find out was to try again and see whether it still refused.
+    if verified:
+        import notifications as notify_mod
+        notify_mod.notify(
+            "student", student["student_id"], notify_mod.ACCOUNT_VERIFIED,
+            "Your enrolment has been confirmed",
+            "You can now send consultation requests.",
+            link="/student/dashboard",
+        )
+
     return jsonify({
         "message": f"{student['full_name']} confirmed as enrolled."
                    if verified else

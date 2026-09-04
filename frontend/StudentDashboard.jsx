@@ -10,6 +10,7 @@ import {
 import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash, ConfirmModal, Card, CardHeader } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
+import NotificationBell from "./ui/NotificationBell.jsx";
 import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
@@ -67,6 +68,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [signingOut, setSigningOut] = useState(false);
+  const [liveSocket, setLiveSocket] = useState(null);
   // getSession returns null once the session is gone. The redirect for that
   // used to sit here, above every useState below — which is a hooks-order
   // violation: a session expiring between two renders changed the number of
@@ -155,6 +157,7 @@ export default function StudentDashboard() {
         transports: ["polling"], reconnectionAttempts: 3,
         auth: { token: getToken("student") },
       });
+      setLiveSocket(socket);
       socket.on("status_update", fetchProfessors);
       socket.on("request_update", fetchInbox);
     } catch (e) { console.warn("Socket unavailable:", e); }
@@ -342,6 +345,7 @@ export default function StudentDashboard() {
         subtitle="Student Dashboard"
         user={{ name: student.full_name, sub: student.student_id }}
         onHelp={() => setTourOpen(true)}
+        actions={<NotificationBell socket={liveSocket} />}
         onLogout={() => setSigningOut(true)}
       />
 

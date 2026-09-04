@@ -5,6 +5,7 @@ from db import query, execute
 from security import require_role, subject, forbid_unless_owner, record_audit
 from phtime import serialize_row
 import realtime
+import notifications as notify_mod
 
 student_bp = Blueprint("student", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -107,6 +108,14 @@ def submit_request():
     # slots-left figure is now stale.
     realtime.availability_changed(data["professor_name"], data["department"])
 
+    notify_mod.notify(
+        "teacher", realtime.employee_id_for(data["professor_name"]),
+        notify_mod.NEW_REQUEST,
+        f"New request from {student_name}",
+        f"{data['category']} - {data['purpose']}",
+        link="/teacher/dashboard",
+    )
+
     return jsonify({"message": "Consultation request submitted!"}), 201
 
 
@@ -153,6 +162,13 @@ def cancel_request(req_id):
         req["student_id"], req["professor_name"], req_id, "cancelled"
     )
     realtime.availability_changed(req["professor_name"])
+    notify_mod.notify(
+        "teacher", realtime.employee_id_for(req["professor_name"]),
+        notify_mod.REQUEST_CANCELLED,
+        "A student withdrew their request",
+        "Their slot for today is free again.",
+        link="/teacher/dashboard",
+    )
     return jsonify({"message": "Request cancelled"})
 
 
