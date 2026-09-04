@@ -1,15 +1,16 @@
 import json
 import pytz
 import time as _time
-from datetime import datetime, date, timedelta
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from db import query, execute
 from config import PROFESSOR_LIST
 from security import (
-    require_role, subject, owns, forbid_unless_owner, is_admin,
+    require_role, subject, forbid_unless_owner, is_admin,
     current_claims, record_audit,
 )
 from phtime import serialize_row
+import realtime
 
 teacher_bp = Blueprint("teacher", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -67,6 +68,32 @@ def _parse_time(t_str):
     return None
 
 
+def _parse_weekly(raw):
+    """A weekly_schedule column as a dict. JSONB may arrive decoded or as text."""
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except Exception:
+            return None
+    return raw if isinstance(raw, dict) else None
+
+
+def _latest_log(professor_name, department, action_type):
+    """The state one teacher_logs action currently carries for one teacher.
+
+    teacher_logs is append-only, so "current" is the newest row for that
+    (name, department, action_type). get_teacher_logs does the same thing in
+    bulk with a MAX(id) group-by; this is the single-teacher form of it.
+    """
+    return query(
+        """SELECT manual, manual_status, weekly_schedule
+           FROM teacher_logs
+           WHERE professor_name=%s AND department=%s AND action_type=%s
+           ORDER BY id DESC LIMIT 1""",
+        (professor_name, department, action_type), fetchone=True
+    )
+
+
 def _compute_status(log):
     if log is None:
         return "Unavailable"
@@ -84,12 +111,7 @@ def _compute_status(log):
         if not (work_start <= current_time <= work_end):
             return "Unavailable"
 
-    weekly = log.get("weekly_schedule")
-    if isinstance(weekly, str):
-        try:
-            weekly = json.loads(weekly)
-        except Exception:
-            weekly = None
+    weekly = _parse_weekly(log.get("weekly_schedule"))
 
     if weekly and day_name in weekly:
         day_sched = weekly[day_name]
@@ -291,6 +313,7 @@ def save_schedule():
          json.dumps(weekly_schedule), now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
     _logs_cache["ts"] = 0
+    realtime.availability_changed(teacher["professor_name"], teacher["department"])
     return jsonify({"message": "Schedule saved successfully"})
 
 
@@ -365,6 +388,9 @@ def save_manual_status():
          now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
     _logs_cache["ts"] = 0
+    # This is the change the board exists to show, and the one people were
+    # waiting up to thirty seconds to see.
+    realtime.availability_changed(teacher["professor_name"], teacher["department"])
     return jsonify({"message": "Status updated"})
 
 
@@ -403,7 +429,7 @@ def _own_request_or_error(req_id):
     requests just by guessing the row id, which is a small integer.
     """
     req = query(
-        "SELECT id, professor_name FROM consultation_requests WHERE id=%s",
+        "SELECT id, professor_name, student_id FROM consultation_requests WHERE id=%s",
         (req_id,), fetchone=True
     )
     if not req:
@@ -423,12 +449,15 @@ def _own_request_or_error(req_id):
 @require_role("teacher", "admin")
 def mark_done(req_id):
     global _logs_cache, _requests_cache
-    _, denied = _own_request_or_error(req_id)
+    req, denied = _own_request_or_error(req_id)
     if denied:
         return denied
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='done' WHERE id=%s", (req_id,))
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "done"
+    )
     return jsonify({"message": "Marked as done"})
 
 
@@ -438,12 +467,17 @@ def mark_done(req_id):
 @require_role("teacher", "admin")
 def decline_request(req_id):
     global _logs_cache, _requests_cache
-    _, denied = _own_request_or_error(req_id)
+    req, denied = _own_request_or_error(req_id)
     if denied:
         return denied
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='declined' WHERE id=%s", (req_id,))
+    # A decline is an answer the student is waiting for, and until now they only
+    # learned of it by reopening the app.
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "declined"
+    )
     return jsonify({"message": "Request declined"})
 
 
@@ -827,13 +861,30 @@ def get_teacher_profile(employee_id):
     )
     if not teacher:
         return jsonify({"error": "Teacher not found"}), 404
+
+    # The dashboard has to be able to read back what it saved. Both of these
+    # live in teacher_logs rather than on the account, and leaving them out of
+    # this response meant the dashboard opened its schedule editor on a set of
+    # defaults and wrote those over the real schedule on the next save.
+    name, dept = teacher["professor_name"], teacher["department"]
+    sched_log  = _latest_log(name, dept, "schedule_update")
+    status_log = _latest_log(name, dept, "manual_status")
+
+    # save_manual_status stores NULL whenever the teacher is not overriding, so
+    # the absence of a manual status is what "follow my schedule" looks like.
+    # Spell it the way the dashboard's dropdown does.
+    manual_status = (status_log.get("manual_status")
+                     if status_log and _to_bool(status_log.get("manual")) else None)
+
     return jsonify({
         "employee_id": teacher["employee_id"],
-        "professor_name": teacher["professor_name"],
-        "department": teacher["department"],
+        "professor_name": name,
+        "department": dept,
         "photo": teacher.get("photo"),
         "has_pin": bool(teacher.get("pin_hash")),
         "daily_limit": teacher.get("daily_limit") or 0,
+        "weekly_schedule": _parse_weekly(sched_log.get("weekly_schedule")) if sched_log else None,
+        "manual_status": manual_status or "Auto (use schedule)",
     })
 
 
@@ -843,7 +894,7 @@ def get_teacher_profile(employee_id):
 @require_role("teacher", "admin")
 def set_appointment(req_id):
     global _requests_cache
-    _, denied = _own_request_or_error(req_id)
+    req, denied = _own_request_or_error(req_id)
     if denied:
         return denied
     data = request.json or {}
@@ -864,4 +915,9 @@ def set_appointment(req_id):
          now_ph.strftime("%Y-%m-%d %H:%M:%S"), req_id)
     )
     _requests_cache["ts"] = 0
+    # The student has been waiting for a time. Telling them now is the whole
+    # point of this route.
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "appointment_set"
+    )
     return jsonify({"message": "Appointment set successfully"})

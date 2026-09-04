@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ScrollText, Search, CloudOff } from "lucide-react";
-import { Card, Badge, EmptyState, SkeletonRows, Pagination } from "../SharedUI.jsx";
+import { Card, EmptyState, SkeletonRows, Pagination } from "../SharedUI.jsx";
 import { usePagedResource, useDebounced } from "./hooks.js";
 import { meta } from "./AuditFeed.jsx";
 import { formatWhen, formatDateTime } from "../ui/datetime.js";

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, GraduationCap } from "lucide-react";
 import { Toast, useToastState, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
-import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
+import PortalNav from "./ui/PortalNav.jsx";
 import HomeBrand from "./ui/HomeBrand.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";

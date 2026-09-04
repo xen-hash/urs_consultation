@@ -28,8 +28,7 @@ from flask import Blueprint, request, jsonify
 from db import query, execute
 from config import ADMIN_USERNAME, ADMIN_PASSWORD_HASH
 from security import (
-    issue_token, require_role, subject, forbid_unless_owner,
-    too_many_attempts, clear_rate_limit, client_ip,
+    issue_token, require_role, subject, too_many_attempts, clear_rate_limit, client_ip,
     record_audit, generate_qr_b64, teacher_by_employee_id,
 )
 

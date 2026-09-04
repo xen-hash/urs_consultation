@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, Radio, ChevronRight } from "lucide-react";
 import QRScanner from "./QRScanner.jsx";
-import { Toast, useToastState, Spinner, Button, Alert, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
+import { Toast, useToastState, Spinner, Button, ConfirmSplash, ErrorSplash, classifyAuthError } from "./SharedUI.jsx";
 import SignedOutNotice from "./ui/SignedOutNotice.jsx";
 import PortalNav, { BackLink } from "./ui/PortalNav.jsx";
 import URSBackground from "./URSBackground.jsx";

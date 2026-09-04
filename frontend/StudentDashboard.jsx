@@ -3,15 +3,15 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import {
   Clock, CheckCircle2, XCircle, CalendarCheck,
-  Send, RefreshCw, Search, GraduationCap, BookOpen, X,
-  ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Delete, Palette,
+  Send, RefreshCw, Search, GraduationCap, X,
+  ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Palette,
   ShieldQuestion,
 } from "lucide-react";
 import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash, Card, CardHeader } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
-import api, { apiError } from "./httpClient.js";
-import { getSession, patchProfile, clearSession } from "./auth.js";
+import api from "./httpClient.js";
+import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
@@ -24,175 +24,10 @@ import {
 
 let socket = null;
 
-// ── Keyboard layout definitions ───────────────────────────────────────────────
-// The on-screen keyboard keeps a dark surface of its own rather than adopting
-// the page tokens: it stands in for the system keyboard, and platform keyboards
-// are a distinct surface from the page they type into. The hex values below are
-// scoped to this widget for that reason.
-// Letter mode
-const L_ROW1 = ["q","w","e","r","t","y","u","i","o","p"];
-const L_ROW2 = ["a","s","d","f","g","h","j","k","l"];
-const L_ROW3 = ["z","x","c","v","b","n","m"];
-
-// Number / symbol mode
-const N_ROW1 = ["1","2","3","4","5","6","7","8","9","0"];
-const N_ROW2 = ["-","/",":",";","(",")","%","@",'"',"'"];
-const N_ROW3 = [".",",","?","!","#","&","_"];
-
-// ── Single key button ─────────────────────────────────────────────────────────
-function KbKey({ label, icon, onPress, accent, danger, dark, wide, narrow, cls = "" }) {
-  const base =
-    "flex items-center justify-center select-none rounded-[10px] border-b-[3px] " +
-    "text-[15px] font-semibold cursor-pointer touch-none active:border-b-0 active:translate-y-[3px] " +
-    "transition-transform duration-75 h-[46px] ";
-  const color = accent
-    ? "bg-brand border-[#001f44] text-fg "
-    : danger
-    ? "bg-[#c0392b] border-[#922b21] text-fg "
-    : dark
-    ? "bg-[#151f2e] border-[#0a1018] text-muted-fg "
-    : "bg-[#2c3e52] border-[#1a2535] text-fg ";
-  const width = narrow ? "w-[46px] shrink-0 " : wide ? "flex-[1.6] " : "flex-1 ";
-  return (
-    <button
-      onPointerDown={e => { e.preventDefault(); onPress(); }}
-      className={base + color + width + cls}>
-      {icon || label}
-    </button>
-  );
-}
-
-/**
- * InlineKeyboard — standard QWERTY layout rendered as a shrink-0 flex child.
- * Naturally pushes Cancel/Submit buttons up; form body shrinks to fill remaining space.
- *
- * Letter mode layout:
- *   q w e r t y u i o p
- *    a s d f g h j k l
- *   ⇧  z x c v b n m  ⌫
- *   123      space      .   Done
- *
- * Number mode layout:
- *   1 2 3 4 5 6 7 8 9 0
- *   - / : ; ( ) % @ " '
- *   #+  . , ? ! # &    ⌫
- *   ABC      space      .   Done
- */
-function InlineKeyboard({ value = "", onChange, onDone, maxLength = 300 }) {
-  const [caps, setCaps]       = useState(false);
-  const [shift, setShift]     = useState(false);
-  const [numMode, setNumMode] = useState(false);
-  const bspRef = useRef(null);
-
-  const letterRow1 = (caps || shift) ? L_ROW1.map(k => k.toUpperCase()) : L_ROW1;
-  const letterRow2 = (caps || shift) ? L_ROW2.map(k => k.toUpperCase()) : L_ROW2;
-  const letterRow3 = (caps || shift) ? L_ROW3.map(k => k.toUpperCase()) : L_ROW3;
-
-  const tap = useCallback((char) => {
-    if (value.length >= maxLength) return;
-    onChange(value + char);
-    if (shift) setShift(false);
-  }, [value, onChange, shift, maxLength]);
-
-  const backspace = useCallback(() => { onChange(value.slice(0, -1)); }, [value, onChange]);
-  const bspDown   = () => { backspace(); bspRef.current = setInterval(backspace, 80); };
-  const bspUp     = () => clearInterval(bspRef.current);
-  useEffect(() => () => clearInterval(bspRef.current), []);
-
-  const charsLeft = maxLength - value.length;
-
-  return (
-    <div
-      className="shrink-0 w-full select-none pb-2"
-      style={{
-        background: "linear-gradient(160deg, #10192a 0%, #0d1520 100%)",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-        animation: "kbIn 0.2s cubic-bezier(0.22,1,0.36,1) both",
-      }}>
-      <style>{`@keyframes kbIn{from{transform:translateY(100%);opacity:0}to{transform:none;opacity:1}}`}</style>
-
-      {/* ── KEY ROWS ── */}
-      <div className="px-2 pt-2 pb-1 flex flex-col gap-[6px]">
-
-        {numMode ? (
-          /* ── NUMBER MODE ── */
-          <>
-            {/* Row 1: 1–0 */}
-            <div className="flex gap-[5px]">
-              {N_ROW1.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-            {/* Row 2: symbols */}
-            <div className="flex gap-[5px]">
-              {N_ROW2.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-            {/* Row 3: #+= | symbols | ⌫ — mirrors shift/backspace pattern */}
-            <div className="flex gap-[5px]">
-              <KbKey label="#+=" dark narrow onPress={() => {}} />
-              <div className="flex flex-1 gap-[5px]">
-                {N_ROW3.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-              </div>
-              <KbKey icon={<Delete size={17} />} danger narrow onPress={backspace} />
-            </div>
-            {/* Row 4: ABC / space / . / Done */}
-            <div className="flex gap-[5px]">
-              <KbKey label="ABC" dark narrow onPress={() => setNumMode(false)} />
-              <KbKey label="space" dark onPress={() => tap(" ")} />
-              <KbKey label="." dark narrow onPress={() => tap(".")} />
-              <KbKey label="Done" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
-            </div>
-          </>
-        ) : (
-          /* ── LETTER MODE ── */
-          <>
-            {/* Row 1: q–p (10 keys, full width) */}
-            <div className="flex gap-[5px]">
-              {letterRow1.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-
-            {/* Row 2: a–l (9 keys, centered — indent ~half a key on each side) */}
-            <div className="flex gap-[5px] px-[3.8%]">
-              {letterRow2.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-            </div>
-
-            {/* Row 3: ⇧ + z–m + ⌫ */}
-            <div className="flex gap-[5px]">
-              {/* Shift */}
-              <KbKey
-                label={caps ? "⇪" : "⇧"}
-                dark={!caps && !shift}
-                accent={caps || shift}
-                narrow
-                onPress={() => {
-                  if (caps)        { setCaps(false); setShift(false); }
-                  else if (shift)  { setCaps(true);  setShift(false); }
-                  else             { setShift(true); }
-                }}
-              />
-              {/* z–m (7 keys, flex-1 each, centred between shift and backspace) */}
-              <div className="flex flex-1 gap-[5px]">
-                {letterRow3.map(k => <KbKey key={k} label={k} onPress={() => tap(k)} />)}
-              </div>
-              {/* Backspace */}
-              <KbKey
-                icon={<Delete size={17} />}
-                danger narrow
-                onPress={backspace}
-              />
-            </div>
-
-            {/* Row 4: 123 / space / . / Done */}
-            <div className="flex gap-[5px]">
-              <KbKey label="123" dark narrow onPress={() => setNumMode(true)} />
-              <KbKey label="space" dark onPress={() => tap(" ")} />
-              <KbKey label="." dark narrow onPress={() => tap(".")} />
-              <KbKey label="Done" accent narrow onPress={() => onDone?.()} cls="!w-[72px]" />
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+// Stands in for the session on the render where it has just gone. Module-level
+// so its identity is stable: the hooks that depend on `student` must not see a
+// new object on every render.
+const EMPTY_STUDENT = {};
 
 // ── Waiting on the admin office ───────────────────────────────────────────────
 //
@@ -232,12 +67,14 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [signingOut, setSigningOut] = useState(false);
-  const student = getSession("student");
-
-  // Rendered redirect, not an imperative one. Calling navigate() during
-  // render pushed a history entry on every render, so swiping back re-
-  // rendered this and pushed another — the back gesture could never escape.
-  if (!student) return <Navigate to="/student" replace />;
+  // getSession returns null once the session is gone. The redirect for that
+  // used to sit here, above every useState below — which is a hooks-order
+  // violation: a session expiring between two renders changed the number of
+  // hooks this component called and React tore it down with "rendered fewer
+  // hooks than expected". The bail-out now happens after the last hook, and
+  // the hooks in between read from a stable empty object rather than null.
+  const session = getSession("student");
+  const student = session || EMPTY_STUDENT;
 
   const [tab, setTab]                   = useState("home");
   // First visit gets the walkthrough; after that it only opens from the header.
@@ -294,6 +131,7 @@ export default function StudentDashboard() {
   }, []);
 
   const fetchInbox = useCallback(async () => {
+    if (!student.student_id) return;
     setLoadingInbox(true);
     try {
       const res = await api.get(`/consultation/history/${student.student_id}?page=1&limit=10`);
@@ -305,10 +143,18 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchProfessors();
-    const iv = setInterval(fetchProfessors, 30000);
+    // Fallback only — availability arrives over the socket.
+    const iv = setInterval(fetchProfessors, 60000);
     try {
-      socket = io(SOCKET_URL || window.location.origin, { transports: ["polling"], reconnectionAttempts: 3 });
+      // The token identifies the connection so the server can put it in
+      // this student's own room. Without it the socket still connects and
+      // still hears the public availability room — just nothing personal.
+      socket = io(SOCKET_URL || window.location.origin, {
+        transports: ["polling"], reconnectionAttempts: 3,
+        auth: { token: getToken("student") },
+      });
       socket.on("status_update", fetchProfessors);
+      socket.on("request_update", fetchInbox);
     } catch (e) { console.warn("Socket unavailable:", e); }
     return () => { clearInterval(iv); socket?.disconnect(); };
   }, []);
@@ -318,6 +164,7 @@ export default function StudentDashboard() {
   // Confirmation usually happens while the student is signed in and waiting, so
   // the flag is worth re-reading rather than trusting the one stored at login.
   useEffect(() => {
+    if (!student.student_id) return;
     api.get(`/student/profile/${student.student_id}`)
       .then(({ data }) => {
         if (typeof data?.verified === "boolean") {
@@ -330,6 +177,7 @@ export default function StudentDashboard() {
   useEffect(() => { if (tab === "inbox") fetchInbox(); }, [tab]);
 
   useEffect(() => {
+    if (!student.student_id) return;
     QRCodeLib.toDataURL(student.student_id, { width: 400, margin: 2, color: { dark: "#000000", light: "#ffffff" } })
       .then(url => setStudentQR(url.split(",")[1]))
       .catch(() => {});
@@ -347,10 +195,8 @@ export default function StudentDashboard() {
         course: student.course, professor_name: reqModal.name,
         department: reqModal.department, purpose: reqForm.purpose, category: reqForm.category,
       });
-      socket?.emit("broadcast_request", {
-        student_name: student.full_name, professor_name: reqModal.name,
-        purpose: reqForm.purpose, category: reqForm.category, time: new Date().toLocaleTimeString(),
-      });
+      // No client-side broadcast: the server emits this to the teacher it
+      // is addressed to, once the write has actually succeeded.
       addToast("Request submitted!", "success");
       setReqModal(null);
     } catch (e) { addToast(e.response?.data?.error || "Request failed.", "error"); }
@@ -436,6 +282,12 @@ export default function StudentDashboard() {
     showInbox: () => { setReqModal(null); setTab("inbox"); },
     showProfile: () => { setReqModal(null); setTab("profile"); },
   }), [demoDept, demoProf]);
+
+  // Past the last hook, so bailing out here cannot change the hook count.
+  // Rendered redirect, not an imperative one. Calling navigate() during render
+  // pushed a history entry on every render, so swiping back re-rendered this
+  // and pushed another — the back gesture could never escape.
+  if (!session) return <Navigate to="/student" replace />;
 
   // Leaving the guide should not leave someone standing in a half-open form.
   const endTour = () => {
@@ -810,7 +662,6 @@ export default function StudentDashboard() {
                   const hasAppt    = !!req.appointment_date;
                   const isDone     = req.status === "done";
                   const isDeclined = req.status === "declined";
-                  const isPending  = req.status === "pending";
 
                   const markRead = () => {
                     if (!isRead) {

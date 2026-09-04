@@ -2,10 +2,14 @@ import os
 from datetime import datetime
 
 import pytz
-from flask import Flask, jsonify, request
-from flask_socketio import SocketIO, emit
+from flask import Flask, jsonify
+from flask_socketio import SocketIO, join_room
 from flask_cors import CORS
+from itsdangerous import BadSignature, SignatureExpired
 
+import realtime
+from security import _serializer, ROLES
+from config import SESSION_TTL_HOURS
 from models import init_db
 from auth import auth_bp
 from teacher import teacher_bp
@@ -15,7 +19,6 @@ from tts import tts_bp
 from biometric import biometric_bp
 from admin import admin_bp
 from config import SECRET_KEY
-from security import read_token, too_many_attempts, client_ip
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder=None)
@@ -109,19 +112,27 @@ def health():
 
 
 # ─── Socket.IO Events ─────────────────────────────────────────────────────────
-# Anonymous sockets may connect and listen — the availability board is a
-# read-only public view with no session. Emitting is another matter: these handlers rebroadcast
-# to every client, so an unauthenticated emitter could forge availability
-# changes and fake consultation requests on every screen in the building.
+# Clients only listen. Everything pushed is emitted by the routes in
+# realtime.py, because the routes are where state actually changes — see the
+# module docstring there for why the previous client-to-client relay both never
+# worked and could not safely be made to.
+#
+# The only thing handled here is the connection itself: work out who is on the
+# other end, and put them in the rooms they are entitled to hear.
 
-def _emitter_claims(data):
-    """Claims for a socket event, from the payload token. None when untrusted."""
-    token = (data or {}).get("token") if isinstance(data, dict) else None
+realtime.bind(socketio)
+
+
+def _claims_from_auth(auth):
+    """Verify the token a client presents at connect. None when unauthenticated.
+
+    Anonymous connections are legitimate — the availability board is a public,
+    read-only screen with no session — so this returns None rather than
+    refusing, and the caller joins the public room only.
+    """
+    token = (auth or {}).get("token") if isinstance(auth, dict) else None
     if not token:
         return None
-    from itsdangerous import BadSignature, SignatureExpired
-    from security import _serializer, ROLES
-    from config import SESSION_TTL_HOURS
     try:
         claims = _serializer.loads(token, max_age=SESSION_TTL_HOURS * 3600)
     except (SignatureExpired, BadSignature):
@@ -131,47 +142,31 @@ def _emitter_claims(data):
     return claims
 
 
-def _strip_token(data):
-    """Never rebroadcast the emitter's own session token to every listener."""
-    if isinstance(data, dict):
-        return {k: v for k, v in data.items() if k != "token"}
-    return data
-
-
 @socketio.on("connect")
 def on_connect(auth=None):
-    print("[WS] Client connected")
+    # Everyone hears availability: it is the same public information
+    # /api/teacher-logs serves without a session.
+    join_room(realtime.AVAILABILITY_ROOM)
+
+    claims = _claims_from_auth(auth)
+    if not claims:
+        print("[WS] Client connected (anonymous, availability only)")
+        return
+
+    role, subject_id = claims["role"], claims.get("sub")
+    if role == "teacher" and subject_id:
+        join_room(realtime.teacher_room(subject_id))
+    elif role == "student" and subject_id:
+        join_room(realtime.student_room(subject_id))
+    # An admin watches the boards rather than one person's queue, so the public
+    # room is the whole of it — and joining every teacher's room would hand the
+    # dashboard student names it does not display.
+    print(f"[WS] Client connected ({role})")
 
 
 @socketio.on("disconnect")
 def on_disconnect(reason=None):
     print("[WS] Client disconnected")
-
-
-@socketio.on("broadcast_status")
-def handle_status_broadcast(data):
-    claims = _emitter_claims(data)
-    if not claims or claims["role"] not in ("teacher", "admin"):
-        return
-    emit("status_update", _strip_token(data), broadcast=True)
-
-
-@socketio.on("broadcast_request")
-def handle_request_broadcast(data):
-    claims = _emitter_claims(data)
-    if not claims:
-        return
-    payload = _strip_token(data)
-    emit("consultation_update", payload, broadcast=True)
-    emit("new_request", payload, broadcast=True)
-
-
-@socketio.on("broadcast_request_done")
-def handle_done_broadcast(data):
-    claims = _emitter_claims(data)
-    if not claims or claims["role"] not in ("teacher", "admin"):
-        return
-    emit("request_done", _strip_token(data), broadcast=True)
 
 
 # ─── Initialize DB (runs under gunicorn AND direct) ───────────────────────────

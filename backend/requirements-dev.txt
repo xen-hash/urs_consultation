@@ -1,0 +1,9 @@
+# Development and CI only — never installed on Render or Railway.
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+#
+# The test suite needs a real PostgreSQL to run against; see backend/tests/README.md.
+-r requirements.txt
+
+pytest
+ruff

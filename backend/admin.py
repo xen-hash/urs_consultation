@@ -12,9 +12,8 @@ printed.
 """
 
 import secrets
-from datetime import datetime, date, timedelta
+from datetime import datetime
 
-import bcrypt
 import pytz
 from flask import Blueprint, request, jsonify, g
 

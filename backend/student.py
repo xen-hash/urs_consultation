@@ -1,9 +1,10 @@
 import pytz
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from db import query, execute
-from security import require_role, subject, forbid_unless_owner, is_admin
+from security import require_role, subject, forbid_unless_owner
 from phtime import serialize_row
+import realtime
 
 student_bp = Blueprint("student", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -76,16 +77,31 @@ def submit_request():
     )
     prof_id = prof["id"] if prof else None
 
-    execute(
+    new_id = query(
         """INSERT INTO consultation_requests
            (student_id, student_name, course, professor_name, professor_id,
             purpose, category, status, request_time, department)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s::timestamp,%s)""",
+           VALUES (%s,%s,%s,%s,%s,%s,%s,'pending',%s::timestamp,%s)
+           RETURNING id""",
         (student_id, student_name, course,
          data["professor_name"], prof_id,
          data["purpose"], data["category"],
-         now_ph.strftime("%Y-%m-%d %H:%M:%S"), data["department"])
+         now_ph.strftime("%Y-%m-%d %H:%M:%S"), data["department"]),
+        fetchone=True
     )
+
+    # Only after the write succeeded, and only into the room of the teacher it
+    # is addressed to. The student's name and purpose go no further than that.
+    realtime.request_filed({
+        "id": (new_id or {}).get("id"),
+        "professor_name": data["professor_name"],
+        "student_name": student_name,
+        "category": data["category"],
+        "purpose": data["purpose"],
+    })
+    # A filed request consumes one of the day's slots, so the public board's
+    # slots-left figure is now stale.
+    realtime.availability_changed(data["professor_name"], data["department"])
 
     return jsonify({"message": "Consultation request submitted!"}), 201
 

@@ -52,7 +52,10 @@ export default function AvailabilityBoard() {
 
   useEffect(() => {
     fetchData();
-    const poll = setInterval(fetchData, 30000);
+    // The board joins the public availability room and is pushed to on every
+    // status change, so this is the fallback for a dropped socket rather than
+    // the mechanism the screen relies on.
+    const poll = setInterval(fetchData, 60000);
     const clock = setInterval(() => setNow(new Date()), 30000);
     socket = io(SOCKET_URL || window.location.origin, {
       transports: ["polling"], reconnectionAttempts: 3,

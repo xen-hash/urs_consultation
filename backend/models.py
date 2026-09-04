@@ -225,7 +225,7 @@ def init_db():
         created = _seed_teacher_accounts(cur)
         cleared = _clear_removed_teacher_photos(cur)
         print(
-            f"[DB] Tables created and professors seeded"
+            "[DB] Tables created and professors seeded"
             + (f"; {created} faculty account(s) created." if created else ".")
             + (f" Cleared {cleared} photo(s) from removed accounts." if cleared else "")
         )
