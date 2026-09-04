@@ -2,9 +2,10 @@ import pytz
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from db import query, execute
-from security import require_role, subject, forbid_unless_owner
+from security import require_role, subject, forbid_unless_owner, record_audit
 from phtime import serialize_row
 import realtime
+import notifications as notify_mod
 
 student_bp = Blueprint("student", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -50,9 +51,13 @@ def submit_request():
     now_ph = datetime.now(PH)
 
     # Check if student already has a pending/active request to this professor
+    # "Already open" now includes accepted: the teacher has taken it on and not
+    # yet held it, so a second request to the same professor is still a
+    # duplicate — and it would consume a second slot of their day.
     existing = query(
         """SELECT id FROM consultation_requests
-           WHERE student_id=%s AND professor_name=%s AND status='pending'""",
+           WHERE student_id=%s AND professor_name=%s
+             AND status IN ('pending', 'accepted')""",
         (student_id, data["professor_name"]), fetchone=True
     )
     if existing:
@@ -103,7 +108,68 @@ def submit_request():
     # slots-left figure is now stale.
     realtime.availability_changed(data["professor_name"], data["department"])
 
+    notify_mod.notify(
+        "teacher", realtime.employee_id_for(data["professor_name"]),
+        notify_mod.NEW_REQUEST,
+        f"New request from {student_name}",
+        f"{data['category']} - {data['purpose']}",
+        link="/teacher/dashboard",
+    )
+
     return jsonify({"message": "Consultation request submitted!"}), 201
+
+
+@student_bp.route("/consultation/request/<int:req_id>/cancel", methods=["POST"])
+@require_role("student")
+def cancel_request(req_id):
+    """Withdraw a request the student filed themselves.
+
+    There was no way to do this. A student who filed by mistake, or who sorted
+    the problem out on their own, could only leave the row sitting in a
+    professor's queue — and it kept consuming one of that professor's slots for
+    the day until they resolved it by hand.
+
+    Cancelling is a status rather than a delete: the teacher may already have
+    read it, and "withdrawn" is a more honest thing for them to see than a row
+    that silently disappears.
+    """
+    req = query(
+        "SELECT id, student_id, professor_name, status "
+        "FROM consultation_requests WHERE id=%s",
+        (req_id,), fetchone=True
+    )
+    if not req:
+        return jsonify({"error": "Request not found"}), 404
+    # Identity from the session, never the URL — the row id is a small integer
+    # and would otherwise be guessable.
+    if str(req["student_id"]) != str(subject()):
+        return jsonify({"error": "Not permitted."}), 403
+    if req["status"] not in ("pending", "accepted"):
+        return jsonify({
+            "error": f"That request is already {req['status']} and cannot be cancelled."
+        }), 409
+
+    now_ph = datetime.now(PH)
+    execute(
+        "UPDATE consultation_requests SET status='cancelled', cancelled_at=%s::timestamp "
+        "WHERE id=%s",
+        (now_ph.strftime("%Y-%m-%d %H:%M:%S"), req_id)
+    )
+    record_audit("request.cancel", target=str(req_id),
+                 detail=f"{req['student_id']} -> {req['professor_name']}")
+    # Tell the teacher it has gone, and the board that the slot is free again.
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "cancelled"
+    )
+    realtime.availability_changed(req["professor_name"])
+    notify_mod.notify(
+        "teacher", realtime.employee_id_for(req["professor_name"]),
+        notify_mod.REQUEST_CANCELLED,
+        "A student withdrew their request",
+        "Their slot for today is free again.",
+        link="/teacher/dashboard",
+    )
+    return jsonify({"message": "Request cancelled"})
 
 
 @student_bp.route("/consultation/history/<student_id>", methods=["GET"])

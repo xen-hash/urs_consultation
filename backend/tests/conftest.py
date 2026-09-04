@@ -45,6 +45,7 @@ TRANSACTIONAL_TABLES = (
     "teacher_logs",
     "audit_log",
     "biometrics",
+    "notifications",
     "students",
 )
 
@@ -98,8 +99,13 @@ def another_teacher(a_teacher):
 
 
 @pytest.fixture
-def make_student():
-    """Insert a student and return the row. Verified unless told otherwise."""
+def make_student(clean_db):
+    """Insert a student and return the row. Verified unless told otherwise.
+
+    Depends on clean_db so a test that inserts a student without also asking for
+    `client` still starts from an empty table — otherwise the fixed student_id
+    below collides with the row a previous test left behind.
+    """
 
     def _make(student_id="2021-00001", name="Test Student", verified=True,
               course="BS Computer Engineering",

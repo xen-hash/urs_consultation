@@ -6,10 +6,11 @@ import {
   Send, RefreshCw, Search, GraduationCap, X,
   ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Palette,
 } from "lucide-react";
-import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash, Card, CardHeader } from "./SharedUI.jsx";
+import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash, ConfirmModal, Card, CardHeader } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
-import api from "./httpClient.js";
+import NotificationBell from "./ui/NotificationBell.jsx";
+import api, { apiError } from "./httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
@@ -66,6 +67,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [signingOut, setSigningOut] = useState(false);
+  const [liveSocket, setLiveSocket] = useState(null);
   // getSession returns null once the session is gone. The redirect for that
   // used to sit here, above every useState below — which is a hooks-order
   // violation: a session expiring between two renders changed the number of
@@ -99,6 +101,8 @@ export default function StudentDashboard() {
   });
   const [loadingInbox, setLoadingInbox] = useState(false);
   const [selectedReq, setSelectedReq]   = useState(null);
+  const [confirmCancel, setConfirmCancel] = useState(null);
+  const [cancelling, setCancelling]     = useState(false);
   useScrollLock(!!reqModal || !!selectedReq);
 
   // Whether the admin office has confirmed this account is enrolled. It comes
@@ -152,6 +156,7 @@ export default function StudentDashboard() {
         transports: ["polling"], reconnectionAttempts: 3,
         auth: { token: getToken("student") },
       });
+      setLiveSocket(socket);
       socket.on("status_update", fetchProfessors);
       socket.on("request_update", fetchInbox);
     } catch (e) { console.warn("Socket unavailable:", e); }
@@ -186,7 +191,8 @@ export default function StudentDashboard() {
     if (!verified) return addToast(UNVERIFIED_NOTICE, "warning");
     if (!reqForm.purpose.trim()) return addToast("Please describe your purpose.", "warning");
     // Check locally if student already has a pending request to this professor
-    const hasPending = myRequests.some(r => r.professor_name === reqModal.name && r.status === "pending");
+    const hasPending = myRequests.some(r => r.professor_name === reqModal.name
+      && (r.status === "pending" || r.status === "accepted"));
     if (hasPending) return addToast(`You already have a pending request with ${reqModal.name}. Wait for it to be resolved first.`, "warning");
     setSubmitting(true);
     try {
@@ -288,6 +294,22 @@ export default function StudentDashboard() {
   // and pushed another — the back gesture could never escape.
   if (!session) return <Navigate to="/student" replace />;
 
+  const handleCancelRequest = async () => {
+    if (!confirmCancel) return;
+    setCancelling(true);
+    try {
+      await api.post(`/consultation/request/${confirmCancel.id}/cancel`);
+      addToast("Request withdrawn.", "success");
+      setConfirmCancel(null);
+      setSelectedReq(null);
+      fetchInbox();
+    } catch (e) {
+      addToast(apiError(e, "Could not withdraw that request."), "error");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   // Leaving the guide should not leave someone standing in a half-open form.
   const endTour = () => {
     setReqModal(null);
@@ -297,7 +319,7 @@ export default function StudentDashboard() {
   };
 
   const inboxBadge = myRequests.filter(
-    r => r.appointment_date && r.status === "pending"
+    r => r.appointment_date && (r.status === "pending" || r.status === "accepted")
   ).length;
 
   // Icons are passed as components, not elements, so BottomNav can size them
@@ -322,6 +344,7 @@ export default function StudentDashboard() {
         subtitle="Student Dashboard"
         user={{ name: student.full_name, sub: student.student_id }}
         onHelp={() => setTourOpen(true)}
+        actions={<NotificationBell socket={liveSocket} />}
         onLogout={() => setSigningOut(true)}
       />
 
@@ -356,9 +379,9 @@ export default function StudentDashboard() {
             {!verified && <UnverifiedNotice className="mb-4 animate-rise" />}
 
             {/* ── Appointment Alert Banner ── */}
-            {myRequests.filter(r => r.appointment_date && r.status === "pending").length > 0 && (
+            {myRequests.filter(r => r.appointment_date && (r.status === "pending" || r.status === "accepted")).length > 0 && (
               <div className="mb-4 animate-rise">
-                {myRequests.filter(r => r.appointment_date && r.status === "pending").map(req => (
+                {myRequests.filter(r => r.appointment_date && (r.status === "pending" || r.status === "accepted")).map(req => (
                   <div key={req.id}
                     className="flex items-start gap-3 bg-orange-500 rounded-lg p-4 shadow-xl border border-orange-400 cursor-pointer"
                     onClick={() => setTab("inbox")}>
@@ -982,12 +1005,22 @@ export default function StudentDashboard() {
         const isDone     = req.status === "done";
         const isDeclined = req.status === "declined";
 
+        const isAccepted  = req.status === "accepted";
+        const isCancelled = req.status === "cancelled";
+        // Open means the student can still withdraw it: nobody has held the
+        // consultation and nobody has answered no.
+        const isOpen = req.status === "pending" || isAccepted;
+
         const statusCfg = hasAppt
           ? { label: "Appointment Set", icon: CalendarCheck, bar: "bg-orange-400",  text: "text-orange-600",  bg: "bg-orange-50" }
           : isDone
           ? { label: "Done",            icon: CheckCircle2, bar: "bg-emerald-400", text: "text-emerald-600", bg: "bg-emerald-50" }
           : isDeclined
           ? { label: "Declined",        icon: XCircle, bar: "bg-red-400",     text: "text-red-600",     bg: "bg-red-50" }
+          : isAccepted
+          ? { label: "Accepted",        icon: CheckCircle2, bar: "bg-blue-400",    text: "text-blue-700",    bg: "bg-blue-50" }
+          : isCancelled
+          ? { label: "Withdrawn",       icon: XCircle, bar: "bg-gray-300",    text: "text-gray-600",    bg: "bg-gray-50" }
           : { label: "Pending",         icon: Clock, bar: "bg-yellow-400",  text: "text-yellow-600",  bg: "bg-yellow-50" };
 
         return (
@@ -1077,7 +1110,18 @@ export default function StudentDashboard() {
               </div>
 
               {/* Footer */}
-              <div className="px-5 pb-5">
+              <div className="px-5 pb-5 space-y-2">
+                {/* Withdrawing was not possible at all: a request filed by
+                    mistake sat in a professor's queue holding one of their
+                    slots for the day until they resolved it by hand. */}
+                {isOpen && (
+                  <button
+                    onClick={() => setConfirmCancel(req)}
+                    className="w-full border border-danger/30 text-danger hover:bg-danger-50
+                               font-semibold py-3 rounded-lg transition-all text-sm">
+                    Withdraw this request
+                  </button>
+                )}
                 <button onClick={() => setSelectedReq(null)}
                   className="w-full bg-brand hover:bg-brand-700 text-white font-semibold py-3 rounded-lg transition-all text-sm">
                   Close
@@ -1087,6 +1131,19 @@ export default function StudentDashboard() {
           </div>
         );
       })()}
+      <ConfirmModal
+        open={!!confirmCancel}
+        onClose={() => setConfirmCancel(null)}
+        onConfirm={handleCancelRequest}
+        loading={cancelling}
+        tone="danger"
+        title="Withdraw this request?"
+        confirmLabel="Withdraw"
+        description={confirmCancel
+          ? `${confirmCancel.professor_name} will see that you withdrew it, and the slot goes back to them. You can file another one afterwards.`
+          : ""}
+      />
+
       <BottomNavSpacer />
       <BottomNav items={TABS} active={tab} onSelect={setTab} />
 
