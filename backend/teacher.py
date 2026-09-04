@@ -10,6 +10,7 @@ from security import (
     current_claims, record_audit,
 )
 from phtime import serialize_row
+import realtime
 
 teacher_bp = Blueprint("teacher", __name__)
 PH = pytz.timezone("Asia/Manila")
@@ -312,6 +313,7 @@ def save_schedule():
          json.dumps(weekly_schedule), now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
     _logs_cache["ts"] = 0
+    realtime.availability_changed(teacher["professor_name"], teacher["department"])
     return jsonify({"message": "Schedule saved successfully"})
 
 
@@ -386,6 +388,9 @@ def save_manual_status():
          now_ph.strftime("%Y-%m-%d %H:%M:%S"))
     )
     _logs_cache["ts"] = 0
+    # This is the change the board exists to show, and the one people were
+    # waiting up to thirty seconds to see.
+    realtime.availability_changed(teacher["professor_name"], teacher["department"])
     return jsonify({"message": "Status updated"})
 
 
@@ -424,7 +429,7 @@ def _own_request_or_error(req_id):
     requests just by guessing the row id, which is a small integer.
     """
     req = query(
-        "SELECT id, professor_name FROM consultation_requests WHERE id=%s",
+        "SELECT id, professor_name, student_id FROM consultation_requests WHERE id=%s",
         (req_id,), fetchone=True
     )
     if not req:
@@ -444,12 +449,15 @@ def _own_request_or_error(req_id):
 @require_role("teacher", "admin")
 def mark_done(req_id):
     global _logs_cache, _requests_cache
-    _, denied = _own_request_or_error(req_id)
+    req, denied = _own_request_or_error(req_id)
     if denied:
         return denied
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='done' WHERE id=%s", (req_id,))
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "done"
+    )
     return jsonify({"message": "Marked as done"})
 
 
@@ -459,12 +467,17 @@ def mark_done(req_id):
 @require_role("teacher", "admin")
 def decline_request(req_id):
     global _logs_cache, _requests_cache
-    _, denied = _own_request_or_error(req_id)
+    req, denied = _own_request_or_error(req_id)
     if denied:
         return denied
     _logs_cache["ts"] = 0
     _requests_cache["ts"] = 0
     execute("UPDATE consultation_requests SET status='declined' WHERE id=%s", (req_id,))
+    # A decline is an answer the student is waiting for, and until now they only
+    # learned of it by reopening the app.
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "declined"
+    )
     return jsonify({"message": "Request declined"})
 
 
@@ -881,7 +894,7 @@ def get_teacher_profile(employee_id):
 @require_role("teacher", "admin")
 def set_appointment(req_id):
     global _requests_cache
-    _, denied = _own_request_or_error(req_id)
+    req, denied = _own_request_or_error(req_id)
     if denied:
         return denied
     data = request.json or {}
@@ -902,4 +915,9 @@ def set_appointment(req_id):
          now_ph.strftime("%Y-%m-%d %H:%M:%S"), req_id)
     )
     _requests_cache["ts"] = 0
+    # The student has been waiting for a time. Telling them now is the whole
+    # point of this route.
+    realtime.request_resolved(
+        req["student_id"], req["professor_name"], req_id, "appointment_set"
+    )
     return jsonify({"message": "Appointment set successfully"})

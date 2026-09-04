@@ -18,7 +18,7 @@ import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.js
 import ThemeToggle from "./ui/ThemeToggle.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
-import { getSession, patchProfile, clearSession } from "./auth.js";
+import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import { SOCKET_URL, DAYS, DAY_LABELS } from "./constants.js";
 import { formatDate as phDate, formatTime as phTime } from "./ui/datetime.js";
 
@@ -244,9 +244,14 @@ export default function TeacherDashboard() {
       _teacherSeenIds.clear();
       piperSpeak(`Welcome, ${getFirstName(teacher.professor_name)}!`);
     }
-    const iv = setInterval(fetchRequests, 15000);
+    // Sockets are the live path now; this is the safety net for a dropped
+    // connection rather than the way requests normally arrive.
+    const iv = setInterval(fetchRequests, 60000);
     try {
-      socket = io(SOCKET_URL || window.location.origin, { transports:["polling"], reconnectionAttempts:3 });
+      socket = io(SOCKET_URL || window.location.origin, {
+        transports: ["polling"], reconnectionAttempts: 3,
+        auth: { token: getToken("teacher") },
+      });
       socket.on("consultation_update", fetchRequests);
       socket.on("new_request", fetchRequests);
     } catch(e) { console.warn("Socket unavailable"); }
@@ -273,7 +278,6 @@ export default function TeacherDashboard() {
       addToast(apiError(e, "Could not complete that consultation."),"error");
       return;
     }
-    socket?.emit("broadcast_request_done",{request_id:id,professor_name:teacher.professor_name});
     setRequests(p=>p.filter(r=>r.id!==id));
     setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
     _teacherSeenIds.delete(id);
@@ -323,7 +327,6 @@ export default function TeacherDashboard() {
     try {
       await api.post(`/teacher/save-schedule`,{ weekly_schedule: schedule });
       setMySchedule(schedule);
-      socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:"Auto",weeklySchedule:schedule});
       addToast("Schedule saved!","success");
     } catch (e) {
       addToast(apiError(e, "Could not save your schedule."),"error");
@@ -334,7 +337,6 @@ export default function TeacherDashboard() {
     setSavingStatus(true);
     try {
       await api.post(`/teacher/save-manual-status`,{ manual_status: myStatus });
-      socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:myStatus});
       addToast(`Status updated: ${myStatus}`,"success");
     } catch (e) {
       addToast(apiError(e, "Could not update your status."),"error");

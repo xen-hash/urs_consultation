@@ -11,7 +11,7 @@ import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
 import api from "./httpClient.js";
-import { getSession, patchProfile, clearSession } from "./auth.js";
+import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
@@ -143,10 +143,18 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchProfessors();
-    const iv = setInterval(fetchProfessors, 30000);
+    // Fallback only — availability arrives over the socket.
+    const iv = setInterval(fetchProfessors, 60000);
     try {
-      socket = io(SOCKET_URL || window.location.origin, { transports: ["polling"], reconnectionAttempts: 3 });
+      // The token identifies the connection so the server can put it in
+      // this student's own room. Without it the socket still connects and
+      // still hears the public availability room — just nothing personal.
+      socket = io(SOCKET_URL || window.location.origin, {
+        transports: ["polling"], reconnectionAttempts: 3,
+        auth: { token: getToken("student") },
+      });
       socket.on("status_update", fetchProfessors);
+      socket.on("request_update", fetchInbox);
     } catch (e) { console.warn("Socket unavailable:", e); }
     return () => { clearInterval(iv); socket?.disconnect(); };
   }, []);
@@ -187,10 +195,8 @@ export default function StudentDashboard() {
         course: student.course, professor_name: reqModal.name,
         department: reqModal.department, purpose: reqForm.purpose, category: reqForm.category,
       });
-      socket?.emit("broadcast_request", {
-        student_name: student.full_name, professor_name: reqModal.name,
-        purpose: reqForm.purpose, category: reqForm.category, time: new Date().toLocaleTimeString(),
-      });
+      // No client-side broadcast: the server emits this to the teacher it
+      // is addressed to, once the write has actually succeeded.
       addToast("Request submitted!", "success");
       setReqModal(null);
     } catch (e) { addToast(e.response?.data?.error || "Request failed.", "error"); }
