@@ -1,7 +1,7 @@
 import io
 import pytz
 from datetime import datetime, time as dtime, timedelta
-from flask import Blueprint, request, send_file, jsonify
+from flask import Blueprint, request, send_file
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from db import query

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Camera, Download, User, Check, X, Pencil } from "lucide-react";
+import { Camera, User } from "lucide-react";
 import { Spinner } from "./SharedUI.jsx";
 
 // ── Webcam Photo Capture (reusable) ──────────────────────────────────────────

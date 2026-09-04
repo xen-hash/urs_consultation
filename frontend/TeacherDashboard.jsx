@@ -3,13 +3,12 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import {
   CheckCircle2, XCircle, Calendar, Download, Trash2, Bell,
-  RefreshCw, ClipboardList, Sliders, BookOpen, Clock,
-  Pencil, X, Check, User, Camera, CalendarCheck, FileText,
-  RotateCcw, AlertTriangle, Palette
+  RefreshCw, ClipboardList, Sliders, Clock,
+  Pencil, X, Check, User, Camera, CalendarCheck,   RotateCcw, AlertTriangle, Palette
 } from "lucide-react";
 import {
   URSHeader, StatusBadge, Badge, Button, IconButton, Alert, Card, CardHeader, EmptyState,
-  Toast, useToastState, PageWrapper, Modal, ConfirmModal, NumberField, Spinner,
+  Toast, useToastState, PageWrapper, ConfirmModal, NumberField, Spinner,
   useScrollLock, ConfirmSplash,
 } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
@@ -19,21 +18,12 @@ import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.js
 import ThemeToggle from "./ui/ThemeToggle.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import api, { apiError } from "./httpClient.js";
-import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
+import { getSession, patchProfile, clearSession } from "./auth.js";
 import { SOCKET_URL, DAYS, DAY_LABELS } from "./constants.js";
-import QRCodeLib from "qrcode";
 import { formatDate as phDate, formatTime as phTime } from "./ui/datetime.js";
 
 let socket = null;
 const MANUAL_OPTIONS = ["Auto (use schedule)","Available","Unavailable","On Leave","In Meeting"];
-const STATUS_STYLES = {
-  "Available":"bg-success-50 border-success/25 text-success",
-  "Unavailable":"bg-surface-2 border-border text-muted-fg",
-  "On Leave":"bg-amber-50 border-amber-200 text-amber-700",
-  "In Meeting":"bg-orange-50 border-orange-200 text-orange-700",
-  "Auto (use schedule)":"bg-info-50 border-info/25 text-info",
-};
-
 function formatTime(t) {
   if (!t) return "";
   const [h, m] = t.split(":");
@@ -412,7 +402,7 @@ export default function TeacherDashboard() {
   };
 
   const handleResetSession = async () => {
-    if (!window.confirm("Reset today\'s consultation count? This will archive all today\'s requests and start a fresh session.")) return;
+    if (!window.confirm("Reset today's consultation count? This will archive all today's requests and start a fresh session.")) return;
     setResettingSession(true);
     try {
       await api.post("/teacher/reset-daily-count");

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Sun, Moon, Monitor } from "lucide-react";
-import { readTheme, setTheme, THEMES } from "./theme.js";
+import { readTheme, setTheme } from "./theme.js";
 
 /**
  * Light, dark, or follow the device.

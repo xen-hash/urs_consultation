@@ -7,7 +7,7 @@
 #
 # Run: uvicorn biometric_service:app --port 8000 --host 0.0.0.0
 
-import base64, os
+import base64
 import numpy as np
 import cv2
 from pathlib import Path

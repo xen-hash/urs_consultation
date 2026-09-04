@@ -1,8 +1,8 @@
 import pytz
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from db import query, execute
-from security import require_role, subject, forbid_unless_owner, is_admin
+from security import require_role, subject, forbid_unless_owner
 from phtime import serialize_row
 
 student_bp = Blueprint("student", __name__)

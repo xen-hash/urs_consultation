@@ -1,0 +1,47 @@
+# Tooling config for the Flask backend. There is no packaging here — the app is
+# deployed from source by gunicorn — so this file carries only lint and test
+# settings.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["frontend", ".venv", "venv"]
+
+[tool.ruff.lint]
+# Deliberately a small set to begin with: pyflakes (F) catches the real defects
+# — undefined names, unused imports, shadowed variables — and pycodestyle's
+# errors (E) catch syntax-adjacent slips. Style rules that would flag hundreds
+# of existing lines can be added once the suite is trusted; a linter nobody can
+# get to green is a linter everybody learns to ignore.
+select = ["E", "F", "W"]
+ignore = [
+    # Long lines are pervasive in the existing code and are not defects. The
+    # formatter-adjacent rules can come later.
+    "E501",
+    # `l = 1` style ambiguity. Not worth a sweep of the existing code.
+    "E741",
+    # The rules below are layout preferences this codebase has made
+    # consistently and deliberately — `if not row: return None` on one line,
+    # `where.append(...); args.append(...)` as a pair, `_fmt = lambda v: ...`.
+    # Forty-nine findings that change no behaviour would only teach everyone to
+    # run the linter with a filter. Pyflakes (F) stays on in full: those are
+    # real defects, and it found seventeen dead imports on its first run.
+    "E701",  # multiple statements on one line (colon)
+    "E702",  # multiple statements on one line (semicolon)
+    "E731",  # lambda assignment
+    "E401",  # multiple imports on one line
+    "E722",  # bare except — used deliberately where a failure must not surface
+]
+
+[tool.ruff.lint.per-file-ignores]
+# conftest sets environment variables that config reads at import time, so its
+# app imports genuinely have to sit below module-level statements.
+"backend/tests/conftest.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+# Both roots: the tests import the app's modules by their bare names, the way
+# the app itself does when gunicorn runs from backend/.
+pythonpath = ["backend"]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
