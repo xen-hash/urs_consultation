@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 
 import { Drawer, EmptyState, Spinner } from "../SharedUI.jsx";
+import Mascot from "./Mascot.jsx";
 import api from "../httpClient.js";
 import { formatAgo } from "./datetime.js";
 
@@ -129,7 +130,7 @@ export default function NotificationBell({ socket, className = "" }) {
           <div className="py-10 grid place-items-center"><Spinner /></div>
         ) : items.length === 0 ? (
           <EmptyState
-            icon={Bell}
+            illustration={<Mascot pose="helpful" size="md" />}
             title="Nothing yet"
             description="Replies to your requests will show up here."
           />

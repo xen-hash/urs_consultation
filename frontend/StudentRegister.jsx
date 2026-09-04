@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck, GraduationCap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Delete, Download, ShieldCheck } from "lucide-react";
 import { Toast, useToastState, Button, Alert, ConfirmSplash } from "./SharedUI.jsx";
 import URSBackground from "./URSBackground.jsx";
 import PortalNav from "./ui/PortalNav.jsx";
@@ -8,6 +8,7 @@ import HomeBrand from "./ui/HomeBrand.jsx";
 import api, { apiError } from "./httpClient.js";
 import { setSession } from "./auth.js";
 import { DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
+import Mascot from "./ui/Mascot.jsx";
 
 export default function StudentRegister() {
   const navigate = useNavigate();
@@ -118,7 +119,7 @@ export default function StudentRegister() {
         ) : (
           <>
             <header className="mb-6">
-              <span className="icon-tile icon-tile-brand mb-3"><GraduationCap size={22} aria-hidden="true" /></span>
+              <Mascot pose="helpful" size="md" className="mb-3" />
               <h1 className="text-title font-bold text-on-backdrop">Create your account</h1>
               <p className="text-on-backdrop/75 mt-1.5">Step {step} of 2 — {step === 1 ? "your details" : "choose a PIN"}</p>
               <div className="flex gap-1.5 mt-4" aria-hidden="true">

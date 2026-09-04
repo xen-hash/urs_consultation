@@ -5,7 +5,6 @@ import {
   Clock, CheckCircle2, XCircle, CalendarCheck,
   Send, RefreshCw, Search, GraduationCap, X,
   ChevronLeft, Users, Inbox, User, Camera, Download, Pencil, Palette,
-  ShieldQuestion,
 } from "lucide-react";
 import { URSHeader, StatusBadge, RequestBadge, Toast, useToastState, PageWrapper, Spinner, useScrollLock , ConfirmSplash, ConfirmModal, Card, CardHeader } from "./SharedUI.jsx";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
@@ -19,6 +18,7 @@ import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
 import { studentTour } from "./ui/tours.js";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
+import Mascot from "./ui/Mascot.jsx";
 import {
   formatDate as phDate, formatWhen as phWhen, formatDateTime as phDateTime,
 } from "./ui/datetime.js";
@@ -51,9 +51,8 @@ function UnverifiedNotice({ className = "" }) {
       className={`flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-50
                   px-4 py-3.5 ${className}`}
     >
-      <span className="icon-tile w-9 h-9 shrink-0 badge-warning">
-        <ShieldQuestion size={17} aria-hidden="true" />
-      </span>
+      {/* Waiting on someone else is exactly the thinking pose. */}
+      <Mascot pose="thinking" size="sm" />
       <div className="min-w-0">
         <p className="text-sm font-semibold text-fg">Waiting for enrolment verification</p>
         <p className="text-xs text-muted-fg mt-0.5 leading-relaxed">{UNVERIFIED_NOTICE}</p>
@@ -674,7 +673,7 @@ export default function StudentDashboard() {
               <div className="flex justify-center py-16"><Spinner size={10} light /></div>
             ) : myRequests.length === 0 ? (
               <div className="text-center py-16 text-muted-fg">
-                <Inbox size={48} className="mx-auto mb-3 opacity-30" />
+                <Mascot pose="helpful" size="lg" className="mx-auto mb-3" />
                 <p className="font-semibold">No requests yet</p>
                 <p className="text-sm mt-1">Submit a consultation request to get started</p>
               </div>
