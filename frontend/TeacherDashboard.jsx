@@ -51,6 +51,11 @@ function ding() {
 const _teacherSeenIds = new Set();
 const LIMIT_KEY = "urs.teacher.dailyLimit";
 
+// Stands in for the session on the render where it has just gone. Module-level
+// so its identity is stable: the hooks that depend on `teacher` must not see a
+// new object on every render.
+const EMPTY_TEACHER = {};
+
 const greeting = () => {
   const h = new Date().getHours();
   return h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
@@ -103,12 +108,14 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [signingOut, setSigningOut] = useState(false);
-  const teacher = getSession("teacher");
-
-  // Rendered redirect, not an imperative one. Calling navigate() during
-  // render pushed a history entry on every render, so swiping back re-
-  // rendered this and pushed another — the back gesture could never escape.
-  if (!teacher) return <Navigate to="/teacher" replace />;
+  // getSession returns null once the session is gone. The redirect for that
+  // used to sit here, above every useState below — which is a hooks-order
+  // violation: a session expiring between two renders changed the number of
+  // hooks this component called and React tore it down with "rendered fewer
+  // hooks than expected". The bail-out now happens after the last hook, and
+  // the hooks in between read from a stable empty object rather than null.
+  const session = getSession("teacher");
+  const teacher = session || EMPTY_TEACHER;
 
   const [tab, setTab]               = useState("requests");
   const [requests, setRequests]     = useState([]);
@@ -116,6 +123,10 @@ export default function TeacherDashboard() {
   const [schedModal, setSchedModal] = useState(false);
   const [myStatus, setMyStatus]     = useState("Auto (use schedule)");
   const [mySchedule, setMySchedule] = useState(null);
+  // Distinguishes "no schedule saved on this account" from "not read back yet".
+  // Only the first is safe to edit from defaults; the second would save them
+  // over whatever the account actually holds.
+  const [scheduleLoaded, setScheduleLoaded] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [apptModal, setApptModal]   = useState(null);
@@ -195,11 +206,21 @@ export default function TeacherDashboard() {
     } catch(_){}
   }, [teacher]);
 
+  // Loads what the account already holds. The schedule and manual status
+  // matter as much as the photo: without them mySchedule stayed null for the
+  // whole session, so the Status tab reported every day as "Not available" and
+  // the editor opened on defaults that overwrote the real schedule on save.
   const fetchProfile = useCallback(async () => {
+    if (!teacher.employee_id) return;
     try {
       const res = await api.get(`/teacher/profile/${teacher.employee_id}`);
       if (res.data.photo) setProfilePhoto(res.data.photo);
       if (res.data.daily_limit > 0) setConsultLimit(res.data.daily_limit);
+      // An account with no schedule saved yet legitimately has none; the
+      // editor fills that case with its own defaults when it opens.
+      setMySchedule(res.data.weekly_schedule ?? null);
+      if (res.data.manual_status) setMyStatus(res.data.manual_status);
+      setScheduleLoaded(true);
     } catch(_){}
   }, [teacher]);
 
@@ -226,6 +247,7 @@ export default function TeacherDashboard() {
   }, [consultLimit]);
 
   useEffect(() => {
+    if (!session) return;
     fetchRequests(); fetchProfile();
     if (!hasWelcomed.current) {
       hasWelcomed.current = true;
@@ -247,9 +269,20 @@ export default function TeacherDashboard() {
     return () => { clearInterval(iv); socket?.disconnect(); };
   }, []);
 
+  // Past the last hook, so bailing out here cannot change the hook count.
+  // Rendered redirect, not an imperative one. Calling navigate() during render
+  // pushed a history entry on every render, so swiping back re-rendered this
+  // and pushed another — the back gesture could never escape.
+  if (!session) return <Navigate to="/teacher" replace />;
+
   const handleDone = async (id) => {
     const req = requests.find(r => r.id === id);
-    await api.post(`/teacher/requests/${id}/done`);
+    try {
+      await api.post(`/teacher/requests/${id}/done`);
+    } catch (e) {
+      addToast(apiError(e, "Could not complete that consultation."),"error");
+      return;
+    }
     socket?.emit("broadcast_request_done",{request_id:id,professor_name:teacher.professor_name});
     setRequests(p=>p.filter(r=>r.id!==id));
     setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
@@ -278,26 +311,46 @@ export default function TeacherDashboard() {
   };
 
   const handleDecline = async (id) => {
+    try {
+      await api.post(`/teacher/requests/${id}/decline`);
+    } catch (e) {
+      addToast(apiError(e, "Could not decline that request."),"error");
+      return;
+    }
     _teacherSeenIds.delete(id);
-    await api.post(`/teacher/requests/${id}/decline`);
     setRequests(p=>p.filter(r=>r.id!==id));
     setAccepted(p => { const n = new Set(p); n.delete(id); return n; });
     addToast("Request declined.","info");
   };
 
   const handleSaveSchedule = async (schedule) => {
-    await api.post(`/teacher/save-schedule`,{ weekly_schedule: schedule });
-    setMySchedule(schedule);
-    socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:"Auto",weeklySchedule:schedule});
-    addToast("Schedule saved!","success");
+    // Refuse to write before the account's own schedule has been read back.
+    // Saving here would persist the editor's defaults over the real one.
+    if (!scheduleLoaded) {
+      addToast("Still loading your schedule — try again in a moment.","warning");
+      return;
+    }
+    try {
+      await api.post(`/teacher/save-schedule`,{ weekly_schedule: schedule });
+      setMySchedule(schedule);
+      socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:"Auto",weeklySchedule:schedule});
+      addToast("Schedule saved!","success");
+    } catch (e) {
+      addToast(apiError(e, "Could not save your schedule."),"error");
+    }
   };
 
   const handleSaveStatus = async () => {
     setSavingStatus(true);
-    await api.post(`/teacher/save-manual-status`,{ manual_status: myStatus });
-    socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:myStatus});
-    addToast(`Status updated: ${myStatus}`,"success");
-    setSavingStatus(false);
+    try {
+      await api.post(`/teacher/save-manual-status`,{ manual_status: myStatus });
+      socket?.emit("broadcast_status",{professorName:teacher.professor_name,status:myStatus});
+      addToast(`Status updated: ${myStatus}`,"success");
+    } catch (e) {
+      addToast(apiError(e, "Could not update your status."),"error");
+    } finally {
+      setSavingStatus(false);
+    }
   };
 
   const handleSetAppointment = async () => {

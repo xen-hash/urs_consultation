@@ -24,6 +24,11 @@ import {
 
 let socket = null;
 
+// Stands in for the session on the render where it has just gone. Module-level
+// so its identity is stable: the hooks that depend on `student` must not see a
+// new object on every render.
+const EMPTY_STUDENT = {};
+
 // ── Keyboard layout definitions ───────────────────────────────────────────────
 // The on-screen keyboard keeps a dark surface of its own rather than adopting
 // the page tokens: it stands in for the system keyboard, and platform keyboards
@@ -232,12 +237,14 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToastState();
   const [signingOut, setSigningOut] = useState(false);
-  const student = getSession("student");
-
-  // Rendered redirect, not an imperative one. Calling navigate() during
-  // render pushed a history entry on every render, so swiping back re-
-  // rendered this and pushed another — the back gesture could never escape.
-  if (!student) return <Navigate to="/student" replace />;
+  // getSession returns null once the session is gone. The redirect for that
+  // used to sit here, above every useState below — which is a hooks-order
+  // violation: a session expiring between two renders changed the number of
+  // hooks this component called and React tore it down with "rendered fewer
+  // hooks than expected". The bail-out now happens after the last hook, and
+  // the hooks in between read from a stable empty object rather than null.
+  const session = getSession("student");
+  const student = session || EMPTY_STUDENT;
 
   const [tab, setTab]                   = useState("home");
   // First visit gets the walkthrough; after that it only opens from the header.
@@ -294,6 +301,7 @@ export default function StudentDashboard() {
   }, []);
 
   const fetchInbox = useCallback(async () => {
+    if (!student.student_id) return;
     setLoadingInbox(true);
     try {
       const res = await api.get(`/consultation/history/${student.student_id}?page=1&limit=10`);
@@ -318,6 +326,7 @@ export default function StudentDashboard() {
   // Confirmation usually happens while the student is signed in and waiting, so
   // the flag is worth re-reading rather than trusting the one stored at login.
   useEffect(() => {
+    if (!student.student_id) return;
     api.get(`/student/profile/${student.student_id}`)
       .then(({ data }) => {
         if (typeof data?.verified === "boolean") {
@@ -330,6 +339,7 @@ export default function StudentDashboard() {
   useEffect(() => { if (tab === "inbox") fetchInbox(); }, [tab]);
 
   useEffect(() => {
+    if (!student.student_id) return;
     QRCodeLib.toDataURL(student.student_id, { width: 400, margin: 2, color: { dark: "#000000", light: "#ffffff" } })
       .then(url => setStudentQR(url.split(",")[1]))
       .catch(() => {});
@@ -436,6 +446,12 @@ export default function StudentDashboard() {
     showInbox: () => { setReqModal(null); setTab("inbox"); },
     showProfile: () => { setReqModal(null); setTab("profile"); },
   }), [demoDept, demoProf]);
+
+  // Past the last hook, so bailing out here cannot change the hook count.
+  // Rendered redirect, not an imperative one. Calling navigate() during render
+  // pushed a history entry on every render, so swiping back re-rendered this
+  // and pushed another — the back gesture could never escape.
+  if (!session) return <Navigate to="/student" replace />;
 
   // Leaving the guide should not leave someone standing in a half-open form.
   const endTour = () => {

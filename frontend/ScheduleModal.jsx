@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, Clock, Ban, Plus, Trash2 } from "lucide-react";
-import { Modal } from "./SharedUI.jsx";
+import { Modal, Button } from "./SharedUI.jsx";
 import { DAYS, DAY_LABELS, TIME_OPTIONS } from "./constants.js";
 
 const DEFAULT_SLOT = () => ({ start: "08:00 AM", end: "09:00 AM" });
@@ -38,6 +38,15 @@ function normalizeSchedule(raw) {
 export default function ScheduleModal({ open, onClose, onSave, initial }) {
   const [schedule, setSchedule] = useState(() => normalizeSchedule(initial));
   const [saving, setSaving] = useState(false);
+
+  // useState only reads its initialiser on the first render, so a schedule that
+  // arrived from the server after this component mounted was ignored and the
+  // editor stayed on defaults. Re-seed each time it opens: opening the editor
+  // should always show what the account currently holds, and discarding edits
+  // is what closing without saving already means.
+  useEffect(() => {
+    if (open) setSchedule(normalizeSchedule(initial));
+  }, [open, initial]);
 
   const updateField = (day, field, value) =>
     setSchedule(prev => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
@@ -144,12 +153,14 @@ export default function ScheduleModal({ open, onClose, onSave, initial }) {
         })}
       </div>
       <div className="mt-4 flex justify-end gap-3 border-t border-gray-100 pt-4">
-        <button onClick={onClose} className="btn-outline text-sm py-2 px-4">Cancel</button>
-        <button onClick={handleSave} disabled={saving}
-          className="btn-primary text-sm py-2 px-5 flex items-center gap-2">
-          <Save size={15} />
+        {/* These were a `btn-outline` that is defined nowhere in index.css —
+            so Cancel, the way out of this editor without saving, rendered
+            unstyled — and a `btn-primary` used without the `.btn` base it
+            builds on. Both go through the shared Button now. */}
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" icon={Save} onClick={handleSave} loading={saving}>
           {saving ? "Saving..." : "Save Schedule"}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
