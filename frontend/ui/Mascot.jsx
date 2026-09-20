@@ -18,6 +18,7 @@
  *   listening the microphone is open and Navi is taking the question in.
  *   working   something is broken or missing, and is being looked at.
  *   hero      full figure, for the landing page only.
+ *   bust      the same figure, head to hands, for the landing page on a phone.
  *
  * Every instance is decorative unless given a `label`. Navi repeats whatever
  * the text beside them already says, and a screen reader announcing "mascot" on
@@ -35,6 +36,7 @@ const POSES = {
   excited:   { src: "/mascot/navi-excited.png",   ratio: 1 },
   working:   { src: "/mascot/navi-working.png",   ratio: 1 },
   hero:      { src: "/mascot/navi-hero.png",      ratio: 1081 / 300 },
+  bust:      { src: "/mascot/navi-bust.png",      ratio: 497 / 300 },
 };
 
 const SIZES = { xs: 36, sm: 56, md: 88, lg: 128, xl: 200 };

@@ -67,3 +67,28 @@ hero = hero.crop(hero.getbbox())
 w, h = hero.size
 hero = hero.resize((300, round(300 * h / w)), Image.LANCZOS)
 save(hero, OUT / "navi-hero.png")
+
+# The same figure from the head to just below the hands, for phone screens.
+# The full hero is three and a half times taller than it is wide, so at any
+# width that fits a phone it is 300-460px tall and pushes the page's actual
+# buttons below the fold. Cropping rather than shrinking keeps the face, the
+# lanyard and the tablet at a size somebody can actually see.
+BUST = 0.46
+FADE = 0.18   # share of the bust's height that dissolves into the background
+
+bust = hero.crop((0, 0, hero.width, round(hero.height * BUST)))
+
+# Without this the figure stops at a hard horizontal line across the waist,
+# which reads as a picture that got cut off rather than a deliberate crop. The
+# alpha ramps to nothing over the bottom of the image, so it fades out against
+# whatever is behind it -- and works on the dark landing page and a light theme
+# alike, which a painted-on gradient would not.
+alpha = bust.getchannel("A")
+fade_from = round(bust.height * (1 - FADE))
+for y in range(fade_from, bust.height):
+    scale = 1 - (y - fade_from) / (bust.height - fade_from)
+    for x in range(bust.width):
+        alpha.putpixel((x, y), round(alpha.getpixel((x, y)) * scale))
+bust.putalpha(alpha)
+
+save(bust, OUT / "navi-bust.png")
