@@ -258,7 +258,7 @@ export default function Walkthrough({ id, steps, open, onClose, onExit }) {
         <div className="relative flex items-start gap-3">
           {/* The tour already walks someone through the real screen step by
               step. A face on it is the difference between a spotlight and a
-              guide, which is the whole of what Rizzy is for. */}
+              guide, which is the whole of what Navi is for. */}
           <Mascot pose="helpful" size="sm" className="mt-0.5 hidden xs:block" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-widest text-subtle-fg">
