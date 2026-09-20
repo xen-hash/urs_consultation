@@ -56,8 +56,14 @@ export default function LandingPage() {
               URS College of Engineering.
             </p>
           </div>
-          {/* Above the fold, so this one loads eagerly. Hidden on the narrowest
-              screens, where the headline should not have to share the width. */}
+          {/* Above the fold, so both of these load eagerly.
+              Two crops rather than one scaled down: the full figure is three
+              and a half times taller than it is wide, so on a phone it either
+              shrinks to a thumbnail or pushes the three portal cards — the
+              reason anybody is on this page — clean off the screen. The bust
+              is the same character at a size a phone can actually show. */}
+          <Mascot pose="bust" size="lg" priority
+            className="sm:hidden self-center -mt-2" />
           <Mascot pose="hero" size="lg" priority
             className="hidden sm:block sm:-mb-2 lg:mr-4" />
         </header>

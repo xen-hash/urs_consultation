@@ -74,7 +74,8 @@ export default defineConfig({
           "**/mascot/navi-listening.png",
           "**/mascot/navi-excited.png",
           "**/mascot/navi-working.png",
-          "**/mascot/navi-hero.png"
+          "**/mascot/navi-hero.png",
+          "**/mascot/navi-bust.png"
         ],
         // The URS seal is ~1.7 MB; keep it in the shell so the app looks right offline.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
