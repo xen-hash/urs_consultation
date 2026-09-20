@@ -73,15 +73,42 @@ export function listen({ onResult, onError, onEnd, lang = "en-PH" } = {}) {
   recognition.maxAlternatives = 1;
 
   let finished = false;
+  let heard = "";        // the best transcript so far, final or not
+  let sawFinal = false;
+
+  /**
+   * Ends the session, making sure the question actually gets asked.
+   *
+   * A final result is not guaranteed. iOS Safari routinely ends a session on a
+   * pause without ever setting isFinal, and pressing stop does the same on
+   * every engine. The caller only submits on a final result, so without this
+   * the words appear in the box, the microphone closes, and nothing happens —
+   * which is exactly what it looks like when you speak a question and it is
+   * never sent.
+   *
+   * So whatever was heard is promoted to final on the way out.
+   */
   const finish = () => {
     if (finished) return;
     finished = true;
+    if (!discarded && !sawFinal && heard.trim()) onResult?.(heard, true);
     onEnd?.();
   };
 
+  // Set by abort(): the difference between finishing a question and walking
+  // away from one. Closing the panel must not fire off whatever was half heard
+  // on the way out.
+  let discarded = false;
+
   recognition.onresult = (event) => {
     const result = event.results[event.results.length - 1];
-    onResult?.(result[0].transcript, result.isFinal);
+    const transcript = result[0].transcript;
+    // Interim transcripts can come back shorter as the engine reconsiders, and
+    // the last one is not always the longest. Keep the fullest thing heard, so
+    // a promoted final is not a truncated question.
+    if (transcript.trim().length >= heard.trim().length) heard = transcript;
+    if (result.isFinal) sawFinal = true;
+    onResult?.(transcript, result.isFinal);
   };
 
   recognition.onerror = (event) => {
@@ -111,8 +138,14 @@ export function listen({ onResult, onError, onEnd, lang = "en-PH" } = {}) {
   }
 
   return {
+    /** Done speaking: close the microphone and ask what was heard. */
     stop() {
       try { recognition.stop(); } catch { /* already stopped */ }
+    },
+    /** Changed their mind: close the microphone and throw the words away. */
+    abort() {
+      discarded = true;
+      try { recognition.abort(); } catch { /* already stopped */ }
     },
   };
 }

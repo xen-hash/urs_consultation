@@ -344,6 +344,9 @@ export const FAQ = [
     keywords: [
       "teacher login", "faculty login", "professor login", "employee id", "staff",
       "how do i sign in as teacher", "faculty portal", "my card",
+      // The bare phrasing too: on the faculty portal, "how do I sign in" is
+      // this question, and the page is what says so.
+      "sign in", "log in", "login", "how to sign in",
     ],
   },
   {
@@ -408,6 +411,7 @@ export const FAQ = [
     keywords: [
       "dean", "admin", "administrator", "dean login", "dashboard", "office",
       "admin password", "who can access",
+      "sign in", "log in", "login", "how to sign in",
     ],
   },
   {
@@ -496,6 +500,136 @@ export const FAQ = [
       "version available",
     ],
   },
+  // ── How a consultation actually goes ──────────────────────────────────────
+  // Not in the software at all, which is exactly why they get asked: the app
+  // can say when to turn up, and a poster on a door cannot.
+  {
+    id: "rules-arrive",
+    audience: "student",
+    topic: "On the day",
+    question: "When should I arrive for an accepted consultation?",
+    answer:
+      "A few minutes early, at the time your professor set in the Inbox tab. They are fitting you around classes, so a late arrival usually means the slot is gone.",
+    keywords: [
+      "arrive", "early", "late", "what time", "on the day", "turn up", "show up",
+      "how early", "punctual", "be there",
+    ],
+  },
+  {
+    id: "rules-no-show",
+    audience: "student",
+    topic: "On the day",
+    question: "What happens if I cannot make it?",
+    answer:
+      "Cancel it from the Inbox tab as soon as you know. The slot goes back to your professor and somebody else can take it. Not turning up without cancelling is the one thing that makes a professor slower to accept next time.",
+    keywords: [
+      "cannot make it", "cant make it", "miss", "missed", "no show", "not show up",
+      "absent", "forgot to come", "forgot to attend", "skip", "reschedule",
+      "move it", "change the time", "did not attend",
+    ],
+  },
+  {
+    id: "rules-group",
+    audience: "student",
+    topic: "On the day",
+    question: "Can we book as a group?",
+    answer:
+      "The request is one student, because it is tied to your account. For a group, one of you sends the request and says in the purpose how many are coming, so your professor can plan the time.",
+    keywords: [
+      "group", "together", "friends", "classmates", "team", "thesis group",
+      "more than one", "we", "partner", "groupmates",
+    ],
+  },
+  {
+    id: "rules-purpose",
+    audience: "student",
+    topic: "Booking",
+    question: "What makes a good reason to write?",
+    answer:
+      "Say the subject and the specific thing you are stuck on. \"Consultation\" tells your professor nothing. \"I cannot get the Thevenin equivalent in problem set 3\" lets them bring the right material.",
+    keywords: [
+      "reason", "what to write", "purpose", "what should i say", "good reason",
+      "valid", "example", "how to write", "message", "explain",
+    ],
+  },
+
+  // ── Privacy ───────────────────────────────────────────────────────────────
+  {
+    id: "privacy-who-sees",
+    audience: "student",
+    topic: "Privacy",
+    question: "Who can see my request and what I wrote?",
+    answer:
+      "The professor you sent it to, and the Dean's Office, which can see every request across all departments. Other students never see it, and neither do other professors.",
+    keywords: [
+      "who can see", "who sees", "private", "privacy", "confidential", "read",
+      "other students", "visible", "who reads", "shared", "secret",
+    ],
+  },
+  {
+    id: "privacy-photo",
+    audience: "student",
+    topic: "Privacy",
+    question: "Who can see my photo?",
+    answer:
+      "Only people who are signed in. The public availability board is served without any photos at all, so nobody browsing it can see faces.",
+    keywords: [
+      "photo", "picture", "face", "image", "who sees my photo", "profile picture",
+      "public", "anyone see",
+    ],
+  },
+  {
+    id: "privacy-records",
+    audience: "student",
+    topic: "Privacy",
+    question: "Are my old requests kept?",
+    answer:
+      "Yes. Cancelling or declining changes the status rather than deleting the record, so both you and your professor can see what happened. Ask the Dean's Office if something needs correcting.",
+    keywords: [
+      "kept", "history", "deleted", "delete", "record", "records", "stored",
+      "how long", "erase", "remove my data", "old requests", "permanent",
+    ],
+  },
+
+  // ── When something is wrong ───────────────────────────────────────────────
+  {
+    id: "trouble-stuck",
+    audience: "app",
+    topic: "Something is wrong",
+    question: "A page is stuck loading or will not open.",
+    answer:
+      "Pull down to refresh first. If the amber offline bar is showing, the connection is the problem and the app will catch up on its own. If it persists, close the app fully and reopen it.",
+    keywords: [
+      "stuck", "loading", "spinner", "wont load", "not loading", "blank", "frozen",
+      "hang", "slow", "broken", "white screen", "nothing happens", "crash",
+    ],
+  },
+  {
+    id: "trouble-notifications",
+    audience: "student",
+    topic: "Something is wrong",
+    question: "I am not getting notified when my professor replies.",
+    answer:
+      "Answers appear on the Inbox tab with a dot on it, not as a phone notification. Open the app and check there. The dot clears once you have read it.",
+    keywords: [
+      "notification", "notifications", "notify", "alert", "not getting", "no dot",
+      "badge", "push", "reply", "didnt know", "how will i know", "email me",
+    ],
+  },
+  {
+    id: "trouble-wrong-details",
+    audience: "student",
+    topic: "Something is wrong",
+    question: "My department or course is wrong on my account.",
+    answer:
+      "Course and year level you can fix yourself on the Profile tab. Your student number and department are set when the account is made — ask the Dean's Office to change those.",
+    keywords: [
+      "wrong", "incorrect", "mistake", "department", "course", "year level",
+      "wrong department", "wrong course", "change my department",
+      "change my course", "fix my account", "wrong name", "typo",
+    ],
+  },
+
   {
     id: "app-help",
     audience: "app",
@@ -563,11 +697,18 @@ function tokens(text) {
 
 // Each entry's keywords and question, normalized once at load rather than on
 // every question asked.
-const INDEX = new Map(FAQ.map(entry => [entry.id, {
-  phrases: entry.keywords.map(normalize).filter(k => k.includes(" ")),
-  words: entry.keywords.map(normalize).filter(k => k && !k.includes(" ")),
-  question: tokens(entry.question),
-}]));
+// De-duplicated, because synonym expansion collapses several keywords onto
+// one phrase -- "sign in", "signin", "login" and "log in" all become "sign in"
+// -- and counting each of them scored that entry four times over, which no
+// amount of context could then outweigh.
+const INDEX = new Map(FAQ.map(entry => {
+  const normalized = [...new Set(entry.keywords.map(normalize).filter(Boolean))];
+  return [entry.id, {
+    phrases: normalized.filter(k => k.includes(" ")),
+    words: normalized.filter(k => !k.includes(" ")),
+    question: tokens(entry.question),
+  }];
+}));
 
 /**
  * How well one entry answers one question.
@@ -630,14 +771,44 @@ function score(entry, asked, askedTokens) {
  */
 const RUNNER_UP_RATIO = 0.5;
 
-export function askNavi(question, { limit = 3 } = {}) {
+/**
+ * Which audience the reader is plainly acting as, from the page they are on.
+ *
+ * "How do I sign in?" is one question with three answers, and the screen the
+ * reader is looking at settles which one they meant far more reliably than the
+ * words do. Somebody on /teacher is not asking about student registration.
+ *
+ * A nudge, not an override: it breaks ties and lifts a close second, and it is
+ * never enough on its own to beat a strong match from another audience. A
+ * professor on their own dashboard may well be asking what their students see.
+ */
+export function audienceForPath(pathname = "") {
+  if (pathname.startsWith("/teacher")) return "teacher";
+  if (pathname.startsWith("/dean")) return "dean";
+  if (pathname.startsWith("/student")) return "student";
+  return null;
+}
+
+const CONTEXT_BONUS = 1.35;
+
+export function askNavi(question, { limit = 3, pathname = "" } = {}) {
   const asked = normalize(question);
   if (asked.length < 2) return [];
   const askedTokens = tokens(question);
   if (!askedTokens.length) return [];
 
+  // The public pages carry no role in the path, and the overwhelming majority
+  // of people on them are students, so that is the standing assumption.
+  const here = audienceForPath(pathname) || "student";
+
   const ranked = FAQ
-    .map(entry => ({ entry, score: score(entry, asked, askedTokens) }))
+    .map(entry => {
+      const base = score(entry, asked, askedTokens);
+      // "app" entries are true everywhere, so they are never demoted by being
+      // on somebody else's page.
+      const boosted = here && entry.audience === here ? base * CONTEXT_BONUS : base;
+      return { entry, score: boosted };
+    })
     .filter(hit => hit.score > 0)
     .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id));
 
