@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AUDIENCES, FAQ, STARTERS, askNavi } from "../ui/navi-faq.js";
+import { AUDIENCES, FAQ, STARTERS, askNavi, audienceForPath } from "../ui/navi-faq.js";
 
 /**
  * These pin the matcher against the way the questions actually arrive.
@@ -111,5 +111,73 @@ describe("the FAQ itself", () => {
     for (const starter of STARTERS) {
       expect(askNavi(starter).length, starter).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("new entries stealing old questions", () => {
+  /**
+   * Every one of these was a real regression, caught by hand after the
+   * troubleshooting and etiquette entries went in. A vague multi-word keyword
+   * is the failure mode: "change my" belonged to nothing in particular and
+   * took "how do I change my PIN" off the entry that answers it.
+   */
+  it("keeps PIN questions on the PIN entries", () => {
+    expect(top("how do i change my pin")).toBe("account-change-pin");
+    expect(top("i forgot my pin")).toBe("signin-forgot-pin");
+    expect(top("how many digits is my pin")).toBe("signin-pin-rules");
+  });
+
+  it("keeps the wrong-details entry to wrong details", () => {
+    expect(top("my department is wrong")).toBe("trouble-wrong-details");
+    expect(top("my course is incorrect on my account")).toBe("trouble-wrong-details");
+  });
+
+  it("does not let 'forgot' pull a no-show answer", () => {
+    // "forgot" alone is a forgotten PIN; forgetting to turn up is said
+    // differently, and conflating them answers the wrong question entirely.
+    expect(top("i forgot my pin")).not.toBe("rules-no-show");
+    expect(top("i forgot to come to my consultation")).toBe("rules-no-show");
+  });
+
+  it("answers the new topics it was given", () => {
+    expect(top("who can see what i wrote")).toBe("privacy-who-sees");
+    expect(top("what if i cannot make it")).toBe("rules-no-show");
+    expect(top("how early should i arrive")).toBe("rules-arrive");
+    expect(top("the page is stuck loading")).toBe("trouble-stuck");
+    expect(top("can we book as a group")).toBe("rules-group");
+  });
+});
+
+describe("the page the reader is on", () => {
+  it("settles which audience a shared question belongs to", () => {
+    // "How do I sign in?" has three right answers. The screen they are looking
+    // at is better evidence of which one they meant than the words are.
+    expect(askNavi("how do i sign in", { pathname: "/teacher" })[0].audience).toBe("teacher");
+    expect(askNavi("how do i sign in", { pathname: "/student" })[0].audience).toBe("student");
+    expect(askNavi("how do i sign in", { pathname: "/dean" })[0].audience).toBe("dean");
+  });
+
+  it("is a nudge, not an override", () => {
+    // A professor on their own dashboard asking a plainly student question
+    // still gets the student answer; context breaks ties, it does not outrank
+    // a strong match from elsewhere.
+    expect(askNavi("how do i register as a student", { pathname: "/teacher/dashboard" })[0].id)
+      .toBe("account-register");
+  });
+
+  it("changes nothing when the path says nothing", () => {
+    expect(askNavi("how do i cancel my request", { pathname: "/" })[0].id).toBe("book-cancel");
+    expect(askNavi("how do i cancel my request")[0].id).toBe("book-cancel");
+  });
+});
+
+describe("audienceForPath", () => {
+  it("reads the route", () => {
+    expect(audienceForPath("/teacher/dashboard")).toBe("teacher");
+    expect(audienceForPath("/student/register")).toBe("student");
+    expect(audienceForPath("/dean")).toBe("dean");
+    expect(audienceForPath("/availability")).toBeNull();
+    expect(audienceForPath("/")).toBeNull();
+    expect(audienceForPath()).toBeNull();
   });
 });

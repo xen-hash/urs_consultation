@@ -57,31 +57,101 @@ export async function microphoneState() {
  *   onError(message)         already written for a reader, not an error code
  *   onEnd()                  always last, whatever happened
  */
-export function listen({ onResult, onError, onEnd, lang = "en-PH" } = {}) {
+export const SILENCE_MS = 2000;
+
+export function listen({
+  onResult, onError, onEnd, onSilenceTick,
+  lang = "en-PH", silenceMs = SILENCE_MS,
+} = {}) {
   if (!Recognition) {
     onError?.("This browser cannot listen. Type your question instead.");
     onEnd?.();
-    return { stop() {} };
+    return { stop() {}, abort() {} };
   }
 
   const recognition = new Recognition();
   recognition.lang = lang;
   // Interim results are what make the panel feel like it is listening rather
-  // than frozen. One question at a time, so no continuous mode.
+  // than frozen.
   recognition.interimResults = true;
-  recognition.continuous = false;
+  // Continuous, and this is the whole difference between a question that gets
+  // heard and one that does not. Left off, the engine treats the first pause
+  // as the end of the sentence — draw breath halfway through "who is
+  // available in computer engineering" and it stops at "who is available in",
+  // which reads as the microphone mishearing when in fact it stopped
+  // listening. Continuous keeps it open, and the silence timer below decides
+  // when the question is actually finished.
+  recognition.continuous = true;
   recognition.maxAlternatives = 1;
 
   let finished = false;
+  // In continuous mode the engine hands back the sentence in pieces: settled
+  // ones it will not revise, and a live tail it still might. The question is
+  // the two joined, which is why neither alone is kept.
+  let settled = "";
+  let tail = "";
+  let silenceTimer = null;
+
+  const full = () => `${settled} ${tail}`.replace(/\s+/g, " ").trim();
+
+  const armSilence = (ms = silenceMs) => {
+    clearTimeout(silenceTimer);
+    if (!silenceMs) return;
+    onSilenceTick?.(true);
+    silenceTimer = setTimeout(() => {
+      // A gap this long means they have finished asking. Close the
+      // microphone; finish() is what actually sends it.
+      try { recognition.stop(); } catch { /* already stopping */ }
+    }, ms);
+  };
+
+  // Longer before the first word than between words. Two seconds is a pause in
+  // a sentence; it is not long enough to tap the button, collect a thought and
+  // start talking, and cutting somebody off before they have said anything is
+  // the rudest version of this feature.
+  const START_GRACE_MS = 7000;
+
+  /**
+   * Ends the session, making sure the question actually gets asked.
+   *
+   * A final result is not guaranteed. iOS Safari routinely ends a session on a
+   * pause without ever setting isFinal, and pressing stop does the same on
+   * every engine. The caller only submits on a final result, so without this
+   * the words appear in the box, the microphone closes, and nothing happens —
+   * which is exactly what it looks like when you speak a question and it is
+   * never sent.
+   *
+   * So whatever was heard is promoted to final on the way out.
+   */
   const finish = () => {
     if (finished) return;
     finished = true;
+    clearTimeout(silenceTimer);
+    onSilenceTick?.(false);
+    // The single place a question is submitted. Whether the engine marked
+    // anything final, whether they tapped send, whether two seconds of quiet
+    // ran out — it all arrives here, and the whole sentence goes at once.
+    if (!discarded && full()) onResult?.(full(), true);
     onEnd?.();
   };
 
+  // Set by abort(): the difference between finishing a question and walking
+  // away from one. Closing the panel must not fire off whatever was half heard
+  // on the way out.
+  let discarded = false;
+
   recognition.onresult = (event) => {
-    const result = event.results[event.results.length - 1];
-    onResult?.(result[0].transcript, result.isFinal);
+    // Only the results from this event onwards are new; earlier ones are
+    // already in `settled`.
+    tail = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      const transcript = result[0].transcript;
+      if (result.isFinal) settled = `${settled} ${transcript}`.trim();
+      else tail = `${tail} ${transcript}`.trim();
+    }
+    onResult?.(full(), false);
+    armSilence();
   };
 
   recognition.onerror = (event) => {
@@ -105,15 +175,26 @@ export function listen({ onResult, onError, onEnd, lang = "en-PH" } = {}) {
 
   try {
     recognition.start();
+    armSilence(START_GRACE_MS);
   } catch {
     // start() throws if called twice before end. Nothing useful to report.
     finish();
   }
 
   return {
+    /** Done speaking: close the microphone and ask what was heard. */
     stop() {
+      clearTimeout(silenceTimer);
       try { recognition.stop(); } catch { /* already stopped */ }
     },
+    /** Changed their mind: close the microphone and throw the words away. */
+    abort() {
+      discarded = true;
+      clearTimeout(silenceTimer);
+      try { recognition.abort(); } catch { /* already stopped */ }
+    },
+    /** What has been heard so far, for a send button pressed mid-sentence. */
+    transcript: () => full(),
   };
 }
 
@@ -124,13 +205,68 @@ export function listen({ onResult, onError, onEnd, lang = "en-PH" } = {}) {
  * numbers — "4-digit PIN", "Status & Schedule" — and the default pace runs
  * them together.
  */
-export function speak(text, { lang = "en-PH", onEnd } = {}) {
+/**
+ * The voices this device can speak with.
+ *
+ * Voices come from the operating system, not from us, so the list is different
+ * on every phone and there is no voice we can promise anybody. Chrome also
+ * loads them asynchronously and returns an empty list on first call, which is
+ * why callers need `onVoicesReady` rather than a single read at startup.
+ *
+ * English only, because every answer Navi speaks is written in English and a
+ * Filipino or Japanese voice reading English aloud is worse than no voice.
+ */
+export function listVoices() {
+  try {
+    return (window.speechSynthesis?.getVoices() || [])
+      .filter(v => /^en(-|$)/i.test(v.lang))
+      .map(v => ({ voiceURI: v.voiceURI, name: v.name, lang: v.lang }));
+  } catch {
+    return [];
+  }
+}
+
+/** Calls back when the voice list is populated, and on any later change. */
+export function onVoicesReady(callback) {
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+  if (!synth) return () => {};
+  const fire = () => callback(listVoices());
+  fire();
+  synth.addEventListener?.("voiceschanged", fire);
+  return () => synth.removeEventListener?.("voiceschanged", fire);
+}
+
+/**
+ * The voice to use when nobody has chosen one.
+ *
+ * Ranked by how close the accent is to the people reading this: a Philippine
+ * English voice first, then the other Asian-Pacific Englishes, then anything
+ * English at all. Deliberately not ranked by the voice's apparent gender —
+ * guessing that from a name like "Microsoft Zira" is unreliable, and Navi
+ * being drawn as a woman is not a reason for the software to make assumptions
+ * about a list of strings.
+ */
+export function defaultVoice(voices = listVoices()) {
+  const byLang = pattern => voices.find(v => pattern.test(v.lang));
+  return byLang(/^en-PH/i) || byLang(/^en-(AU|SG|IN|NZ)/i)
+      || byLang(/^en-GB/i) || byLang(/^en-US/i) || voices[0] || null;
+}
+
+export function speak(text, { lang = "en-PH", voiceURI, onEnd } = {}) {
   const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
   if (!synth || !text) { onEnd?.(); return; }
 
   synth.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = lang;
+
+  // A chosen voice carries its own language; setting both and having them
+  // disagree makes some engines fall back to a default nobody picked.
+  const chosen = voiceURI
+    ? (synth.getVoices() || []).find(v => v.voiceURI === voiceURI)
+    : null;
+  if (chosen) utterance.voice = chosen;
+  else utterance.lang = lang;
+
   utterance.rate = 0.95;
   utterance.onend = () => onEnd?.();
   utterance.onerror = () => onEnd?.();

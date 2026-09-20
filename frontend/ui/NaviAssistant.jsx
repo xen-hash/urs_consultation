@@ -22,17 +22,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
-  ArrowRight, Mic, MicOff, Send, Volume2, VolumeX, X,
+  ArrowRight, Mic, MicOff, Send, Settings2, Volume2, VolumeX, X,
 } from "lucide-react";
 
 import Mascot from "./Mascot.jsx";
 import { useScrollLock } from "./index.jsx";
 import { STARTERS, askNavi } from "./navi-faq.js";
-import { listen, microphoneState, speak, speechSupport, stopSpeaking } from "./speech.js";
+import { askLive, classify } from "./navi-live.js";
+import { PROJECT_CONTACT } from "../constants.js";
+import {
+  SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, speak,
+  speechSupport, stopSpeaking,
+} from "./speech.js";
 
 const SPEAK_KEY = "urs.navi.speak";
+const VOICE_KEY = "urs.navi.voice";
 
 /** Read-aloud is off unless asked for: a phone that talks unprompted in a
  *  quiet corridor is a reason to close the app. */
@@ -44,11 +50,27 @@ function writeSpeakPreference(on) {
   try { localStorage.setItem(SPEAK_KEY, on ? "on" : "off"); } catch { /* not fatal */ }
 }
 
-/** What Navi says when nothing matched. Not an error — a way forward. */
+/** Which voice Navi speaks with, per device: the voices differ on every phone. */
+function readVoicePreference() {
+  try { return localStorage.getItem(VOICE_KEY) || ""; } catch { return ""; }
+}
+
+function writeVoicePreference(uri) {
+  try { localStorage.setItem(VOICE_KEY, uri || ""); } catch { /* not fatal */ }
+}
+
+/**
+ * What Navi says when nothing matched.
+ *
+ * Not an error, and not a dead end: it names what Navi does know, so the next
+ * question has a better chance, and it names somewhere real to go when the
+ * answer is not in the app at all.
+ */
 const NO_MATCH =
   "I don't know that one. I can help with signing in, booking a consultation, " +
-  "checking who is available, and what happened to a request you sent. " +
-  "For anything else, the Dean's Office is the place to ask.";
+  "checking who is free right now, and what happened to a request you sent. " +
+  "For anything else, the Dean's Office is the place to ask" +
+  (PROJECT_CONTACT ? `, or email ${PROJECT_CONTACT}.` : ".");
 
 let nextId = 0;
 
@@ -97,7 +119,11 @@ export default function NaviAssistant() {
   const [mic, setMic] = useState("idle");
   const [heard, setHeard] = useState("");       // interim dictation
   const [micError, setMicError] = useState(null);
+  const [voices, setVoices] = useState([]);
+  const [voiceURI, setVoiceURI] = useState(readVoicePreference);
+  const [showVoices, setShowVoices] = useState(false);
 
+  const { pathname } = useLocation();
   const support = useRef(speechSupport()).current;
   const viewport = useVisibleViewport(open);
   // The page behind must not scroll with the panel over it — on iOS it
@@ -109,26 +135,62 @@ export default function NaviAssistant() {
   const launcherRef = useRef(null);
   const returnFocus = useRef(false);
 
+  /** Done speaking: close the microphone and ask what was heard. */
   const stopListening = useCallback(() => {
     sessionRef.current?.stop();
     sessionRef.current = null;
   }, []);
 
+  /** Leaving: close the microphone and throw away whatever was half-said. */
+  const cancelListening = useCallback(() => {
+    sessionRef.current?.abort();
+    sessionRef.current = null;
+  }, []);
+
+  const say = useCallback((text) => {
+    if (!speakBack) return;
+    setNowSpeaking(true);
+    speak(text, { voiceURI, onEnd: () => setNowSpeaking(false) });
+  }, [speakBack, voiceURI]);
+
+  // Chrome returns an empty voice list on the first read and fills it in
+  // later, so this listens rather than asking once.
+  useEffect(() => onVoicesReady((list) => {
+    setVoices(list);
+    // Nothing chosen yet: take the closest accent rather than whatever the
+    // engine would have defaulted to.
+    setVoiceURI(current => current || defaultVoice(list)?.voiceURI || "");
+  }), []);
+
   const answer = useCallback((question) => {
     const text = question.trim();
     if (!text) return;
 
-    const answers = askNavi(text);
-    setTurns(prev => [...prev, { id: nextId++, question: text, answers }]);
+    const id = nextId++;
+    // The page settles which audience a question belongs to far better than
+    // its wording does — see audienceForPath in navi-faq.js.
+    const answers = askNavi(text, { pathname });
+    // "Who is free right now" wants the roster, not a paragraph about where
+    // the roster lives. That needs the network, so the turn goes up straight
+    // away and fills in when the answer lands.
+    const live = Boolean(classify(text));
+
+    setTurns(prev => [...prev, { id, question: text, answers, live: live ? "pending" : null }]);
     setDraft("");
     setHeard("");
 
-    if (speakBack) {
-      const spoken = answers.length ? answers[0].answer : NO_MATCH;
-      setNowSpeaking(true);
-      speak(spoken, { onEnd: () => setNowSpeaking(false) });
+    if (!live) {
+      say(answers.length ? answers[0].answer : NO_MATCH);
+      return;
     }
-  }, [speakBack]);
+
+    askLive(text).then((result) => {
+      setTurns(prev => prev.map(t => (t.id === id ? { ...t, live: result || null } : t)));
+      // A live question Navi could not resolve falls back to whatever the FAQ
+      // made of it, which is what is already on screen.
+      say(result ? result.text : (answers.length ? answers[0].answer : NO_MATCH));
+    });
+  }, [pathname, say]);
 
   // ── Microphone ────────────────────────────────────────────────────────────
 
@@ -158,6 +220,8 @@ export default function NaviAssistant() {
   }, [answer]);
 
   const pressMic = useCallback(async () => {
+    // Finished speaking. stopListening submits what was heard, which is the
+    // whole point: the engine often ends without ever marking a result final.
     if (mic === "listening") { stopListening(); setMic("idle"); return; }
     if (mic === "explaining") { setMic("idle"); return; }
 
@@ -176,7 +240,7 @@ export default function NaviAssistant() {
   // ── Panel lifecycle ───────────────────────────────────────────────────────
 
   const close = useCallback(() => {
-    stopListening();
+    cancelListening();
     stopSpeaking();
     setOpen(false);
     setMic("idle");
@@ -186,7 +250,7 @@ export default function NaviAssistant() {
     // launcher is unmounted while the panel is up, so there is nothing to focus
     // until React has re-rendered it. The effect below does it afterwards.
     returnFocus.current = true;
-  }, [stopListening]);
+  }, [cancelListening]);
 
   useEffect(() => {
     if (open || !returnFocus.current) return;
@@ -204,7 +268,7 @@ export default function NaviAssistant() {
   // Everything stops when the panel goes away, including on unmount: a
   // half-spoken answer outliving the page it belongs to is a bug people
   // report as "the website is talking to me".
-  useEffect(() => () => { stopListening(); stopSpeaking(); }, [stopListening]);
+  useEffect(() => () => { cancelListening(); stopSpeaking(); }, [cancelListening]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -289,9 +353,23 @@ export default function NaviAssistant() {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-fg leading-tight">Navi</p>
             <p className="text-xs text-muted-fg leading-tight">
-              {mic === "listening" ? "Listening…" : "Ask me about consultations"}
+              {mic === "listening"
+                ? `Listening — I'll send after ${SILENCE_MS / 1000}s of quiet`
+                : "Ask me about consultations"}
             </p>
           </div>
+          {support.speaking && voices.length > 1 && speakBack && (
+            <button
+              onClick={() => setShowVoices(v => !v)}
+              aria-expanded={showVoices}
+              aria-label="Choose Navi's voice"
+              title="Choose Navi's voice"
+              className={`w-10 h-10 grid place-items-center rounded-lg transition-colors duration-200
+                ${showVoices ? "bg-brand-50 text-brand" : "text-muted-fg hover:text-fg hover:bg-surface-2"}`}
+            >
+              <Settings2 size={18} aria-hidden="true" />
+            </button>
+          )}
           {support.speaking && (
             <button
               onClick={toggleSpeak}
@@ -313,6 +391,43 @@ export default function NaviAssistant() {
             <X size={18} aria-hidden="true" />
           </button>
         </div>
+
+        {/* Voice picker. The list comes from the device, so it is different on
+            every phone and there is nothing to promise in advance — which is
+            why this is a list to choose from rather than a setting we guess. */}
+        {showVoices && (
+          <div className="px-4 py-3 border-b border-border bg-surface-2/50">
+            <label htmlFor="navi-voice" className="label mb-1.5">Navi&rsquo;s voice</label>
+            <div className="flex gap-2">
+              <select
+                id="navi-voice"
+                value={voiceURI}
+                onChange={(e) => {
+                  setVoiceURI(e.target.value);
+                  writeVoicePreference(e.target.value);
+                  // Say something in it immediately: a voice name means
+                  // nothing until you have heard it.
+                  stopSpeaking();
+                  setNowSpeaking(true);
+                  speak("Hi, I'm Navi. Ask me about consultations.", {
+                    voiceURI: e.target.value,
+                    onEnd: () => setNowSpeaking(false),
+                  });
+                }}
+                className="input flex-1 min-w-0"
+              >
+                {voices.map(v => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {v.name} ({v.lang})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-muted-fg mt-2">
+              These come from your phone or computer, so the list differs between devices.
+            </p>
+          </div>
+        )}
 
         {/* Conversation */}
         <div ref={logRef} className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -382,7 +497,14 @@ export default function NaviAssistant() {
 
         {/* Ask */}
         <form
-          onSubmit={e => { e.preventDefault(); answer(draft); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Mid-sentence, the send button means "that is my question" —
+            // stopping submits what has been heard rather than discarding it,
+            // so the two seconds of silence never have to elapse.
+            if (mic === "listening") { stopListening(); setMic("idle"); return; }
+            answer(draft);
+          }}
           className="flex items-end gap-2 p-3 border-t border-border pb-safe-4 sm:pb-3"
         >
           <label className="sr-only" htmlFor="navi-question">Your question</label>
@@ -418,8 +540,8 @@ export default function NaviAssistant() {
           )}
           <button
             type="submit"
-            disabled={!draft.trim() || mic === "listening"}
-            aria-label="Send question"
+            disabled={mic === "listening" ? !heard.trim() : !draft.trim()}
+            aria-label={mic === "listening" ? "Send what you have said" : "Send question"}
             className="w-11 h-11 shrink-0 grid place-items-center rounded-lg bg-brand
                        hover:bg-brand-700 transition-colors duration-200
                        disabled:opacity-40 disabled:pointer-events-none"
@@ -448,6 +570,31 @@ function Turn({ turn, onAsk, onClose }) {
         {turn.question}
       </p>
 
+      {/* A live answer supersedes the written one: asked who is free, Navi
+          says who is free. The FAQ entry stays behind it only as the fallback
+          for when the data could not be reached. */}
+      {turn.live === "pending" ? (
+        <div className="w-fit rounded-2xl rounded-bl-sm bg-surface-2 px-3.5 py-2.5">
+          <span className="flex items-center gap-2 text-sm text-muted-fg">
+            <span className="h-2 w-2 rounded-full bg-brand animate-shimmer" aria-hidden="true" />
+            Checking…
+          </span>
+        </div>
+      ) : turn.live ? (
+        <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-sm bg-brand-50 px-3.5 py-2.5 break-words">
+          <p className="text-sm text-fg leading-relaxed">{turn.live.text}</p>
+          {turn.live.go && (
+            <Link
+              to={turn.live.go.to}
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 mt-2.5 text-sm font-semibold text-brand"
+            >
+              {turn.live.go.label}
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+          )}
+        </div>
+      ) : (
       <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-sm bg-surface-2 px-3.5 py-2.5 break-words">
         {best ? (
           <>
@@ -467,10 +614,12 @@ function Turn({ turn, onAsk, onClose }) {
           <p className="text-sm text-fg leading-relaxed">{NO_MATCH}</p>
         )}
       </div>
+      )}
 
       {/* The runners-up, as questions rather than answers. Stacking three full
-          answers makes the right one harder to find, not easier. */}
-      {others.length > 0 && (
+          answers makes the right one harder to find, not easier. A live answer
+          came from the data and has no alternatives to offer. */}
+      {!turn.live && others.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="text-xs text-subtle-fg w-full">Did you mean:</span>
           {others.map(other => (
