@@ -24,7 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import {
-  ArrowRight, Mic, MicOff, Send, Volume2, VolumeX, X,
+  ArrowRight, Mic, MicOff, Send, Settings2, Volume2, VolumeX, X,
 } from "lucide-react";
 
 import Mascot from "./Mascot.jsx";
@@ -32,9 +32,13 @@ import { useScrollLock } from "./index.jsx";
 import { STARTERS, askNavi } from "./navi-faq.js";
 import { askLive, classify } from "./navi-live.js";
 import { PROJECT_CONTACT } from "../constants.js";
-import { listen, microphoneState, speak, speechSupport, stopSpeaking } from "./speech.js";
+import {
+  SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, speak,
+  speechSupport, stopSpeaking,
+} from "./speech.js";
 
 const SPEAK_KEY = "urs.navi.speak";
+const VOICE_KEY = "urs.navi.voice";
 
 /** Read-aloud is off unless asked for: a phone that talks unprompted in a
  *  quiet corridor is a reason to close the app. */
@@ -44,6 +48,15 @@ function readSpeakPreference() {
 
 function writeSpeakPreference(on) {
   try { localStorage.setItem(SPEAK_KEY, on ? "on" : "off"); } catch { /* not fatal */ }
+}
+
+/** Which voice Navi speaks with, per device: the voices differ on every phone. */
+function readVoicePreference() {
+  try { return localStorage.getItem(VOICE_KEY) || ""; } catch { return ""; }
+}
+
+function writeVoicePreference(uri) {
+  try { localStorage.setItem(VOICE_KEY, uri || ""); } catch { /* not fatal */ }
 }
 
 /**
@@ -106,6 +119,9 @@ export default function NaviAssistant() {
   const [mic, setMic] = useState("idle");
   const [heard, setHeard] = useState("");       // interim dictation
   const [micError, setMicError] = useState(null);
+  const [voices, setVoices] = useState([]);
+  const [voiceURI, setVoiceURI] = useState(readVoicePreference);
+  const [showVoices, setShowVoices] = useState(false);
 
   const { pathname } = useLocation();
   const support = useRef(speechSupport()).current;
@@ -134,8 +150,17 @@ export default function NaviAssistant() {
   const say = useCallback((text) => {
     if (!speakBack) return;
     setNowSpeaking(true);
-    speak(text, { onEnd: () => setNowSpeaking(false) });
-  }, [speakBack]);
+    speak(text, { voiceURI, onEnd: () => setNowSpeaking(false) });
+  }, [speakBack, voiceURI]);
+
+  // Chrome returns an empty voice list on the first read and fills it in
+  // later, so this listens rather than asking once.
+  useEffect(() => onVoicesReady((list) => {
+    setVoices(list);
+    // Nothing chosen yet: take the closest accent rather than whatever the
+    // engine would have defaulted to.
+    setVoiceURI(current => current || defaultVoice(list)?.voiceURI || "");
+  }), []);
 
   const answer = useCallback((question) => {
     const text = question.trim();
@@ -328,9 +353,23 @@ export default function NaviAssistant() {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-fg leading-tight">Navi</p>
             <p className="text-xs text-muted-fg leading-tight">
-              {mic === "listening" ? "Listening…" : "Ask me about consultations"}
+              {mic === "listening"
+                ? `Listening — I'll send after ${SILENCE_MS / 1000}s of quiet`
+                : "Ask me about consultations"}
             </p>
           </div>
+          {support.speaking && voices.length > 1 && speakBack && (
+            <button
+              onClick={() => setShowVoices(v => !v)}
+              aria-expanded={showVoices}
+              aria-label="Choose Navi's voice"
+              title="Choose Navi's voice"
+              className={`w-10 h-10 grid place-items-center rounded-lg transition-colors duration-200
+                ${showVoices ? "bg-brand-50 text-brand" : "text-muted-fg hover:text-fg hover:bg-surface-2"}`}
+            >
+              <Settings2 size={18} aria-hidden="true" />
+            </button>
+          )}
           {support.speaking && (
             <button
               onClick={toggleSpeak}
@@ -352,6 +391,43 @@ export default function NaviAssistant() {
             <X size={18} aria-hidden="true" />
           </button>
         </div>
+
+        {/* Voice picker. The list comes from the device, so it is different on
+            every phone and there is nothing to promise in advance — which is
+            why this is a list to choose from rather than a setting we guess. */}
+        {showVoices && (
+          <div className="px-4 py-3 border-b border-border bg-surface-2/50">
+            <label htmlFor="navi-voice" className="label mb-1.5">Navi&rsquo;s voice</label>
+            <div className="flex gap-2">
+              <select
+                id="navi-voice"
+                value={voiceURI}
+                onChange={(e) => {
+                  setVoiceURI(e.target.value);
+                  writeVoicePreference(e.target.value);
+                  // Say something in it immediately: a voice name means
+                  // nothing until you have heard it.
+                  stopSpeaking();
+                  setNowSpeaking(true);
+                  speak("Hi, I'm Navi. Ask me about consultations.", {
+                    voiceURI: e.target.value,
+                    onEnd: () => setNowSpeaking(false),
+                  });
+                }}
+                className="input flex-1 min-w-0"
+              >
+                {voices.map(v => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {v.name} ({v.lang})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-muted-fg mt-2">
+              These come from your phone or computer, so the list differs between devices.
+            </p>
+          </div>
+        )}
 
         {/* Conversation */}
         <div ref={logRef} className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -421,7 +497,14 @@ export default function NaviAssistant() {
 
         {/* Ask */}
         <form
-          onSubmit={e => { e.preventDefault(); answer(draft); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Mid-sentence, the send button means "that is my question" —
+            // stopping submits what has been heard rather than discarding it,
+            // so the two seconds of silence never have to elapse.
+            if (mic === "listening") { stopListening(); setMic("idle"); return; }
+            answer(draft);
+          }}
           className="flex items-end gap-2 p-3 border-t border-border pb-safe-4 sm:pb-3"
         >
           <label className="sr-only" htmlFor="navi-question">Your question</label>
@@ -457,8 +540,8 @@ export default function NaviAssistant() {
           )}
           <button
             type="submit"
-            disabled={!draft.trim() || mic === "listening"}
-            aria-label="Send question"
+            disabled={mic === "listening" ? !heard.trim() : !draft.trim()}
+            aria-label={mic === "listening" ? "Send what you have said" : "Send question"}
             className="w-11 h-11 shrink-0 grid place-items-center rounded-lg bg-brand
                        hover:bg-brand-700 transition-colors duration-200
                        disabled:opacity-40 disabled:pointer-events-none"
