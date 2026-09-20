@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import Mascot from "./Mascot.jsx";
+import { useScrollLock } from "./index.jsx";
 import { STARTERS, askNavi } from "./navi-faq.js";
 import { listen, microphoneState, speak, speechSupport, stopSpeaking } from "./speech.js";
 
@@ -51,6 +52,40 @@ const NO_MATCH =
 
 let nextId = 0;
 
+/**
+ * The part of the screen not covered by the on-screen keyboard.
+ *
+ * A panel anchored to the bottom of the window is anchored to the bottom of
+ * the *layout* viewport, and on iOS the keyboard does not shrink that — it
+ * slides over the top of it. So the question box, the one thing somebody just
+ * tapped to type into, ends up underneath the keyboard they opened.
+ *
+ * visualViewport is the part still visible. Sizing the panel to that instead
+ * keeps the input row just above the keyboard on iOS, and changes nothing on
+ * Android, where the window already resizes. Browsers without it (none that
+ * matter here, but still) fall back to the full window.
+ */
+function useVisibleViewport(active) {
+  const [rect, setRect] = useState(null);
+
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!active || !vv) { setRect(null); return undefined; }
+
+    const apply = () => setRect({ height: vv.height, top: vv.offsetTop });
+    apply();
+    vv.addEventListener("resize", apply);
+    // The page scrolls under the keyboard on iOS; offsetTop moves with it.
+    vv.addEventListener("scroll", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+    };
+  }, [active]);
+
+  return rect;
+}
+
 export default function NaviAssistant() {
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState([]);       // { id, question, answers }
@@ -64,6 +99,10 @@ export default function NaviAssistant() {
   const [micError, setMicError] = useState(null);
 
   const support = useRef(speechSupport()).current;
+  const viewport = useVisibleViewport(open);
+  // The page behind must not scroll with the panel over it — on iOS it
+  // rubber-bands, which reads as the panel itself coming loose.
+  useScrollLock(open);
   const sessionRef = useRef(null);
   const inputRef = useRef(null);
   const logRef = useRef(null);
@@ -217,7 +256,14 @@ export default function NaviAssistant() {
     : "helpful";
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-end sm:items-end sm:justify-end">
+    <div
+      className="fixed inset-x-0 z-[90] flex items-end sm:justify-end"
+      // Pinned to the visible viewport rather than the window, so the keyboard
+      // pushes the panel up instead of covering it. Falls back to the window.
+      style={viewport
+        ? { top: viewport.top, height: viewport.height }
+        : { top: 0, bottom: 0 }}
+    >
       {/* Full-screen on a phone, a panel in the corner from sm up. The scrim
           is there on both: it is what makes a tap outside close this. */}
       <button
@@ -230,9 +276,12 @@ export default function NaviAssistant() {
         role="dialog"
         aria-modal="true"
         aria-label="Ask Navi"
+        // Heights are a share of the container above, which is the visible
+        // viewport, not 85vh — with the keyboard open, 85vh is taller than
+        // what is left of the screen.
         className="relative w-full sm:w-[26rem] sm:m-5 bg-surface rounded-t-2xl sm:rounded-2xl
                    border border-border shadow-lg animate-rise flex flex-col
-                   max-h-[85vh] sm:max-h-[min(36rem,85vh)]"
+                   max-h-[85%] sm:max-h-[min(36rem,calc(100%-2.5rem))]"
       >
         {/* Header */}
         <div className="flex items-center gap-3 p-4 border-b border-border">
@@ -391,12 +440,15 @@ function Turn({ turn, onAsk, onClose }) {
 
   return (
     <div className="space-y-2.5">
+      {/* break-words, because max-width alone does not wrap a word with no
+          spaces in it — a pasted student number or email ran straight out of
+          the bubble and was clipped at the panel edge. */}
       <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-brand-50 text-brand
-                    px-3.5 py-2 text-sm font-medium">
+                    px-3.5 py-2 text-sm font-medium break-words">
         {turn.question}
       </p>
 
-      <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-sm bg-surface-2 px-3.5 py-2.5">
+      <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-sm bg-surface-2 px-3.5 py-2.5 break-words">
         {best ? (
           <>
             <p className="text-sm text-fg leading-relaxed">{best.answer}</p>
