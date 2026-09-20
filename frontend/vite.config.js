@@ -60,10 +60,21 @@ export default defineConfig({
           "**/icon-512.png",
           "**/icon-maskable-*.png",
           "**/apple-touch-icon.png",
-          // Rizzy is decorative and appears on a handful of screens. The shell
-          // has to work offline; a mascot arriving a moment later does not, and
-          // 229 KB is a sixth of what is left under the cap below.
-          "**/mascot/*.png"
+          // Navi's poses are decorative and appear on a handful of screens. The
+          // shell has to work offline; a mascot arriving a moment later does
+          // not, and the full set is 228 KB.
+          //
+          // navi-idle.png is the exception and is precached: it is the face on
+          // the help bubble, which is on every screen, so leaving it out means
+          // an empty circle in the corner of an offline app — and offline is
+          // exactly when somebody is most likely to press it.
+          "**/mascot/navi-helpful.png",
+          "**/mascot/navi-happy.png",
+          "**/mascot/navi-thinking.png",
+          "**/mascot/navi-listening.png",
+          "**/mascot/navi-excited.png",
+          "**/mascot/navi-working.png",
+          "**/mascot/navi-hero.png"
         ],
         // The URS seal is ~1.7 MB; keep it in the shell so the app looks right offline.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Download, RefreshCw, WifiOff, X, Share } from "lucide-react";
+
+import { SAFETY_POLL_MS, UPDATE_INTERVAL_MS, canReloadNow } from "./appUpdate.js";
 
 /** True while the browser reports no network connection. */
 export function useOnlineStatus() {
@@ -146,22 +148,85 @@ export function InstallAppButton({ tone = "light", className = "" }) {
 }
 
 /**
- * Global app-status layer: the offline bar and the update prompt.
+ * Reloads the page when a new build takes over, and goes looking for one.
+ *
+ * Returns "waiting" while a reload is held back because the reader is
+ * mid-sentence, so the UI can say so and offer to do it anyway.
+ */
+function useAutoReload() {
+  const [waiting, setWaiting] = useState(false);
+  const [registration, setRegistration] = useState(null);
+  const reloading = useRef(false);
+  const poll = useRef(null);
+
+  const reload = useCallback(() => {
+    if (reloading.current) return;
+    reloading.current = true;
+    clearInterval(poll.current);
+    poll.current = null;
+    window.location.reload();
+  }, []);
+
+  // Both of these are stable, which matters: useRegisterSW captures its
+  // options once, on first render, so a callback rebuilt each render would
+  // leave it holding the first one forever.
+  const reloadWhenSafe = useCallback(() => {
+    if (canReloadNow()) { reload(); return; }
+    // Held back: they are mid-sentence. Re-check shortly — canReloadNow also
+    // says yes the moment the app goes into the background.
+    setWaiting(true);
+    if (!poll.current) {
+      poll.current = setInterval(() => { if (canReloadNow()) reload(); }, SAFETY_POLL_MS);
+    }
+  }, [reload]);
+
+  // onRegisteredSW is a plain callback — it takes no teardown — so the
+  // registration is handed to an effect that can be cleaned up properly.
+  useRegisterSW({
+    onRegisteredSW(url, reg) { if (reg) setRegistration(reg); },
+    // Supplying this is what stops the plugin reloading on its own the instant
+    // the new worker activates. Its default is a bare window.location.reload()
+    // from the "activated" handler, which lands mid-sentence and takes the
+    // half-written consultation request with it.
+    onNeedReload: reloadWhenSafe,
+  });
+
+  useEffect(() => () => clearInterval(poll.current), []);
+
+  // ── Going looking for a new build ───────────────────────────────────────
+  useEffect(() => {
+    if (!registration) return undefined;
+
+    const check = () => { registration.update().catch(() => {}); };
+
+    // A backgrounded PWA has its timers throttled or frozen, and an installed
+    // one can sit for days without the window ever closing. The timer covers a
+    // tab left open on a desk; the other two cover a phone in a pocket.
+    const timer = setInterval(check, UPDATE_INTERVAL_MS);
+    const onVisible = () => { if (document.visibilityState === "visible") check(); };
+    document.addEventListener("visibilitychange", onVisible);
+    // Back on the campus WiFi is the first moment a check can succeed at all.
+    window.addEventListener("online", check);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", check);
+    };
+  }, [registration]);
+
+  return { waiting, reloadNow: reload };
+}
+
+/**
+ * Global app-status layer: the offline bar and the update notice.
  * Mounted once, above the router.
  */
 export default function PWAStatus() {
   const online = useOnlineStatus();
-  const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker
-  } = useRegisterSW({
-    onRegisteredSW(url, registration) {
-      // Consultation status changes through the day; check hourly for a new build.
-      if (registration) setInterval(() => registration.update(), 60 * 60 * 1000);
-    }
-  });
+  const { waiting, reloadNow } = useAutoReload();
 
-  if (online && !needRefresh) return null;
+  if (online && !waiting) return null;
 
   return (
     // One stack so the offline bar and the update prompt never sit on top of
@@ -180,25 +245,24 @@ export default function PWAStatus() {
         </div>
       )}
 
-      {needRefresh && (
+      {/* Only ever seen when a reload is being held back because something is
+          half-typed. The ordinary case reloads on its own and says nothing —
+          there is no decision to put to anybody, and a banner offering a
+          button that is about to press itself is just noise. */}
+      {waiting && (
         <div
           role="status"
           className="pointer-events-auto flex items-center gap-3 bg-brand text-fg text-sm px-4 py-2.5 rounded-lg shadow-2xl animate-rise"
         >
           <RefreshCw size={15} className="text-accent-fg" />
-          <span className="font-semibold">A new version is available</span>
+          <span className="font-semibold">
+            An update is ready — it will load when you finish typing
+          </span>
           <button
-            onClick={() => updateServiceWorker(true)}
+            onClick={reloadNow}
             className="bg-accent hover:bg-accent font-semibold px-3 py-1 rounded-xl transition-colors"
           >
-            Reload
-          </button>
-          <button
-            onClick={() => setNeedRefresh(false)}
-            className="text-muted-fg hover:text-fg transition-colors"
-            aria-label="Dismiss"
-          >
-            <X size={15} />
+            Reload now
           </button>
         </div>
       )}

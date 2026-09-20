@@ -97,8 +97,16 @@ Once installed:
   reconnect.
 - Consultation data is never served from cache. Faculty status, requests, and
   schedules always come from the backend so nothing shows stale availability.
-- After a redeploy, open tabs show *"A new version is available — Reload"*
-  rather than swapping out mid-consultation.
+- After a redeploy, open tabs and installed home-screen apps pick the new
+  version up on their own — nobody has to reload, reinstall, or be told to.
+  The app asks whether there is a new build every 15 minutes, every time it
+  comes back to the foreground, and whenever the connection returns; the last
+  two are what matter on a phone, where a backgrounded app's timers are frozen.
+- The one thing that delays a reload is somebody typing. If a field has text in
+  it, the update waits and says *"An update is ready — it will load when you
+  finish typing"*, with a **Reload now** button for anyone who would rather not
+  wait. It goes ahead by itself the moment the field is empty, loses focus, or
+  the app is put into the background.
 
 Requirements: the site must be served over **HTTPS** (Vercel already is) — the
 service worker, camera-based face login, and install prompt all need it.
