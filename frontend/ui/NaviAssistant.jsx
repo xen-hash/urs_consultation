@@ -24,13 +24,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import {
-  ArrowRight, Mic, MicOff, Send, Settings2, Volume2, VolumeX, X,
+  ArrowRight, Mic, MicOff, RotateCcw, Send, Settings2, Volume2, VolumeX, X,
 } from "lucide-react";
 
 import Mascot from "./Mascot.jsx";
 import { useScrollLock } from "./index.jsx";
 import { STARTERS, askNavi } from "./navi-faq.js";
 import { askLive, classify } from "./navi-live.js";
+import { shouldReset, trimTurns } from "./navi-session.js";
 import { PROJECT_CONTACT } from "../constants.js";
 import {
   SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, speak,
@@ -134,6 +135,9 @@ export default function NaviAssistant() {
   const logRef = useRef(null);
   const launcherRef = useRef(null);
   const returnFocus = useRef(false);
+  // When the reader last asked something or closed the panel. Drives whether
+  // reopening continues the conversation or starts a new one.
+  const lastActivity = useRef(0);
 
   /** Done speaking: close the microphone and ask what was heard. */
   const stopListening = useCallback(() => {
@@ -175,7 +179,10 @@ export default function NaviAssistant() {
     // away and fills in when the answer lands.
     const live = Boolean(classify(text));
 
-    setTurns(prev => [...prev, { id, question: text, answers, live: live ? "pending" : null }]);
+    lastActivity.current = Date.now();
+    setTurns(prev => trimTurns([...prev, {
+      id, question: text, answers, live: live ? "pending" : null,
+    }]));
     setDraft("");
     setHeard("");
 
@@ -240,6 +247,7 @@ export default function NaviAssistant() {
   // ── Panel lifecycle ───────────────────────────────────────────────────────
 
   const close = useCallback(() => {
+    lastActivity.current = Date.now();
     cancelListening();
     stopSpeaking();
     setOpen(false);
@@ -292,7 +300,12 @@ export default function NaviAssistant() {
     return (
       <button
         ref={launcherRef}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          // A few minutes away means this is a new question, not a
+          // continuation — see navi-session.js for why not on every close.
+          if (shouldReset(lastActivity.current)) setTurns([]);
+          setOpen(true);
+        }}
         aria-label="Ask Navi for help"
         title="Ask Navi"
         // Clear of the bottom tab bar on phones, which is 72px plus the home
@@ -358,6 +371,23 @@ export default function NaviAssistant() {
                 : "Ask me about consultations"}
             </p>
           </div>
+          {turns.length > 0 && (
+            <button
+              onClick={() => {
+                stopSpeaking();
+                setNowSpeaking(false);
+                setTurns([]);
+                lastActivity.current = Date.now();
+                inputRef.current?.focus();
+              }}
+              aria-label="Start over"
+              title="Start over"
+              className="w-10 h-10 grid place-items-center rounded-lg text-muted-fg
+                         hover:text-fg hover:bg-surface-2 transition-colors duration-200"
+            >
+              <RotateCcw size={17} aria-hidden="true" />
+            </button>
+          )}
           {support.speaking && voices.length > 1 && speakBack && (
             <button
               onClick={() => setShowVoices(v => !v)}
