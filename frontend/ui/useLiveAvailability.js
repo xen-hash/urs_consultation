@@ -44,7 +44,11 @@ export default function useLiveAvailability() {
   useEffect(() => {
     let cancelled = false;
 
-    api.get("/teacher-logs")
+    // Same reasoning as navi-live.js: the shared client's patient retries are
+    // for dashboards that are useless until they load. This is one line on a
+    // landing page, and shimmering for sixteen seconds to eventually say
+    // nothing is worse than saying nothing promptly.
+    api.get("/teacher-logs", { timeout: 8000, __noRetry: true })
       .then(({ data }) => {
         if (cancelled) return;
         const { available, total } = countAvailable(data);

@@ -24,17 +24,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import {
-  ArrowRight, Mic, MicOff, Send, Settings2, Volume2, VolumeX, X,
+  ArrowRight, Mic, MicOff, RotateCcw, Send, Settings2, Volume2, VolumeX, X,
 } from "lucide-react";
 
 import Mascot from "./Mascot.jsx";
 import { useScrollLock } from "./index.jsx";
 import { STARTERS, askNavi } from "./navi-faq.js";
 import { askLive, classify } from "./navi-live.js";
+import { shouldReset, trimTurns } from "./navi-session.js";
 import { PROJECT_CONTACT } from "../constants.js";
 import {
-  SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, speak,
-  speechSupport, stopSpeaking,
+  SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, primeSpeech,
+  speak, speechSupport, stopSpeaking,
 } from "./speech.js";
 
 const SPEAK_KEY = "urs.navi.speak";
@@ -119,6 +120,7 @@ export default function NaviAssistant() {
   const [mic, setMic] = useState("idle");
   const [heard, setHeard] = useState("");       // interim dictation
   const [micError, setMicError] = useState(null);
+  const [speechError, setSpeechError] = useState(null);
   const [voices, setVoices] = useState([]);
   const [voiceURI, setVoiceURI] = useState(readVoicePreference);
   const [showVoices, setShowVoices] = useState(false);
@@ -134,6 +136,9 @@ export default function NaviAssistant() {
   const logRef = useRef(null);
   const launcherRef = useRef(null);
   const returnFocus = useRef(false);
+  // When the reader last asked something or closed the panel. Drives whether
+  // reopening continues the conversation or starts a new one.
+  const lastActivity = useRef(0);
 
   /** Done speaking: close the microphone and ask what was heard. */
   const stopListening = useCallback(() => {
@@ -150,7 +155,11 @@ export default function NaviAssistant() {
   const say = useCallback((text) => {
     if (!speakBack) return;
     setNowSpeaking(true);
-    speak(text, { voiceURI, onEnd: () => setNowSpeaking(false) });
+    speak(text, {
+      voiceURI,
+      onEnd: () => setNowSpeaking(false),
+      onError: setSpeechError,
+    });
   }, [speakBack, voiceURI]);
 
   // Chrome returns an empty voice list on the first read and fills it in
@@ -165,6 +174,9 @@ export default function NaviAssistant() {
   const answer = useCallback((question) => {
     const text = question.trim();
     if (!text) return;
+    // This runs inside the press that asked, which is the last gesture before
+    // an answer arrives from a fetch or a silence timer.
+    if (speakBack) primeSpeech();
 
     const id = nextId++;
     // The page settles which audience a question belongs to far better than
@@ -175,7 +187,10 @@ export default function NaviAssistant() {
     // away and fills in when the answer lands.
     const live = Boolean(classify(text));
 
-    setTurns(prev => [...prev, { id, question: text, answers, live: live ? "pending" : null }]);
+    lastActivity.current = Date.now();
+    setTurns(prev => trimTurns([...prev, {
+      id, question: text, answers, live: live ? "pending" : null,
+    }]));
     setDraft("");
     setHeard("");
 
@@ -190,7 +205,7 @@ export default function NaviAssistant() {
       // made of it, which is what is already on screen.
       say(result ? result.text : (answers.length ? answers[0].answer : NO_MATCH));
     });
-  }, [pathname, say]);
+  }, [pathname, say, speakBack]);
 
   // ── Microphone ────────────────────────────────────────────────────────────
 
@@ -220,6 +235,8 @@ export default function NaviAssistant() {
   }, [answer]);
 
   const pressMic = useCallback(async () => {
+    // A dictated question is answered from a timer, long after this press.
+    if (speakBack) primeSpeech();
     // Finished speaking. stopListening submits what was heard, which is the
     // whole point: the engine often ends without ever marking a result final.
     if (mic === "listening") { stopListening(); setMic("idle"); return; }
@@ -235,11 +252,12 @@ export default function NaviAssistant() {
         "The microphone is blocked for this site. Allow it in your browser " +
         "settings, or type your question instead.");
     } else setMic("explaining");
-  }, [mic, startListening, stopListening]);
+  }, [mic, speakBack, startListening, stopListening]);
 
   // ── Panel lifecycle ───────────────────────────────────────────────────────
 
   const close = useCallback(() => {
+    lastActivity.current = Date.now();
     cancelListening();
     stopSpeaking();
     setOpen(false);
@@ -281,6 +299,10 @@ export default function NaviAssistant() {
 
   const toggleSpeak = () => {
     const next = !speakBack;
+    // Turning it on is itself a gesture, and the best possible moment to
+    // unlock the engine.
+    if (next) primeSpeech();
+    setSpeechError(null);
     setSpeakBack(next);
     writeSpeakPreference(next);
     if (!next) { stopSpeaking(); setNowSpeaking(false); }
@@ -292,7 +314,12 @@ export default function NaviAssistant() {
     return (
       <button
         ref={launcherRef}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          // A few minutes away means this is a new question, not a
+          // continuation — see navi-session.js for why not on every close.
+          if (shouldReset(lastActivity.current)) setTurns([]);
+          setOpen(true);
+        }}
         aria-label="Ask Navi for help"
         title="Ask Navi"
         // Clear of the bottom tab bar on phones, which is 72px plus the home
@@ -358,6 +385,23 @@ export default function NaviAssistant() {
                 : "Ask me about consultations"}
             </p>
           </div>
+          {turns.length > 0 && (
+            <button
+              onClick={() => {
+                stopSpeaking();
+                setNowSpeaking(false);
+                setTurns([]);
+                lastActivity.current = Date.now();
+                inputRef.current?.focus();
+              }}
+              aria-label="Start over"
+              title="Start over"
+              className="w-10 h-10 grid place-items-center rounded-lg text-muted-fg
+                         hover:text-fg hover:bg-surface-2 transition-colors duration-200"
+            >
+              <RotateCcw size={17} aria-hidden="true" />
+            </button>
+          )}
           {support.speaking && voices.length > 1 && speakBack && (
             <button
               onClick={() => setShowVoices(v => !v)}
@@ -409,9 +453,12 @@ export default function NaviAssistant() {
                   // nothing until you have heard it.
                   stopSpeaking();
                   setNowSpeaking(true);
+                  primeSpeech();
+                  setSpeechError(null);
                   speak("Hi, I'm Navi. Ask me about consultations.", {
                     voiceURI: e.target.value,
                     onEnd: () => setNowSpeaking(false),
+                    onError: setSpeechError,
                   });
                 }}
                 className="input flex-1 min-w-0"
@@ -487,6 +534,13 @@ export default function NaviAssistant() {
               </button>
             </div>
           </div>
+        )}
+
+        {speechError && (
+          <p role="status"
+            className="mx-4 mb-3 rounded-lg bg-warning-50 text-warning-fg px-3.5 py-2.5 text-sm">
+            {speechError}
+          </p>
         )}
 
         {micError && mic !== "explaining" && (

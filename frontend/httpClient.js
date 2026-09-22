@@ -29,7 +29,12 @@ const api = axios.create({ baseURL: API_BASE, timeout: COLD_START_MS });
  */
 const RETRY_DELAYS_MS = [1500, 4000, 9000];
 
-function worthRetrying(error) {
+export function worthRetrying(error) {
+  // Some callers would rather fail fast than be waited for. Navi's live
+  // answers are the case: the patient backoff below is sized for a dashboard
+  // whose panels are empty until the backend wakes, and spending sixteen
+  // seconds on "Checking…" in a help bubble reads as broken, not as patient.
+  if (error.config?.__noRetry) return false;
   const method = (error.config?.method || "get").toLowerCase();
   if (method !== "get") return false;
   const status = error.response?.status;

@@ -18,8 +18,22 @@
  */
 
 import api from "../httpClient.js";
+
 import { currentRole, getSession } from "../auth.js";
 import { DAY_LABELS, DAYS } from "../constants.js";
+
+/**
+ * How long a live answer may take before Navi admits it does not know.
+ *
+ * The shared client waits ninety seconds and retries three times, because a
+ * dashboard whose panels are empty is worth waiting out a sleeping backend
+ * for. A question in a help bubble is not: nobody watches "Checking…" for
+ * sixteen seconds and concludes the software is being thorough. So these calls
+ * opt out of the retries and give up quickly, and the answer says where to go
+ * instead.
+ */
+const LIVE_TIMEOUT_MS = 8000;
+const FAST = { timeout: LIVE_TIMEOUT_MS, __noRetry: true };
 
 /** Lowercase, strip punctuation, collapse spaces. */
 const norm = t => String(t || "").toLowerCase()
@@ -283,6 +297,23 @@ export function classify(question) {
   const q = norm(question);
   if (!q) return null;
 
+  // Asked before anything else, because these questions contain the same words
+  // as the live ones and mean something completely different. "Who can see my
+  // request" is about who is allowed to read it, not about what became of it,
+  // and answering it with a status is answering a different question.
+  if (has(q, "who can see", "who sees", "who can view", "who can read",
+    "who reads", "can see my", "private", "confidential", "visible to",
+    "allowed to see", "is it kept", "are records"))
+    return null;
+
+  // "How do I cancel my request" is asking to be shown the way, not told the
+  // status. Procedure questions belong to the FAQ even when they name the
+  // same things the live answers read. "How many" is excluded from this,
+  // because that genuinely is a question about the data.
+  if (has(q, "how do i", "how can i", "how do you", "how to ", "where do i",
+    "where can i", "how does"))
+    return null;
+
   const mine = has(q, "my request", "my requests", "my consultation", "did my",
     "my professor reply", "my professor replied", "what happened to my",
     "my booking", "my appointment", "status of my");
@@ -324,7 +355,7 @@ export async function askLive(question) {
           go: { to: "/student", label: "Sign in" },
         };
       }
-      const { data } = await api.get(`/consultation/history/${student.student_id}`);
+      const { data } = await api.get(`/consultation/history/${student.student_id}`, FAST);
       return answerMyRequests(data);
     }
 
@@ -339,19 +370,23 @@ export async function askLive(question) {
             go: { to: "/teacher", label: "Sign in" },
           };
       }
-      const { data } = await api.get(`/teacher/requests/${teacher.employee_id}`);
+      const { data } = await api.get(`/teacher/requests/${teacher.employee_id}`, FAST);
       return answerTeacherQueue(data);
     }
 
     // The rest all come from the public board, in one request.
-    const { data: board } = await api.get("/teacher-logs");
+    const { data: board } = await api.get("/teacher-logs", FAST);
     if (kind === "schedule") return answerSchedule(question, board) || answerAvailability(question, board);
     if (kind === "slots-left") return answerSlotsLeft(question, board) || answerAvailability(question, board);
     return answerAvailability(question, board);
   } catch {
     return {
-      text: "I could not reach the system just now, so I cannot tell you what is "
-          + "true at this minute. The board will say when it comes back.",
+      // Deliberately mentions waking: this gives up after eight seconds, and
+      // the backend sleeps when nobody has used it, so "not answering" and
+      // "still getting up" look identical from here and the board is the
+      // thing that waits patiently.
+      text: "I could not reach the system just now — it may still be waking up. "
+          + "The board will show who is free once it answers.",
       go: BOARD,
     };
   }

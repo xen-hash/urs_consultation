@@ -252,25 +252,107 @@ export function defaultVoice(voices = listVoices()) {
       || byLang(/^en-GB/i) || byLang(/^en-US/i) || voices[0] || null;
 }
 
-export function speak(text, { lang = "en-PH", voiceURI, onEnd } = {}) {
+let primed = false;
+
+/**
+ * Unlock speech synthesis, from inside a user gesture.
+ *
+ * iOS Safari, and Chrome's autoplay policy, will not let a page speak unless
+ * the engine has been started by something the reader did. The catch is that
+ * only the FIRST utterance has to come from a gesture — after that the engine
+ * stays unlocked for the page.
+ *
+ * This matters here because the answers most worth hearing arrive
+ * asynchronously: a live answer speaks from a fetch callback, and a question
+ * asked out loud speaks from a silence timer. Neither is a gesture, so both
+ * were silently refused while a typed question read aloud perfectly well —
+ * which is a far more confusing failure than nothing working at all.
+ *
+ * Cheap, silent and idempotent, so call it on any press that might lead to
+ * speech rather than trying to work out which one will.
+ */
+export function primeSpeech() {
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+  if (!synth || primed) return;
+  try {
+    const silent = new SpeechSynthesisUtterance(" ");
+    silent.volume = 0;
+    synth.speak(silent);
+    // Chrome can be left paused by an earlier cancel, in which case it accepts
+    // utterances and never says them.
+    synth.resume();
+    primed = true;
+  } catch {
+    // An engine that refuses this will refuse the real thing too, and speak()
+    // reports that where somebody can see it.
+  }
+}
+
+/** The voice to speak with, preferring the reader's choice. */
+function resolveVoice(synth, voiceURI) {
+  const all = synth.getVoices() || [];
+  if (!all.length) return null;
+  const chosen = voiceURI && all.find(v => v.voiceURI === voiceURI);
+  if (chosen) return chosen;
+  // The stored choice can be from another device, or from before the voice was
+  // uninstalled. Falling through to a language tag instead is how this went
+  // silent: an engine with no en-PH voice simply says nothing.
+  const english = all.filter(v => /^en(-|$)/i.test(v.lang));
+  const preferred = defaultVoice(english);
+  return (preferred && all.find(v => v.voiceURI === preferred.voiceURI))
+    || english[0] || all[0];
+}
+
+export function speak(text, { lang = "en-PH", voiceURI, onEnd, onError } = {}) {
   const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
   if (!synth || !text) { onEnd?.(); return; }
 
-  synth.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
+  // Only cancel when there is something to cancel. An unconditional cancel
+  // immediately followed by speak is a long-standing Chrome race that drops
+  // the new utterance on the floor.
+  if (synth.speaking || synth.pending) synth.cancel();
+  try { synth.resume(); } catch { /* not supported */ }
 
+  const utterance = new SpeechSynthesisUtterance(text);
   // A chosen voice carries its own language; setting both and having them
   // disagree makes some engines fall back to a default nobody picked.
-  const chosen = voiceURI
-    ? (synth.getVoices() || []).find(v => v.voiceURI === voiceURI)
-    : null;
-  if (chosen) utterance.voice = chosen;
-  else utterance.lang = lang;
+  //
+  // In its own try: the voice setter rejects anything that is not a live
+  // SpeechSynthesisVoice, and a stale entry from a list the engine has since
+  // rebuilt throws a TypeError here. Speaking in the default voice is a much
+  // smaller loss than the throw, which would otherwise escape into the click
+  // handler that asked the question and take the answer down with it.
+  try {
+    const chosen = resolveVoice(synth, voiceURI);
+    if (chosen) utterance.voice = chosen;
+    else utterance.lang = lang;
+  } catch {
+    utterance.lang = lang;
+  }
 
   utterance.rate = 0.95;
   utterance.onend = () => onEnd?.();
-  utterance.onerror = () => onEnd?.();
-  synth.speak(utterance);
+  utterance.onerror = (event) => {
+    // Swallowing this is what made a broken voice undiagnosable: no sound, no
+    // message, nothing to report. "interrupted" and "canceled" are this code
+    // replacing one answer with the next and are not failures.
+    const reason = event?.error;
+    if (reason && reason !== "interrupted" && reason !== "canceled") {
+      onError?.(reason === "not-allowed"
+        ? "Your device would not let the page speak. The answer is written above."
+        : "This device could not play the voice. The answer is written above.");
+    }
+    onEnd?.();
+  };
+
+  // Reading an answer aloud is a garnish. Whatever the engine does, it must
+  // not be able to break the answering that produced the text.
+  try {
+    synth.speak(utterance);
+  } catch {
+    onError?.("This device could not play the voice. The answer is written above.");
+    onEnd?.();
+  }
 }
 
 export function stopSpeaking() {
