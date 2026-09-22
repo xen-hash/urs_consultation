@@ -1,0 +1,10 @@
+{
+  "name": "@urs/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "//": "Everything the three apps have in common. Imported by path rather than through a barrel file, so a page that needs one button does not pull the whole design system into its chunk.",
+  "exports": {
+    "./*": "./*"
+  }
+}

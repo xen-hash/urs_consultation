@@ -18,7 +18,10 @@ import reactHooks from "eslint-plugin-react-hooks";
  * of suppressions.
  */
 export default [
-  { ignores: ["dist/**", "dev-dist/**", "node_modules/**", "public/**"] },
+  // Build output and binary assets, wherever the three apps put them.
+  { ignores: [
+    "**/dist/**", "**/dev-dist/**", "**/node_modules/**", "**/public/**",
+  ] },
   js.configs.recommended,
   {
     files: ["**/*.{js,jsx}"],
@@ -49,7 +52,13 @@ export default [
     },
   },
   {
-    files: ["tests/**/*.{js,jsx}"],
+    // Tests and the build configuration run in Node, not a browser.
+    files: [
+      "**/tests/**/*.{js,jsx}",
+      "**/vite.config.js",
+      "vitest.config.js",
+      "shared/build/**/*.js",
+    ],
     languageOptions: { globals: { ...globals.node } },
   },
 ];

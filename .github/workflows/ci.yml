@@ -87,5 +87,7 @@ jobs:
 
       - name: Build
         # The build is a test in its own right: it is the only thing that
-        # resolves every import and runs the PWA plugin over the result.
+        # resolves every import and runs the PWA plugin over the result. This
+        # builds all three apps — student, faculty and administration — so an
+        # import that only one of them gets wrong still fails here.
         run: npm run build
