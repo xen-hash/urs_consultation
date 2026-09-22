@@ -12,6 +12,7 @@ import { getSession, clearSession } from "./auth.js";
 import api, { isUnreachable } from "./httpClient.js";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
+import useHashTab from "./ui/useHashTab.js";
 import { adminTour } from "./ui/tours.js";
 import { useStats, useDepartments, usePagedResource } from "./admin/hooks.js";
 import { announceNew, resetAnnounced, setMuted } from "./admin/announcer.js";
@@ -49,6 +50,8 @@ export default function DeanDashboard() {
   const [muted, setMutedState] = useState(true);
   const [tourOpen, setTourOpen] = useState(() => !hasSeenTour("admin"));
   const adminSteps = useMemo(() => adminTour(setTab), []);
+  // Navi opens a section directly — /dean/dashboard#credentials. See useHashTab.
+  useHashTab("/dean/dashboard", setTab);
 
   const { stats, loading: statsLoading, error: statsError, reload: reloadStats } = useStats();
   const { departments, reload: reloadDepts, loading: deptsLoading, error: deptsError } = useDepartments();

@@ -15,6 +15,7 @@ import { getSession, patchProfile, clearSession, getToken } from "./auth.js";
 import DepartmentIcon, { departmentColor } from "./ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "./ui/BottomNav.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
+import useHashTab from "./ui/useHashTab.js";
 import { studentTour } from "./ui/tours.js";
 import { SOCKET_URL, CONSULTATION_CATEGORIES, DEPARTMENTS, YEAR_LEVELS } from "./constants.js";
 import QRCodeLib from "qrcode";
@@ -267,6 +268,15 @@ export default function StudentDashboard() {
   // this student would actually see. Nothing is ever submitted for them.
   const demoDept = departments[0];
   const demoProf = demoDept?.professors?.[0];
+
+  // Navi sends people straight to a tab — /student/dashboard#inbox. Whatever
+  // was open over the top of it goes, or the tab arrives underneath a request
+  // form somebody never asked to see.
+  useHashTab("/student/dashboard", (want) => {
+    setReqModal(null);
+    setSelectedDept(null);
+    setTab(want);
+  });
 
   const tourSteps = useMemo(() => studentTour({
     demo: demoProf
