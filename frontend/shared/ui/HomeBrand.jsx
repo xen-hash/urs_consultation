@@ -1,0 +1,117 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import ursLogo from "../assets/URS_LOGO.png";
+import { currentRole, clearSession } from "../lib/auth.js";
+import { urlFor, isExternal } from "../lib/origins.js";
+import { Modal, Button } from "./index.jsx";
+
+/**
+ * The university name in the top bar, as the way back to the front page.
+ *
+ * The logo and title were static text on every screen, so the one thing people
+ * instinctively click to get home did nothing — and the sign-in screens had no
+ * other way out either. This makes it the home link everywhere.
+ *
+ * On a screen where you are actually working — a dashboard — the front page is
+ * the wrong place to be dropped silently: it is public, it looks signed out,
+ * and on a shared campus machine leaving a live session behind it is how the
+ * next person ends up in someone else's account. Those screens pass
+ * `confirmSignOut`, and the tap asks first.
+ *
+ * Everywhere else it just goes home. The public screens are sign-in pages and
+ * the front page itself: you are looking at a signed-out screen, so being asked
+ * to confirm a sign-out is nonsense — and it happened, because a session left
+ * in sessionStorage by an earlier sign-in still counts as signed in even when
+ * the screen in front of you is a login form.
+ *
+ * "Home" is the front page, which since the split lives on the student
+ * deployment — so from the faculty and administration apps this leaves the
+ * origin. It is still the right destination: the alternative is each staff app
+ * treating its own sign-in as home, which means the way out of a dashboard is a
+ * login form that does not mention you are already signed in.
+ */
+
+const ROLE_NOUN = {
+  student: "a student",
+  teacher: "faculty",
+  admin: "an administrator",
+};
+
+export default function HomeBrand({
+  title = "University of Rizal System",
+  subtitle,
+  tone = "light",
+  className = "",
+  titleClassName = "text-sm truncate",
+  confirmSignOut = false,
+}) {
+  const navigate = useNavigate();
+  const [asking, setAsking] = useState(false);
+  const role = confirmSignOut ? currentRole() : null;
+
+  const home = urlFor("student", "/");
+  // A different origin is a real navigation, not a route change. See AppLink —
+  // this is the same split, for a handler rather than a link.
+  const goHome = () => (isExternal(home) ? window.location.assign(home) : navigate(home));
+
+  const handleClick = () => {
+    if (role) setAsking(true);
+    else goHome();
+  };
+
+  const signOutAndGo = () => {
+    clearSession();
+    setAsking(false);
+    goHome();
+  };
+
+  const text = tone === "dark"
+    ? { title: "text-white", sub: "text-white/60", hover: "hover:bg-white/10" }
+    : { title: "text-fg", sub: "text-muted-fg", hover: "hover:bg-surface-2" };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        title="Go to the main page"
+        className={`flex items-center gap-2 xs:gap-3 min-w-0 text-left -ml-2 px-2 py-1 rounded-lg
+                    transition-colors duration-200 ${text.hover} ${className}`}
+      >
+        {/* A little smaller under 400px, where the row has the least to give. */}
+        <img src={ursLogo} alt="" aria-hidden="true"
+          className="w-7 h-7 xs:w-8 xs:h-8 object-contain shrink-0" />
+        <span className="min-w-0">
+          {/* Truncating by default, but a caller with a narrow bar can let the
+              name wrap instead — half a name under an ellipsis is worse than
+              two lines of the whole one. */}
+          <span className={`block font-semibold ${text.title} ${titleClassName}`}>{title}</span>
+          {subtitle && <span className={`block text-xs truncate ${text.sub}`}>{subtitle}</span>}
+        </span>
+      </button>
+
+      <Modal
+        open={asking}
+        onClose={() => setAsking(false)}
+        size="sm"
+        anchor="center"
+        title="Return to the main page?"
+        footer={
+          <>
+            <Button onClick={() => setAsking(false)}>Stay on this page</Button>
+            <Button variant="danger" icon={LogOut} onClick={signOutAndGo}>
+              Sign out and return
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-fg">
+          You're signed in as {ROLE_NOUN[role] || "a user"}. The main page is public, so
+          going back there signs you out on this device. Anything you haven't sent yet
+          will be lost.
+        </p>
+      </Modal>
+    </>
+  );
+}

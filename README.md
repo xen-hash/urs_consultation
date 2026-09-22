@@ -1,5 +1,5 @@
 # URS Faculty Consultation System — Deployment Guide
-## Railway (Backend) + Vercel (Frontend)
+## Railway (Backend) + Vercel (three Frontends)
 
 ---
 
@@ -7,9 +7,27 @@
 
 ```
 urs-consultation-deploy/
-  backend/     → Deploy to Railway
-  frontend/    → Deploy to Vercel
+  backend/               → Deploy to Railway
+  frontend/              → One npm workspace, three Vercel projects
+    shared/              → Everything the three apps have in common
+    apps/student/        → Vercel project 1 — public + students
+    apps/faculty/        → Vercel project 2 — staff only
+    apps/admin/          → Vercel project 3 — staff only
 ```
+
+The three roles are three separate deployments on three origins, so nothing an
+administrator can do ships in the bundle a student downloads. Each app owns its
+whole origin:
+
+| App | Screens |
+|---|---|
+| student | `/` front page · `/availability` · `/sign-in` · `/register` · `/dashboard` |
+| faculty | `/` sign-in · `/dashboard` |
+| admin | `/` sign-in · `/dashboard` |
+
+The old shared addresses (`/student/dashboard`, `/teacher`, `/dean`, `/kiosk`
+and the rest) still redirect to the right screen on the right app, so printed
+QR cards and bookmarks keep working.
 
 ---
 
@@ -41,9 +59,10 @@ seeds the professor list the first time it starts.
 ```
 DATABASE_URL  = (the Postgres connection string from STEP 1)
 SECRET_KEY    = (generate a random string, e.g. openssl rand -hex 32)
-ADMIN_USERNAME      = (who signs in at /dean)
+ADMIN_USERNAME      = (who signs in on the admin app)
 ADMIN_PASSWORD_HASH = (bcrypt hash — see README_DEPLOY.md Step 0)
-FRONTEND_URL  = https://your-app.vercel.app   ← fill in after Vercel deploy
+ALLOWED_ORIGINS = https://student.vercel.app,https://faculty.vercel.app,https://admin.vercel.app
+                  ← all three, filled in after the Vercel deploys
 ```
 
 If you previously set `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` / `DB_PORT`,
@@ -54,25 +73,39 @@ delete them — `DATABASE_URL` replaces all five.
 
 ---
 
-## STEP 3: Deploy Frontend on Vercel
+## STEP 3: Deploy the three frontends on Vercel
 
-1. Push the `frontend/` folder to a GitHub repo
-2. Go to https://vercel.com → New Project → Import your repo
-3. Set these **Environment Variables** in Vercel:
+One repo, three Vercel projects, differing only in **Root Directory**. For each
+of `student`, `faculty` and `admin`:
+
+1. https://vercel.com → New Project → Import your repo (the same repo each time)
+2. **Root Directory** → `frontend/apps/student` (then `.../faculty`, `.../admin`)
+3. Leave the build settings alone — each app's `vercel.json` sets them. The
+   install runs at `frontend/`, the npm workspace root; running it inside the
+   app folder would leave `@urs/shared` unresolved and fail the build.
+4. Deploy, and copy the URL.
+
+Then give **every one of the three projects** all four variables:
 
 ```
-VITE_API_URL  = https://your-railway-app.up.railway.app
+VITE_API_BASE    = https://your-railway-app.up.railway.app/api
+VITE_STUDENT_URL = https://your-student-app.vercel.app
+VITE_FACULTY_URL = https://your-faculty-app.vercel.app
+VITE_ADMIN_URL   = https://your-admin-app.vercel.app
 ```
 
-4. Deploy! Vercel auto-detects Vite and runs `npm run build`
-5. Copy your Vercel URL: `https://your-app.vercel.app`
+Each app links to the other two, and can only do it if it has been told where
+they are. Unset, those links fall back to the development ports and quietly
+point at `localhost`. Redeploy after setting them — they are baked in at build
+time, not read at runtime.
 
 ---
 
 ## STEP 4: Final Wiring
 
 Go back to Railway → your backend service → Environment Variables:
-- Update `FRONTEND_URL` = `https://your-app.vercel.app`
+- Set `ALLOWED_ORIGINS` to all three Vercel URLs, comma-separated, exact
+  (scheme and host, no trailing slash)
 - Redeploy the backend (Railway → Deployments → Redeploy)
 
 ---
@@ -90,8 +123,13 @@ the top bar (or the browser's "Install" prompt).
 
 Once installed:
 
-- Long-pressing the icon opens shortcuts straight to **Student**, **Teacher**,
-  **Dean's Office**, and **Kiosk**.
+- There are three installable apps, one per role, each with its own name and
+  its own colour. Installing the student app does not put the administration
+  screens on anybody's phone.
+- Long-pressing an icon opens that app's own shortcuts — **Who's available**,
+  **My dashboard** and **Register** on the student app; **My requests** and
+  **Status & schedule** on faculty; **Credentials** and **Activity log** on
+  administration.
 - The app shell (pages, styles, logo) is cached, so it still opens with no
   connection — an amber bar says *"You're offline"* and live data resumes on
   reconnect.
@@ -110,8 +148,9 @@ Once installed:
 
 Requirements: the site must be served over **HTTPS** (Vercel already is) — the
 service worker, camera-based face login, and install prompt all need it.
-Nothing extra to configure: `npm run build` generates the service worker and
-manifest.
+Nothing extra to configure: each app's build generates its own service worker
+and manifest, scoped to its own origin — which is what lets all three be
+installed side by side without the browser treating them as one app.
 
 ---
 
@@ -120,11 +159,13 @@ manifest.
 - **Biometric (Face Recognition)**: Requires the C++ biometric server running locally.
   It will show "Biometric service offline" on the cloud — QR and PIN login still work fine.
 - **TTS**: Switched to browser speechSynthesis (no Piper needed on cloud).
-- **Local dev**: Still works — `npm run dev` proxies /api to localhost:5000 as before.
+- **Local dev**: Each app's dev server proxies /api to localhost:5000 as before.
+- **`npm run build` at `frontend/`** builds all three apps; `build:student`,
+  `build:faculty` and `build:admin` build one.
 
 ---
 
-## LOCAL DEV (unchanged)
+## LOCAL DEV
 
 Backend:
 ```
@@ -133,9 +174,20 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Frontend:
+Frontend — one install at the workspace root, then a terminal per app:
 ```
 cd frontend
 npm install
-npm run dev
+
+npm run dev:student   # http://localhost:5173  (front page, board, students)
+npm run dev:faculty   # http://localhost:5174
+npm run dev:admin     # http://localhost:5175
 ```
+
+The ports are fixed, and the links between the apps default to them, so the
+three of them work together with no environment set up at all. Running one app
+on its own is fine — its own screens all work; only the links to the other two
+need those apps to be up.
+
+`npm test` and `npm run lint` at `frontend/` cover all three apps and the shared
+code in one run. `npm run build` builds all three.
