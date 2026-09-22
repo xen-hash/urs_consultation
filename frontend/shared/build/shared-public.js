@@ -37,6 +37,15 @@ const TYPES = {
   ".txt": "text/plain; charset=utf-8",
 };
 
+/** Whether `p` names a file that exists. */
+function isFile(p) {
+  try {
+    return fs.statSync(p).isFile();
+  } catch {
+    return false; // Missing, or a path we are not allowed to look at.
+  }
+}
+
 /** Every file under `dir`, as paths relative to it, with "/" separators. */
 function filesUnder(dir) {
   if (!fs.existsSync(dir)) return [];
@@ -72,34 +81,49 @@ export default function sharedPublic(sharedDir) {
       }
     },
 
-    // Dev: answer for a shared asset only once Vite has decided it has nothing
-    // of its own at that URL. `configureServer` returning a function installs
-    // the middleware after Vite's own, which is what puts the app's publicDir
-    // — and any real module — ahead of this one.
+    // Dev: before Vite's own middlewares, not after.
+    //
+    // After was the obvious place — let Vite answer for anything it has, and
+    // pick up what is left — and it does not work. What is left never reaches
+    // here: Vite's SPA fallback sits in that stack and rewrites any path it
+    // does not recognise to index.html, with the dot rule disabled so that
+    // deep links survive. So every shared asset came back as a 200 carrying
+    // the HTML shell, which a browser renders as a broken image rather than
+    // as an error — the mascot vanished from all three apps in development
+    // and nothing in the console said why.
+    //
+    // Running first means precedence has to be stated rather than inherited,
+    // which is the explicit check below: a file the app has of its own is left
+    // to Vite, and only then is the shared folder consulted. Same rule the
+    // build half applies, said the other way round.
     configureServer(server) {
-      return () => {
-        server.middlewares.use((req, res, next) => {
-          const url = (req.url || "").split("?")[0];
-          let decoded;
-          try {
-            decoded = decodeURIComponent(url);
-          } catch {
-            return next(); // Malformed escape — not a file we have.
-          }
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== "GET" && req.method !== "HEAD") return next();
 
-          // path.join on a URL containing "../" would climb out of the shared
-          // folder and serve anything on disk, so the result is checked to be
-          // inside it rather than the input checked for ways out.
-          const file = path.join(sharedDir, decoded);
-          if (!file.startsWith(sharedDir + path.sep)) return next();
-          if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return next();
+        const url = (req.url || "").split("?")[0];
+        let decoded;
+        try {
+          decoded = decodeURIComponent(url);
+        } catch {
+          return next(); // Malformed escape — not a file we have.
+        }
 
-          const type = TYPES[path.extname(file).toLowerCase()];
-          if (type) res.setHeader("Content-Type", type);
-          res.setHeader("Cache-Control", "no-cache");
-          fs.createReadStream(file).pipe(res);
-        });
-      };
+        // path.join on a URL containing "../" would climb out of the shared
+        // folder and serve anything on disk, so the result is checked to be
+        // inside it rather than the input checked for ways out.
+        const file = path.join(sharedDir, decoded);
+        if (!file.startsWith(sharedDir + path.sep)) return next();
+        if (!isFile(file)) return next();
+
+        // The app's own copy wins, and Vite is already set up to serve it.
+        if (appPublicDir && isFile(path.join(appPublicDir, decoded))) return next();
+
+        const type = TYPES[path.extname(file).toLowerCase()];
+        if (type) res.setHeader("Content-Type", type);
+        res.setHeader("Cache-Control", "no-cache");
+        if (req.method === "HEAD") return res.end();
+        fs.createReadStream(file).pipe(res);
+      });
     },
   };
 }

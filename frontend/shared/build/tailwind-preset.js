@@ -33,6 +33,9 @@ export default {
         warning: { DEFAULT: rgb("warning-fg"), fg: rgb("warning-fg"), 50: rgb("warning-50") },
         danger:  { DEFAULT: rgb("danger"), 50: rgb("danger-50") },
         info:    { DEFAULT: rgb("info"), 50: rgb("info-50") },
+        // Which of the three apps you are in. One hue per role, set on <html>
+        // by the build — see the role accent block in index.css.
+        role:    { DEFAULT: rgb("role"), 50: rgb("role-50"), 100: rgb("role-100") },
       },
       // text-* reads its own tokens. In dark mode a brand fill has to stay dark
       // under white button text while brand text has to be light on a dark
@@ -45,6 +48,7 @@ export default {
         info:    rgb("info-text"),
         warning: { DEFAULT: rgb("warning-text"), fg: rgb("warning-text") },
         accent:  { DEFAULT: rgb("accent"), fg: rgb("accent-text") },
+        role:    rgb("role-text"),
       },
       borderColor:  { DEFAULT: rgb("border") },
       ringColor:    { DEFAULT: rgb("ring") },

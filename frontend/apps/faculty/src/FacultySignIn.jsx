@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { QrCode, ChevronLeft, Lock, Delete, ArrowRight, ShieldCheck } from "lucide-react";
+import { QrCode, Lock, Delete, ArrowRight, ShieldCheck } from "lucide-react";
 import QRScanner from "@urs/shared/QRScanner.jsx";
 import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "@urs/shared/SharedUI.jsx";
 import SignedOutNotice from "@urs/shared/ui/SignedOutNotice.jsx";
 import PortalNav, { BackLink } from "@urs/shared/ui/PortalNav.jsx";
 import URSBackground from "@urs/shared/URSBackground.jsx";
-import HomeBrand from "@urs/shared/ui/HomeBrand.jsx";
+import SignInLayout, { SignInHeading, publicHome } from "@urs/shared/ui/SignInLayout.jsx";
 import api, { apiError } from "@urs/shared/lib/httpClient.js";
 import { setSession, clearSession } from "@urs/shared/lib/auth.js";
-import { urlFor } from "@urs/shared/lib/origins.js";
 
 // This screen used to offer a third option, "Get My ID", which let anyone pick
 // any professor from a list and receive that professor's employee ID and login
@@ -128,38 +127,19 @@ export default function TeacherPortal() {
       />
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      {/* Full width, not a centred column: on a desktop the centred bar put the
-          logo out in the middle of the screen, nowhere near the corner people
-          look for it. */}
-      <nav className="sticky top-0 z-30 header-on-backdrop pt-safe">
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 w-full">
-          <HomeBrand tone="dark" subtitle="Faculty Portal" className="flex-1" />
-          {/* Back was only drawn once a panel was open, so the first screen —
-              the one people land on — had no way out at all. Every panel now
-              has one, the PIN step included. */}
-          {view === "home" ? (
-            <a href={urlFor("student", "/")} className="btn btn-ghost-light btn-sm shrink-0">
-              <ChevronLeft size={16} aria-hidden="true" /> Back
-            </a>
-          ) : (
-            <button onClick={view === "setpin" ? cancelSetPin : goHome}
-              className="btn btn-ghost-light btn-sm shrink-0">
-              <ChevronLeft size={16} aria-hidden="true" /> Back
-            </button>
-          )}
-        </div>
-      </nav>
-
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 flex flex-col justify-center
-                       pt-8 sm:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+      <SignInLayout
+        back={view === "home"
+          ? { href: publicHome() }
+          : { onClick: view === "setpin" ? cancelSetPin : goHome }}
+        width={view === "home" ? "lg" : "sm"}
+      >
 
         {view === "home" && (
           <div className="animate-rise">
             <SignedOutNotice />
-            <header className="mb-8">
-              <h1 className="text-2xl sm:text-3xl font-bold text-on-backdrop tracking-tight">Faculty sign in</h1>
-              <p className="text-on-backdrop/75 mt-1.5">Scan your Faculty ID card, or use your Employee ID and PIN.</p>
-            </header>
+            <SignInHeading title="Faculty sign in">
+              Scan your Faculty ID card, or use your Employee ID and PIN.
+            </SignInHeading>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <button onClick={() => setView("scanqr")} className="card card-action text-left">
@@ -171,7 +151,7 @@ export default function TeacherPortal() {
               </button>
 
               <button onClick={() => setView("pinlogin")} className="card card-action text-left">
-                <span className="icon-tile icon-tile-accent"><Lock size={22} aria-hidden="true" /></span>
+                <span className="icon-tile icon-tile-role"><Lock size={22} aria-hidden="true" /></span>
                 <span className="font-semibold text-fg">Employee ID + PIN</span>
                 <span className="text-sm text-muted-fg">Use the PIN you set on this account.</span>
               </button>
@@ -198,13 +178,10 @@ export default function TeacherPortal() {
         {view === "scanqr" && (
           <section className="animate-rise" aria-labelledby="scan-heading">
             <BackLink onClick={goHome}>Sign-in options</BackLink>
-            <header className="mb-6 mt-2">
-              <h1 id="scan-heading" className="text-2xl font-bold text-on-backdrop tracking-tight">Scan your Faculty ID</h1>
-              <p className="text-on-backdrop/75 mt-1.5">
-                Hold the QR code on your card inside the frame — or, if the card is
-                saved on this phone, upload the picture instead.
-              </p>
-            </header>
+            <SignInHeading id="scan-heading" title="Scan your Faculty ID" className="mb-6 mt-2">
+              Hold the QR code on your card inside the frame — or, if the card is
+              saved on this phone, upload the picture instead.
+            </SignInHeading>
             <div className="card">
               <QRScanner
                 onScan={handleTeacherQRScan}
@@ -235,7 +212,7 @@ export default function TeacherPortal() {
             onSubmit={view === "setpin" ? handleSetPin : handlePinLogin}
           />
         )}
-      </main>
+      </SignInLayout>
     </URSBackground>
   );
 }
@@ -251,26 +228,27 @@ function PinPanel({ mode, teacher, employeeId, onEmployeeId, pin, onPin, loading
   const digit = (n) => press(() => pin.length < 4 && onPin(pin + n));
 
   return (
-    <section className="animate-rise max-w-sm mx-auto w-full" aria-labelledby="pin-heading">
+    <section className="animate-rise w-full" aria-labelledby="pin-heading">
       {/* Choosing a PIN happens after a card scan has already signed you in, so
           the way out of this one is a sign-out rather than a step back — said
           plainly, because "Back" here throws away a session. */}
       <BackLink onClick={onBack}>
         {setting ? "Cancel and sign out" : "Sign-in options"}
       </BackLink>
-      <header className="mb-6 mt-2 text-center">
-        <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
+      <div className="text-center">
+        <span className={`icon-tile mx-auto mb-3 mt-2 ${setting ? "icon-tile-accent" : "icon-tile-role"}`}>
           {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}
         </span>
-        <h1 id="pin-heading" className="text-2xl font-bold text-on-backdrop tracking-tight">
-          {setting ? "Choose a PIN" : "Employee ID + PIN"}
-        </h1>
-        <p className="text-on-backdrop/75 mt-1.5">
+        <SignInHeading
+          id="pin-heading"
+          title={setting ? "Choose a PIN" : "Employee ID + PIN"}
+          className="mb-6"
+        >
           {setting
             ? `Welcome, ${teacher?.professor_name || "there"}. Pick a 4-digit PIN so you can sign in without your card.`
             : "Enter your Employee ID and 4-digit PIN."}
-        </p>
-      </header>
+        </SignInHeading>
+      </div>
 
       <div className="card space-y-5">
         {!setting && (

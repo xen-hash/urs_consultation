@@ -70,7 +70,14 @@ export default function ursApp({
       // rather than pasted into three files.
       {
         name: "urs-shared-head",
-        transformIndexHtml: html => html.replace("</head>", `${sharedHead}\n  </head>`),
+        transformIndexHtml: html =>
+          html
+            .replace("</head>", `${sharedHead}\n  </head>`)
+            // Which app this is, on the element every stylesheet can see. The
+            // role accent in index.css keys off it, so no component has to be
+            // told which app it is rendering in — and it cannot be forgotten
+            // in one app's index.html, because no index.html carries it.
+            .replace("<html ", `<html data-role="${id}" `),
       },
 
       // Before VitePWA on purpose: this emits the shared assets into the

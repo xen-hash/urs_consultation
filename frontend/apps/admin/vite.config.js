@@ -12,8 +12,8 @@ export default defineConfig(ursApp({
   shortName: "URS Admin",
   description:
     "University of Rizal System – College of Engineering. Credentials, activity and reporting.",
-  themeColor: "#334155",
-  background: "#0F172A",
+  themeColor: "#003366",
+  background: "#001946",
   port: 5175,
   shortcuts: [
     { name: "Credentials",  short_name: "Credentials", url: "/dashboard#credentials" },

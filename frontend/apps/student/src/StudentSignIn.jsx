@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { QrCode, Keyboard, ArrowLeft, ArrowRight, Lock, Delete, ShieldCheck, Radio, ChevronRight } from "lucide-react";
+import { QrCode, Keyboard, ArrowRight, Lock, Delete, ShieldCheck, Radio, ChevronRight } from "lucide-react";
 import QRScanner from "@urs/shared/QRScanner.jsx";
 import { Toast, useToastState, Spinner, Button, ConfirmSplash, ErrorSplash, classifyAuthError } from "@urs/shared/SharedUI.jsx";
 import SignedOutNotice from "@urs/shared/ui/SignedOutNotice.jsx";
 import PortalNav, { BackLink } from "@urs/shared/ui/PortalNav.jsx";
 import URSBackground from "@urs/shared/URSBackground.jsx";
-import HomeBrand from "@urs/shared/ui/HomeBrand.jsx";
+import SignInLayout, { SignInHeading } from "@urs/shared/ui/SignInLayout.jsx";
 import api, { apiError } from "@urs/shared/lib/httpClient.js";
 import { setSession } from "@urs/shared/lib/auth.js";
 import Mascot from "@urs/shared/ui/Mascot.jsx";
@@ -91,37 +91,15 @@ export default function StudentPortal() {
         onRetry={() => setFailure(null)}
       />
 
-      {/* Full width, not a centred column: on a desktop the centred bar put the
-          logo out in the middle of the screen, nowhere near the corner people
-          look for it. */}
-      <nav className="sticky top-0 z-30 header-on-backdrop pt-safe">
-        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 w-full">
-          <HomeBrand tone="dark" subtitle="Student Portal" className="flex-1" />
-          {/* Back was only drawn once a panel was open, so the first screen —
-              the one people land on — had no way out at all. */}
-          {mode ? (
-            <button onClick={home} className="btn btn-ghost-light btn-sm shrink-0">
-              <ArrowLeft size={15} aria-hidden="true" /> Back
-            </button>
-          ) : (
-            <Link to="/" className="btn btn-ghost-light btn-sm shrink-0">
-              <ArrowLeft size={15} aria-hidden="true" /> Back
-            </Link>
-          )}
-        </div>
-      </nav>
-
-      <main className="flex-1 w-full max-w-sm mx-auto px-4 flex flex-col justify-center
-                       pt-8 sm:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+      <SignInLayout back={mode ? { onClick: home } : { to: "/" }}>
 
         {!mode && (
           <div className="animate-rise">
             <SignedOutNotice />
-            <header className="mb-7">
-              <Mascot pose="happy" size="md" className="mb-3" />
-              <h1 className="text-title font-bold text-on-backdrop">Student sign in</h1>
-              <p className="text-on-backdrop/75 mt-1.5">Scan your student QR code, or enter your ID.</p>
-            </header>
+            <Mascot pose="happy" size="md" className="mb-3" />
+            <SignInHeading title="Student sign in">
+              Scan your student QR code, or enter your ID.
+            </SignInHeading>
 
             <div className="space-y-3">
               <button onClick={() => setMode("qr")} className="card card-action w-full text-left">
@@ -132,7 +110,7 @@ export default function StudentPortal() {
               </span>
               </button>
               <button onClick={() => setMode("manual")} className="card card-action w-full text-left">
-                <span className="icon-tile icon-tile-accent"><Keyboard size={22} aria-hidden="true" /></span>
+                <span className="icon-tile icon-tile-role"><Keyboard size={22} aria-hidden="true" /></span>
                 <span className="font-semibold text-fg">Enter student number</span>
                 <span className="text-sm text-muted-fg">Type your ID, then your PIN.</span>
               </button>
@@ -173,10 +151,9 @@ export default function StudentPortal() {
         {mode === "qr" && (
           <section className="animate-rise" aria-labelledby="s-scan">
             <BackLink onClick={home}>Sign-in options</BackLink>
-            <header className="mb-6 mt-2">
-              <h1 id="s-scan" className="text-title font-bold text-on-backdrop">Scan your QR code</h1>
-              <p className="text-on-backdrop/75 mt-1.5">Hold it inside the frame.</p>
-            </header>
+            <SignInHeading id="s-scan" title="Scan your QR code" className="mb-6 mt-2">
+              Hold it inside the frame.
+            </SignInHeading>
             <div className="card">
               {loading
                 ? <div className="flex justify-center py-10"><Spinner size={9} /></div>
@@ -194,9 +171,7 @@ export default function StudentPortal() {
         {mode === "manual" && (
           <section className="animate-rise" aria-labelledby="s-id">
             <BackLink onClick={home}>Sign-in options</BackLink>
-            <header className="mb-6 mt-2">
-              <h1 id="s-id" className="text-title font-bold text-on-backdrop">Enter your student number</h1>
-            </header>
+            <SignInHeading id="s-id" title="Enter your student number" className="mb-6 mt-2" />
             <div className="card space-y-4">
               {/* Upper-cased as they type: a phone keyboard lower-cases the
                   leading letter by habit, and the number is stored upper. */}
@@ -227,7 +202,7 @@ export default function StudentPortal() {
             onSubmit={submitPin}
           />
         )}
-      </main>
+      </SignInLayout>
     </URSBackground>
   );
 }
@@ -243,18 +218,19 @@ function StudentPinStep({ student, setting, pin, onPin, loading, onSubmit, onBac
   return (
     <section className="animate-rise" aria-labelledby="s-pin">
       <BackLink onClick={onBack}>Not you? Start again</BackLink>
-      <header className="mb-6 mt-2 text-center">
-        <span className={`icon-tile mx-auto mb-3 ${setting ? "icon-tile-accent" : "icon-tile-brand"}`}>
+      <div className="text-center">
+        <span className={`icon-tile mx-auto mb-3 mt-2 ${setting ? "icon-tile-accent" : "icon-tile-role"}`}>
           {setting ? <ShieldCheck size={22} aria-hidden="true" /> : <Lock size={22} aria-hidden="true" />}
         </span>
-        <h1 id="s-pin" className="text-title font-bold text-on-backdrop">
-          Hello, {student.full_name?.split(" ")[0] || "there"}
-        </h1>
-        <p className="text-on-backdrop/75 mt-1.5">
+        <SignInHeading
+          id="s-pin"
+          title={`Hello, ${student.full_name?.split(" ")[0] || "there"}`}
+          className="mb-6"
+        >
           {setting ? "This account has no PIN yet — signing in will let you set one."
                    : "Enter your 4-digit PIN."}
-        </p>
-      </header>
+        </SignInHeading>
+      </div>
 
       <div className="card space-y-5">
         <div className="flex gap-3 justify-center" role="status" aria-live="polite"

@@ -40,6 +40,12 @@ const ROLE_NOUN = {
 
 export default function HomeBrand({
   title = "University of Rizal System",
+  // What the name becomes when the row is too narrow for it. "University
+  // of Rizal..." under an ellipsis says less than "URS" does, and the header
+  // now carries a role badge beside it that must not be the thing that gets
+  // squeezed — it is the only thing on the page saying which of the three
+  // apps you are looking at. Pass null to always show the full name.
+  shortTitle = "URS",
   subtitle,
   tone = "light",
   className = "",
@@ -86,7 +92,14 @@ export default function HomeBrand({
           {/* Truncating by default, but a caller with a narrow bar can let the
               name wrap instead — half a name under an ellipsis is worse than
               two lines of the whole one. */}
-          <span className={`block font-semibold ${text.title} ${titleClassName}`}>{title}</span>
+          <span className={`block font-semibold ${text.title} ${titleClassName}`}>
+            {shortTitle ? (
+              <>
+                <span className="hidden sm:inline">{title}</span>
+                <span className="sm:hidden">{shortTitle}</span>
+              </>
+            ) : title}
+          </span>
           {subtitle && <span className={`block text-xs truncate ${text.sub}`}>{subtitle}</span>}
         </span>
       </button>

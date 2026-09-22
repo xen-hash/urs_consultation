@@ -12,8 +12,8 @@ export default defineConfig(ursApp({
   shortName: "URS Faculty",
   description:
     "University of Rizal System – College of Engineering. Your schedule, your availability, and who is waiting on you.",
-  themeColor: "#7A4E00",
-  background: "#2E1D00",
+  themeColor: "#003366",
+  background: "#001946",
   port: 5174,
   shortcuts: [
     { name: "My requests",       short_name: "Requests", url: "/dashboard#requests" },

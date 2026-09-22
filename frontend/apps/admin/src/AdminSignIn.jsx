@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Eye, EyeOff, ArrowLeft, ArrowRight } from "lucide-react";
+import { Shield, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { Toast, useToastState, Spinner, ConfirmSplash, ErrorSplash, classifyAuthError } from "@urs/shared/SharedUI.jsx";
 import SignedOutNotice from "@urs/shared/ui/SignedOutNotice.jsx";
 import PortalNav from "@urs/shared/ui/PortalNav.jsx";
+import URSBackground from "@urs/shared/URSBackground.jsx";
+import SignInLayout, { SignInHeading, publicHome } from "@urs/shared/ui/SignInLayout.jsx";
 import api, { apiError } from "@urs/shared/lib/httpClient.js";
 import { setSession } from "@urs/shared/lib/auth.js";
-import { urlFor } from "@urs/shared/lib/origins.js";
 
 // The credentials this screen used to check (`dean` / `dean2024`) were two
 // constants in this file, which meant they shipped in the JavaScript bundle and
@@ -41,7 +42,7 @@ export default function DeanLogin() {
   const onEnter = e => { if (e.key === "Enter") handleLogin(); };
 
   return (
-    <div className="surface-fixed-light min-h-dvh flex bg-canvas">
+    <URSBackground>
       <Toast toasts={toasts} removeToast={removeToast} />
       <ConfirmSplash
         open={splash}
@@ -56,43 +57,24 @@ export default function DeanLogin() {
         onClose={() => setFailure(null)}
       />
 
-      {/* Context panel — desktop only; the form is the whole page on mobile. */}
-      <aside className="hidden lg:flex flex-col w-[420px] shrink-0 bg-brand-900 text-white p-10">
-        <a href={urlFor("student", "/")} className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm mb-auto w-fit">
-          <ArrowLeft size={15} aria-hidden="true" /> Back to home
-        </a>
-        <div className="mb-auto">
-          <span className="icon-tile bg-white/10 text-white mb-6"><Shield size={22} aria-hidden="true" /></span>
-          <h2 className="text-3xl font-bold tracking-tight leading-tight">Administration</h2>
-          <p className="text-white/60 mt-3 leading-relaxed">
-            College of Engineering. Faculty credentials, consultation activity and reporting.
-          </p>
-          <ul className="mt-8 space-y-2.5 text-sm text-white/60">
-            {["Issue and revoke Faculty ID cards",
-              "Monitor consultation activity",
-              "Review the audit trail",
-              "Export reports"].map(f => (
-              <li key={f} className="flex items-center gap-2.5">
-                <span className="w-1 h-1 rounded-full bg-white/40 shrink-0" aria-hidden="true" />{f}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <p className="text-white/30 text-xs">Restricted — authorised personnel only</p>
-      </aside>
-
-      <main className="flex-1 flex flex-col justify-center px-5 py-10 pt-safe
-                       pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
-        <div className="w-full max-w-sm mx-auto">
-          <a href={urlFor("student", "/")} className="lg:hidden inline-flex items-center gap-1.5 text-muted-fg hover:text-fg text-sm mb-8">
-            <ArrowLeft size={15} aria-hidden="true" /> Back
-          </a>
-
-          <header className="mb-6">
-            <span className="icon-tile icon-tile-brand mb-4 lg:hidden"><Shield size={22} aria-hidden="true" /></span>
-            <h1 className="text-2xl font-bold text-fg tracking-tight">Administrator sign in</h1>
-            <p className="text-muted-fg mt-1.5">Access the administration dashboard.</p>
-          </header>
+      {/* The same frame as the student and faculty sign-ins.
+          This screen used to be a different design entirely: a 420px navy
+          panel on the left carrying an icon, a paragraph and a four-item list
+          of what the office does, beside a light form on the right. All of it
+          was `hidden lg:flex`, so an administrator on a phone — which is most
+          of them, most of the time — got a bare username box on an empty
+          canvas with no heading of consequence and no statement that the page
+          is restricted. The content that only desktop saw is now a note under
+          the form that everybody gets, and the page is no longer the one
+          screen in the system that looks like it came from somewhere else. */}
+      <SignInLayout back={{ href: publicHome() }} width="md">
+        <div className="animate-rise">
+          <span className="icon-tile icon-tile-role mb-4">
+            <Shield size={22} aria-hidden="true" />
+          </span>
+          <SignInHeading title="Administrator sign in">
+            Faculty credentials, consultation activity and reporting.
+          </SignInHeading>
 
           <SignedOutNotice />
 
@@ -125,9 +107,24 @@ export default function DeanLogin() {
             </button>
           </div>
 
-          <PortalNav current="admin" hide={["Who's available"]} tone="light" className="mt-8" />
+          {/* Not a card: the form above it is the only thing on this screen to
+              press, and a second white surface under it reads as a second one.
+              Same inset-rule treatment the other two sign-ins use for the note
+              that is not an option. */}
+          <div className="mt-7 pl-3.5 border-l-2 border-on-backdrop/25">
+            <p className="text-sm font-semibold text-on-backdrop/90">
+              Restricted — authorised personnel only
+            </p>
+            <p className="text-sm text-on-backdrop/65 mt-1 leading-relaxed">
+              This is where Faculty ID cards are issued and revoked, consultation
+              activity is monitored and the audit trail is reviewed. Every action
+              taken here is recorded against this account.
+            </p>
+          </div>
+
+          <PortalNav current="admin" hide={["Who's available"]} className="mt-8" />
         </div>
-      </main>
-    </div>
+      </SignInLayout>
+    </URSBackground>
   );
 }

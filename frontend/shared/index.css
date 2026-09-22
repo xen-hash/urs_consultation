@@ -111,6 +111,103 @@
 }
 
 
+/* ── Role accent ─────────────────────────────────────────────────────────────
+   The three apps are one university system with three doors, so the brand
+   stays URS navy in all of them and the accent is what says which door you
+   came through. It is set once, on <html data-role="...">, by the build — see
+   shared/build/vite-app.js — so no screen has to know which app it is in and
+   no component carries a colour of its own.
+
+   Teal, ochre and violet: far enough apart in hue to stay separable under
+   every common colour-vision deficiency, and all three sit under navy rather
+   than fighting it.
+
+   Each role declares a light and a dark value for every token, and the two
+   blocks at the end pick one. That is why these are not simply written inside
+   the theme blocks above: a role differs by hue and a theme differs by
+   lightness, and crossing them directly would be six near-identical blocks
+   that have to be edited together.
+
+   Contrast, checked where each is actually used (AA wants 4.5:1 for text):
+     white on --role light   teal 5.3:1 · ochre 4.8:1 · violet 6.9:1
+     white on --role dark    teal 4.9:1 · ochre 4.8:1 · violet 6.9:1
+     --role-text on surface  light 5.3 / 4.8 / 6.9 · dark 11.5 / 11.0 / 8.6 */
+
+:root {
+  /* Student — teal. The public app, so the friendliest of the three. */
+  --role-l:       15 118 110;
+  --role-d:       15 118 110;
+  --role-text-l:  15 118 110;
+  --role-text-d:  94 234 212;
+  --role-50-l:    240 253 250;
+  --role-50-d:    12 47 44;
+  --role-100-l:   204 251 241;
+  --role-100-d:   18 68 64;
+}
+
+:root[data-role="faculty"] {
+  /* Ochre. The warm tint the front page already used for the faculty card,
+     darkened to the value that can carry white text. */
+  --role-l:       180 83 9;
+  --role-d:       180 83 9;
+  --role-text-l:  180 83 9;
+  --role-text-d:  252 211 77;
+  --role-50-l:    255 251 235;
+  --role-50-d:    58 42 12;
+  --role-100-l:   254 243 199;
+  --role-100-d:   77 56 19;
+}
+
+:root[data-role="admin"] {
+  /* Violet. The smallest audience and the widest powers; it should not be
+     mistakable for either of the other two at a glance. */
+  --role-l:       109 40 217;
+  --role-d:       109 40 217;
+  --role-text-l:  109 40 217;
+  --role-text-d:  196 181 253;
+  --role-50-l:    245 243 255;
+  --role-50-d:    42 28 74;
+  --role-100-l:   237 233 254;
+  --role-100-d:   56 38 94;
+}
+
+/* Which of the two each token resolves to. Light is the default; the two dark
+   selectors mirror the theme rules above — chosen dark wins outright, and the
+   device's own setting applies when nothing has been chosen. */
+:root,
+.surface-fixed-light {
+  --role:      var(--role-l);
+  --role-text: var(--role-text-l);
+  --role-50:   var(--role-50-l);
+  --role-100:  var(--role-100-l);
+}
+
+:root[data-theme="dark"] {
+  --role:      var(--role-d);
+  --role-text: var(--role-text-d);
+  --role-50:   var(--role-50-d);
+  --role-100:  var(--role-100-d);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --role:      var(--role-d);
+    --role-text: var(--role-text-d);
+    --role-50:   var(--role-50-d);
+    --role-100:  var(--role-100-d);
+  }
+
+  /* The fixed-light screens stay light whatever the device says, so they have
+     to restate the light values after the rule above has moved them. */
+  :root:not([data-theme="light"]) .surface-fixed-light {
+    --role:      var(--role-l);
+    --role-text: var(--role-text-l);
+    --role-50:   var(--role-50-l);
+    --role-100:  var(--role-100-l);
+  }
+}
+
+
 /* ── Dark theme ──────────────────────────────────────────────────────────────
    The same tokens, restated. Every component reads them rather than carrying
    colours of its own, so this is nearly the whole of dark mode.
@@ -339,6 +436,11 @@
   .btn-sm      { @apply min-h-[36px] px-3 text-xs rounded-md; }
   .btn-primary { @apply bg-brand hover:bg-brand-700; color: rgb(var(--on-brand)); }
   .btn-accent  { @apply bg-accent text-brand-900 hover:brightness-95; }
+  /* Deliberately not the primary action anywhere. The brand button is what
+     submits a form; this is for the one button on a screen that belongs to
+     the app's identity rather than to the task — and every --role value is
+     dark enough to carry white text in both themes. */
+  .btn-role    { @apply bg-role text-white hover:brightness-110; }
   .btn-secondary {
     @apply bg-surface text-fg border border-border hover:bg-surface-2;
   }
@@ -381,6 +483,10 @@
   .icon-tile-brand  { @apply bg-brand-50 text-brand; }
   .icon-tile-accent { @apply bg-accent-50 text-accent-fg; }
   .icon-tile-muted  { @apply bg-surface-2 text-muted-fg; }
+  /* The app you are in, rather than a meaning. Used for the one element on a
+     screen that identifies the app — never to mark a status, which is what
+     the success/warning/danger tiles are for. */
+  .icon-tile-role   { @apply bg-role-50 text-role; }
 
   /* ── Forms ── */
   .label {
@@ -412,6 +518,7 @@
   .badge-info    { @apply bg-info-50 text-info; }
   .badge-neutral { @apply bg-surface-2 text-muted-fg; }
   .badge-accent  { @apply bg-accent-50 text-accent-fg; }
+  .badge-role    { @apply bg-role-50 text-role; }
 
   .table-wrap { @apply w-full overflow-x-auto; }
   .table      { @apply w-full text-sm border-collapse; }

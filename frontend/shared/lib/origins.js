@@ -16,6 +16,25 @@
 /** The three apps, in the order the sign-in menus list them. */
 export const APPS = ["student", "faculty", "admin"];
 
+/**
+ * What each app calls itself on screen.
+ *
+ * Worth having in one place now that the apps are separate sites: the label is
+ * the only thing on a staff sign-in that says which of the three you landed on,
+ * and landing on the wrong one is a mistake the split made easy to make.
+ *
+ * "Administration" rather than "Admin" because it is the office, and rather
+ * than "Dean's Office" because the role the server checks is `admin` — the
+ * office keeps its name in prose, the app is named for the role.
+ */
+const LABELS = {
+  student: "Student",
+  faculty: "Faculty",
+  admin: "Administration",
+};
+
+export const labelOf = app => LABELS[app] || "";
+
 const DEV_PORTS = { student: 5173, faculty: 5174, admin: 5175 };
 
 const CONFIGURED = {
