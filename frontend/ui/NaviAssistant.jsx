@@ -34,8 +34,8 @@ import { askLive, classify } from "./navi-live.js";
 import { shouldReset, trimTurns } from "./navi-session.js";
 import { PROJECT_CONTACT } from "../constants.js";
 import {
-  SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, speak,
-  speechSupport, stopSpeaking,
+  SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, primeSpeech,
+  speak, speechSupport, stopSpeaking,
 } from "./speech.js";
 
 const SPEAK_KEY = "urs.navi.speak";
@@ -120,6 +120,7 @@ export default function NaviAssistant() {
   const [mic, setMic] = useState("idle");
   const [heard, setHeard] = useState("");       // interim dictation
   const [micError, setMicError] = useState(null);
+  const [speechError, setSpeechError] = useState(null);
   const [voices, setVoices] = useState([]);
   const [voiceURI, setVoiceURI] = useState(readVoicePreference);
   const [showVoices, setShowVoices] = useState(false);
@@ -154,7 +155,11 @@ export default function NaviAssistant() {
   const say = useCallback((text) => {
     if (!speakBack) return;
     setNowSpeaking(true);
-    speak(text, { voiceURI, onEnd: () => setNowSpeaking(false) });
+    speak(text, {
+      voiceURI,
+      onEnd: () => setNowSpeaking(false),
+      onError: setSpeechError,
+    });
   }, [speakBack, voiceURI]);
 
   // Chrome returns an empty voice list on the first read and fills it in
@@ -169,6 +174,9 @@ export default function NaviAssistant() {
   const answer = useCallback((question) => {
     const text = question.trim();
     if (!text) return;
+    // This runs inside the press that asked, which is the last gesture before
+    // an answer arrives from a fetch or a silence timer.
+    if (speakBack) primeSpeech();
 
     const id = nextId++;
     // The page settles which audience a question belongs to far better than
@@ -197,7 +205,7 @@ export default function NaviAssistant() {
       // made of it, which is what is already on screen.
       say(result ? result.text : (answers.length ? answers[0].answer : NO_MATCH));
     });
-  }, [pathname, say]);
+  }, [pathname, say, speakBack]);
 
   // ── Microphone ────────────────────────────────────────────────────────────
 
@@ -227,6 +235,8 @@ export default function NaviAssistant() {
   }, [answer]);
 
   const pressMic = useCallback(async () => {
+    // A dictated question is answered from a timer, long after this press.
+    if (speakBack) primeSpeech();
     // Finished speaking. stopListening submits what was heard, which is the
     // whole point: the engine often ends without ever marking a result final.
     if (mic === "listening") { stopListening(); setMic("idle"); return; }
@@ -242,7 +252,7 @@ export default function NaviAssistant() {
         "The microphone is blocked for this site. Allow it in your browser " +
         "settings, or type your question instead.");
     } else setMic("explaining");
-  }, [mic, startListening, stopListening]);
+  }, [mic, speakBack, startListening, stopListening]);
 
   // ── Panel lifecycle ───────────────────────────────────────────────────────
 
@@ -289,6 +299,10 @@ export default function NaviAssistant() {
 
   const toggleSpeak = () => {
     const next = !speakBack;
+    // Turning it on is itself a gesture, and the best possible moment to
+    // unlock the engine.
+    if (next) primeSpeech();
+    setSpeechError(null);
     setSpeakBack(next);
     writeSpeakPreference(next);
     if (!next) { stopSpeaking(); setNowSpeaking(false); }
@@ -439,9 +453,12 @@ export default function NaviAssistant() {
                   // nothing until you have heard it.
                   stopSpeaking();
                   setNowSpeaking(true);
+                  primeSpeech();
+                  setSpeechError(null);
                   speak("Hi, I'm Navi. Ask me about consultations.", {
                     voiceURI: e.target.value,
                     onEnd: () => setNowSpeaking(false),
+                    onError: setSpeechError,
                   });
                 }}
                 className="input flex-1 min-w-0"
@@ -517,6 +534,13 @@ export default function NaviAssistant() {
               </button>
             </div>
           </div>
+        )}
+
+        {speechError && (
+          <p role="status"
+            className="mx-4 mb-3 rounded-lg bg-warning-50 text-warning-fg px-3.5 py-2.5 text-sm">
+            {speechError}
+          </p>
         )}
 
         {micError && mic !== "explaining" && (

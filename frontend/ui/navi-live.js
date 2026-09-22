@@ -306,6 +306,14 @@ export function classify(question) {
     "allowed to see", "is it kept", "are records"))
     return null;
 
+  // "How do I cancel my request" is asking to be shown the way, not told the
+  // status. Procedure questions belong to the FAQ even when they name the
+  // same things the live answers read. "How many" is excluded from this,
+  // because that genuinely is a question about the data.
+  if (has(q, "how do i", "how can i", "how do you", "how to ", "where do i",
+    "where can i", "how does"))
+    return null;
+
   const mine = has(q, "my request", "my requests", "my consultation", "did my",
     "my professor reply", "my professor replied", "what happened to my",
     "my booking", "my appointment", "status of my");

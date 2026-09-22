@@ -57,6 +57,16 @@ describe("classify", () => {
     expect(classify("what happened to my request")).toBe("my-requests");
   });
 
+  it("does not mistake a how-to for a status question", () => {
+    // "How do I cancel my request" asks to be shown the way. Answering it with
+    // the status of that request answers something nobody asked.
+    expect(classify("how do i cancel my request")).toBeNull();
+    expect(classify("how do i book a consultation")).toBeNull();
+    expect(classify("where do i see my professors answer")).toBeNull();
+    // "How many" really is a question about the data, and stays live.
+    expect(classify("how many are waiting on me")).toBe("teacher-queue");
+  });
+
   it("leaves everything else to the FAQ", () => {
     // These are about how the system works, not what is true in it.
     expect(classify("how do i change my pin")).toBeNull();
