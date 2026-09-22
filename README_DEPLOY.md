@@ -119,8 +119,13 @@ postgresql://user:password@ep-xyz.ap-southeast-1.aws.neon.tech/neondb?sslmode=re
 ## STEP 2 — Deploy Backend to Render
 
 **The short way — Blueprint.** `render.yaml` at the repository root describes
-the service, so Render can create it for you: https://render.com → **New →
-Blueprint** → connect this repo. It sets the runtime, the build and start
+the service, so Render can create it for you:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/xen-hash/urs_consultation)
+
+That button lands on Render's Blueprint form with this repository already
+filled in. The equivalent by hand is https://render.com → **New → Blueprint**
+→ connect this repo. It sets the runtime, the build and start
 commands, the health check and `rootDir: backend`, generates `SECRET_KEY`
 itself, and then asks you for the four values it deliberately does not store —
 `DATABASE_URL`, `ALLOWED_ORIGINS`, `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH`.
