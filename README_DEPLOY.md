@@ -118,12 +118,28 @@ postgresql://user:password@ep-xyz.ap-southeast-1.aws.neon.tech/neondb?sslmode=re
 
 ## STEP 2 — Deploy Backend to Render
 
-1. Push the `backend/` folder to its own GitHub repo
-2. Go to https://render.com → **New → Web Service**
-3. Connect your GitHub repo
+**The short way — Blueprint.** `render.yaml` at the repository root describes
+the service, so Render can create it for you: https://render.com → **New →
+Blueprint** → connect this repo. It sets the runtime, the build and start
+commands, the health check and `rootDir: backend`, generates `SECRET_KEY`
+itself, and then asks you for the four values it deliberately does not store —
+`DATABASE_URL`, `ALLOWED_ORIGINS`, `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH`.
+Skip to step 5 for what those are.
+
+(The file used to live in `backend/`, where Render never looked for it — it
+reads `render.yaml` from the repository root and nowhere else.)
+
+**The manual way**, if you would rather click through it:
+
+1. Go to https://render.com → **New → Web Service**
+2. Connect this GitHub repo
+3. Set **Root Directory** to `backend`
 4. Render auto-detects Python. Confirm these settings:
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `gunicorn --worker-class gevent -w 1 --timeout 120 --bind 0.0.0.0:$PORT app:app`
+   - **Health Check Path:** `/api/health` — without it, a deploy that fails to
+     boot is still marked live, and the app now refuses to boot on default
+     secrets
 5. Go to your service → **Environment** tab → add:
 
 ```

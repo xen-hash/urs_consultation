@@ -1,7 +1,12 @@
+# Render reads this file from the repository root and nowhere else, so this is
+# where it lives — it spent a while inside backend/, where a Blueprint deploy
+# simply never found it and the service had to be created by hand instead.
+# `rootDir` is what keeps the commands below relative to backend/ anyway.
 services:
   - type: web
     name: urs-backend
     runtime: python
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --worker-class gevent -w 1 --timeout 120 --bind 0.0.0.0:$PORT app:app
 
@@ -22,6 +27,13 @@ services:
         generateValue: true
 
       # Comma-separated frontend origins allowed to call this API. Never "*".
+      #
+      # All THREE Vercel URLs, since the frontend is three separate
+      # deployments — student, faculty and administration — each on its own
+      # origin. Miss one and that app's every request fails CORS while the
+      # other two keep working, which reads as a broken app rather than a
+      # missing line of configuration. Exact origins: scheme and host, no
+      # trailing slash, no path.
       - key: ALLOWED_ORIGINS
         sync: false
 
