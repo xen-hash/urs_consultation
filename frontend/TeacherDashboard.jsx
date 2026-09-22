@@ -13,6 +13,7 @@ import {
 } from "./SharedUI.jsx";
 import ScheduleModal from "./ScheduleModal.jsx";
 import Walkthrough, { hasSeenTour } from "./ui/Walkthrough.jsx";
+import useHashTab from "./ui/useHashTab.js";
 import { teacherTour } from "./ui/tours.js";
 import { WebcamCapture, IDCardPreview, generateIDCard } from "./ProfileEditor.jsx";
 import ThemeToggle from "./ui/ThemeToggle.jsx";
@@ -143,6 +144,8 @@ export default function TeacherDashboard() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [tourOpen, setTourOpen]         = useState(() => !hasSeenTour("teacher"));
   const tourSteps = useMemo(() => teacherTour(setTab), []);
+  // Navi opens a tab directly — /teacher/dashboard#status. See useHashTab.
+  useHashTab("/teacher/dashboard", setTab);
   // What the board is showing right now. On Auto that is the schedule's
   // verdict for today rather than the word "Auto", which is not a status
   // anybody outside this screen would recognise.

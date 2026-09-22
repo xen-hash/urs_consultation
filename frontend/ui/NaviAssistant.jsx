@@ -18,11 +18,17 @@
  *
  * Answers come from navi-faq.js, matched in the browser. See that file for why
  * there is no model behind this.
+ *
+ * A question can also be an instruction — "open the student login page" — and
+ * that one is answered by going there rather than by describing it. navi-go.js
+ * works out which screen was named and whether being taken to it is what was
+ * asked for; the panel closes on the way so the screen is what the reader is
+ * left looking at.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight, Mic, MicOff, RotateCcw, Send, Settings2, Volume2, VolumeX, X,
 } from "lucide-react";
@@ -30,8 +36,10 @@ import {
 import Mascot from "./Mascot.jsx";
 import { useScrollLock } from "./index.jsx";
 import { STARTERS, askNavi } from "./navi-faq.js";
+import { navigationFor } from "./navi-go.js";
 import { askLive, classify } from "./navi-live.js";
 import { shouldReset, trimTurns } from "./navi-session.js";
+import { currentRole } from "../auth.js";
 import { PROJECT_CONTACT } from "../constants.js";
 import {
   SILENCE_MS, defaultVoice, listen, microphoneState, onVoicesReady, primeSpeech,
@@ -70,6 +78,7 @@ function writeVoicePreference(uri) {
 const NO_MATCH =
   "I don't know that one. I can help with signing in, booking a consultation, " +
   "checking who is free right now, and what happened to a request you sent. " +
+  "I can also open any screen for you — say \"open the student sign-in\". " +
   "For anything else, the Dean's Office is the place to ask" +
   (PROJECT_CONTACT ? `, or email ${PROJECT_CONTACT}.` : ".");
 
@@ -125,7 +134,8 @@ export default function NaviAssistant() {
   const [voiceURI, setVoiceURI] = useState(readVoicePreference);
   const [showVoices, setShowVoices] = useState(false);
 
-  const { pathname } = useLocation();
+  const { hash, pathname } = useLocation();
+  const navigate = useNavigate();
   const support = useRef(speechSupport()).current;
   const viewport = useVisibleViewport(open);
   // The page behind must not scroll with the panel over it — on iOS it
@@ -162,6 +172,21 @@ export default function NaviAssistant() {
     });
   }, [speakBack, voiceURI]);
 
+  /**
+   * Get out of the way, because the answer is the screen behind this panel.
+   *
+   * Not `close`: that stops speech, and the sentence being cut off here is the
+   * one naming where the reader has just been taken. Everything else it does —
+   * the microphone, the mic state, the half-heard question — still applies.
+   */
+  const leave = useCallback(() => {
+    lastActivity.current = Date.now();
+    cancelListening();
+    setOpen(false);
+    setMic("idle");
+    setHeard("");
+  }, [cancelListening]);
+
   // Chrome returns an empty voice list on the first read and fills it in
   // later, so this listens rather than asking once.
   useEffect(() => onVoicesReady((list) => {
@@ -179,6 +204,30 @@ export default function NaviAssistant() {
     if (speakBack) primeSpeech();
 
     const id = nextId++;
+
+    // "Open the student login page" is an instruction, and the only answer to
+    // it that is not a waste of somebody's time is the page. So this is tried
+    // first: a trip supersedes both the written answer and the live one.
+    // navi-go.js is deliberately strict about what counts — a question that
+    // merely mentions a screen falls straight through to the FAQ below.
+    const trip = navigationFor(text, { pathname, role: currentRole() });
+    if (trip) {
+      lastActivity.current = Date.now();
+      setTurns(prev => trimTurns([...prev, { id, question: text, trip, live: null, answers: [] }]));
+      setDraft("");
+      setHeard("");
+      // Already standing on it: asking again is "put me back on that tab",
+      // not a step forward, and pushing it would leave a back button that
+      // appears not to work for one press.
+      navigate(trip.to, { replace: trip.to === pathname + hash });
+      // Closed rather than left open over the screen just asked for. The turn
+      // stays in the transcript, so reopening shows what was said and a button
+      // back to it.
+      leave();
+      say(trip.text);
+      return;
+    }
+
     // The page settles which audience a question belongs to far better than
     // its wording does — see audienceForPath in navi-faq.js.
     const answers = askNavi(text, { pathname });
@@ -205,7 +254,7 @@ export default function NaviAssistant() {
       // made of it, which is what is already on screen.
       say(result ? result.text : (answers.length ? answers[0].answer : NO_MATCH));
     });
-  }, [pathname, say, speakBack]);
+  }, [hash, leave, navigate, pathname, say, speakBack]);
 
   // ── Microphone ────────────────────────────────────────────────────────────
 
@@ -483,7 +532,8 @@ export default function NaviAssistant() {
               <p className="text-sm text-muted-fg leading-relaxed">
                 Hi! I can answer questions about this system — signing in, booking a
                 consultation, checking who is free, and what happened to a request you
-                sent. Type it, or press the microphone and say it.
+                sent. Ask me to open a screen and I will take you there. Type it, or
+                press the microphone and say it.
               </p>
               <div className="flex flex-wrap gap-2">
                 {STARTERS.map(starter => (
@@ -624,10 +674,26 @@ function Turn({ turn, onAsk, onClose }) {
         {turn.question}
       </p>
 
-      {/* A live answer supersedes the written one: asked who is free, Navi
+      {/* A trip has already happened by the time this renders — the panel
+          closed and the screen changed. What is left is the sentence saying
+          so, and a button back to it for whoever reopens the panel later and
+          has since wandered off. */}
+      {turn.trip ? (
+        <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-sm bg-brand-50 px-3.5 py-2.5 break-words">
+          <p className="text-sm text-fg leading-relaxed">{turn.trip.text}</p>
+          <Link
+            to={turn.trip.to}
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 mt-2.5 text-sm font-semibold text-brand"
+          >
+            {turn.trip.label}
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      ) : /* A live answer supersedes the written one: asked who is free, Navi
           says who is free. The FAQ entry stays behind it only as the fallback
-          for when the data could not be reached. */}
-      {turn.live === "pending" ? (
+          for when the data could not be reached. */
+      turn.live === "pending" ? (
         <div className="w-fit rounded-2xl rounded-bl-sm bg-surface-2 px-3.5 py-2.5">
           <span className="flex items-center gap-2 text-sm text-muted-fg">
             <span className="h-2 w-2 rounded-full bg-brand animate-shimmer" aria-hidden="true" />
@@ -673,7 +739,7 @@ function Turn({ turn, onAsk, onClose }) {
       {/* The runners-up, as questions rather than answers. Stacking three full
           answers makes the right one harder to find, not easier. A live answer
           came from the data and has no alternatives to offer. */}
-      {!turn.live && others.length > 0 && (
+      {!turn.trip && !turn.live && others.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="text-xs text-subtle-fg w-full">Did you mean:</span>
           {others.map(other => (
