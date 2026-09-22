@@ -14,6 +14,7 @@ import api, { apiError } from "@urs/shared/lib/httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "@urs/shared/lib/auth.js";
 import DepartmentIcon, { departmentColor } from "@urs/shared/ui/DepartmentIcon.jsx";
 import BottomNav, { BottomNavSpacer } from "@urs/shared/ui/BottomNav.jsx";
+import TabStrip from "@urs/shared/ui/TabStrip.jsx";
 import Walkthrough, { hasSeenTour } from "@urs/shared/ui/Walkthrough.jsx";
 import useHashTab from "@urs/shared/ui/useHashTab.js";
 import { studentTour } from "@urs/shared/ui/tours.js";
@@ -351,7 +352,7 @@ export default function StudentDashboard() {
         onDone={() => { clearSession(); navigate("/sign-in", { replace: true }); }}
       />
       <URSHeader
-        subtitle="Student Dashboard"
+        subtitle="Student dashboard"
         user={{ name: student.full_name, sub: student.student_id }}
         onHelp={() => setTourOpen(true)}
         actions={<NotificationBell socket={liveSocket} />}
@@ -359,27 +360,7 @@ export default function StudentDashboard() {
       />
 
       {/* Desktop tab strip. On phones this is replaced by the bottom bar. */}
-      <div className="hidden lg:block bg-surface border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 flex gap-1">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              aria-current={tab === t.id ? "page" : undefined}
-              data-tour={`tab-${t.id}`}
-              className={`flex items-center gap-2 px-4 min-h-[44px] text-sm font-semibold
-                border-b-2 -mb-px transition-colors duration-200
-                ${tab === t.id
-                  ? "text-brand border-brand"
-                  : "text-muted-fg border-transparent hover:text-fg"}`}>
-              <t.icon size={16} aria-hidden="true" />{t.label}
-              {t.badge > 0 && (
-                <span className="bg-accent text-brand-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {t.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TabStrip tabs={TABS} active={tab} onSelect={setTab} tourPrefix="tab-" />
 
       <div className="flex-1 px-4 sm:px-6 py-6 max-w-5xl mx-auto w-full">
 

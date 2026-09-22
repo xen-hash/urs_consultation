@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { LogOut, ArrowLeft, HelpCircle } from "lucide-react";
 import { IconButton } from "./ui/index.jsx";
 import HomeBrand from "./ui/HomeBrand.jsx";
+import RoleBadge from "./ui/RoleBadge.jsx";
 
 export { default as ConfirmSplash } from "./ui/ConfirmSplash.jsx";
 export { default as ErrorSplash, classifyAuthError } from "./ui/ErrorSplash.jsx";
@@ -18,8 +19,17 @@ export {
   ConfirmMark, AlertMark, useConfirmed, NumberField,
 } from "./ui/index.jsx";
 
-/** Top bar for a signed-in area. `pt-safe` keeps it clear of the iOS notch —
- *  the PWA draws behind a translucent status bar. */
+/**
+ * Top bar for a signed-in area. `pt-safe` keeps it clear of the iOS notch —
+ * the PWA draws behind a translucent status bar.
+ *
+ * Carries the role the same way the sign-ins do, for the same reason: three
+ * separate sites mean three tabs open at once is normal, and two signed-in
+ * dashboards that differ only in their content are two tabs nobody can tell
+ * apart from the tab strip. The badge shows from `sm` up, where there is room
+ * for it beside the name and the actions; below that the accent rule under the
+ * bar is what carries it, which costs no width at all.
+ */
 export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp, actions }) {
   // Callers pass either a display string or { name, sub } — the dashboards use
   // the object form to show who is signed in and their ID or department.
@@ -39,7 +49,8 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp, act
         {/* The name is the way back to the front page — signed in, it asks
             first and signs you out on the way. */}
         <HomeBrand title={title || "University of Rizal System"} subtitle={subtitle}
-          className="flex-1" confirmSignOut />
+          className="min-w-0 flex-1" confirmSignOut />
+        <RoleBadge tone="light" className="hidden sm:inline-flex mr-1" />
         {(person || onLogout || onHelp || actions) && (
           <div className="flex items-center gap-2 min-w-0">
             {/* Anything role-specific that belongs in the top bar — the
@@ -61,6 +72,9 @@ export function URSHeader({ title, subtitle, user, onLogout, backTo, onHelp, act
           </div>
         )}
       </div>
+      {/* The same hairline the sign-ins carry, so signing in does not change
+          which app you appear to be in. */}
+      <div className="h-0.5 bg-role" aria-hidden="true" />
     </header>
   );
 }

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Toast, useToastState, IconButton } from "@urs/shared/SharedUI.jsx";
 import ThemeToggle from "@urs/shared/ui/ThemeToggle.jsx";
+import RoleBadge from "@urs/shared/ui/RoleBadge.jsx";
 import ConfirmSplash from "@urs/shared/ui/ConfirmSplash.jsx";
 import ServerDown from "@urs/shared/ui/ServerDown.jsx";
 import { getSession, clearSession } from "@urs/shared/lib/auth.js";
@@ -155,12 +156,18 @@ export default function DeanDashboard() {
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* A bar for the controls that belong to the whole screen rather than to
-            a section: the theme, a manual refresh, and the way back into the
+        {/* A bar for the controls that belong to the whole screen rather than
+            to a section: the theme, a manual refresh, and the way back into the
             walkthrough. It carries the section heading too, so the page has a
-            visible one again. No crest and no university name — at 390px those
-            cost the row more width than they earn, and the rail already says
-            where you are. */}
+            visible one again.
+        
+            The crest and the role badge show from `sm` up. They used to be left
+            out entirely, on the grounds that the rail already says where you
+            are — and the rail is `hidden lg:flex`, so on a phone nothing on
+            this screen said it was the administration app, or indeed that it
+            was URS at all. Now that the three apps are separate sites with the
+            same icon, that is the screen's only identification. Below `sm` the
+            accent rule under the bar carries it, which costs no width. */}
         <header className="sticky top-0 z-30 bg-surface header-blend header-blend-canvas pt-safe">
           <div className="flex items-center gap-1.5 xs:gap-2 px-2 xs:px-3 sm:px-5 py-2
                           w-full max-w-[1200px] mx-auto">
@@ -168,10 +175,12 @@ export default function DeanDashboard() {
             {stats?.pending > 0 && (
               <span className="badge badge-warning hidden md:inline-flex">{stats.pending} pending</span>
             )}
+            <RoleBadge tone="light" className="hidden sm:inline-flex lg:hidden" />
             <ThemeToggle />
             <IconButton icon={RefreshCw} label="Refresh" onClick={refreshAll} />
             <IconButton icon={HelpCircle} label="Show the guide" onClick={() => setTourOpen(true)} />
           </div>
+          <div className="h-0.5 bg-role" aria-hidden="true" />
         </header>
 
         <main className="flex-1 p-3 sm:p-5 w-full max-w-[1200px] mx-auto">
@@ -259,7 +268,9 @@ function NavContents({ tab, pending, onPick, onExport, muted, onToggleMute, onSi
               data-tour={`side-${t.id}`}
               className={`w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm font-medium
                 transition-colors duration-200
-                ${active ? "bg-white/15 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+                ${active
+                  ? "bg-white/15 text-white"
+                  : "text-white/60 hover:text-white hover:bg-white/10"}`}
             >
               <t.icon size={17} aria-hidden="true" className="shrink-0" />
               <span className="truncate">{t.label}</span>

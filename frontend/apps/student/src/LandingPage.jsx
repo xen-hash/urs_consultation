@@ -37,18 +37,33 @@ import { urlFor } from "@urs/shared/lib/origins.js";
  * makes that no different to write than a route.
  */
 
+/**
+ * The tints are each app's own accent, not this page's.
+ *
+ * This is the only page that holds all three addresses, so it is also where
+ * somebody learns which colour means which app — and then recognises it on the
+ * sign-in they land on and in the tab strip once they are signed in. A card
+ * tinted with the colour of the app it links to teaches that for free; a card
+ * tinted with the colour of the page it is on teaches nothing.
+ *
+ * They are written out rather than read from --role for the same reason: --role
+ * is whichever app is rendering, which here is always the student one. These
+ * are the light-theme values of the three accents in index.css, and this page
+ * is fixed to the light tokens (see URSBackground), so they cannot go stale in
+ * dark mode.
+ */
 const SIGN_INS = [
   {
     to: urlFor("student", "/sign-in"), icon: GraduationCap, title: "Student",
     description: "Request a consultation and see what your professor said.",
     cta: "Sign in or register",
-    tint: "rgb(var(--brand-100) / 0.85)",
+    tint: "rgb(204 251 241)",   /* teal */
   },
   {
     to: urlFor("faculty", "/"), icon: BookOpen, title: "Faculty",
     description: "Your schedule, your availability, and who is waiting on you.",
     cta: "Sign in",
-    tint: "rgb(255 236 199)",
+    tint: "rgb(254 243 199)",   /* ochre */
   },
 ];
 
@@ -142,7 +157,11 @@ export default function LandingPage() {
           {SIGN_INS.map(({ to, icon: Icon, title, description, cta, tint }) => (
             <AppLink key={to} to={to} className="card card-action card-tinted-hue group"
               style={{ "--tint": tint }}>
-              <span className="icon-tile icon-tile-brand"><Icon size={22} aria-hidden="true" /></span>
+              {/* The tile carries the same hue as the card, so the pairing is
+                  unmissable rather than a wash somebody has to notice. */}
+              <span className="icon-tile" style={{ background: tint, color: "rgb(var(--fg))" }}>
+                <Icon size={22} aria-hidden="true" />
+              </span>
               <span className="font-semibold text-fg text-lg">{title}</span>
               <span className="text-sm text-muted-fg grow">{description}</span>
               <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand mt-1">
@@ -162,7 +181,9 @@ export default function LandingPage() {
                      text-on-backdrop/60 hover:text-on-backdrop transition-colors duration-200
                      rounded-lg -mx-2 px-2 py-2 min-h-[44px]"
         >
-          <Shield size={16} aria-hidden="true" className="shrink-0" />
+          {/* Violet, the administration accent — the third of the three, said
+              the same way but at the weight a handful of people deserve. */}
+          <Shield size={16} aria-hidden="true" className="shrink-0" style={{ color: "rgb(196 181 253)" }} />
           Administration — credentials, activity and reporting
           <ArrowRight size={14} aria-hidden="true"
             className="shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />

@@ -43,14 +43,14 @@ export default function BottomNav({ items, active, onSelect, onMore, action, cla
                 data-tour={`nav-${item.id}`}
                 className={`w-full h-full min-h-[64px] flex flex-col items-center justify-center gap-1.5
                   px-0.5 pt-2.5 pb-2 transition-colors duration-150 relative
-                  ${selected ? "text-brand" : "text-muted-fg"}`}
+                  ${selected ? "text-role" : "text-muted-fg"}`}
               >
                 {/* The active marker sits on the top edge so it reads as a tab
                     indicator rather than decoration under the label. */}
                 <span
                   aria-hidden="true"
                   className={`absolute top-0 inset-x-3 h-0.5 rounded-full transition-opacity duration-150
-                    ${selected ? "bg-brand opacity-100" : "opacity-0"}`}
+                    ${selected ? "bg-role opacity-100" : "opacity-0"}`}
                 />
                 <span className="relative shrink-0">
                   <item.icon size={22} className="xs:hidden" aria-hidden="true" />
@@ -80,12 +80,12 @@ export default function BottomNav({ items, active, onSelect, onMore, action, cla
               onClick={onMore}
               className={`w-full h-full min-h-[64px] flex flex-col items-center justify-center gap-1.5
                 px-0.5 pt-2.5 pb-2 transition-colors duration-150 relative
-                ${overflowActive ? "text-brand" : "text-muted-fg"}`}
+                ${overflowActive ? "text-role" : "text-muted-fg"}`}
             >
               <span
                 aria-hidden="true"
                 className={`absolute top-0 inset-x-3 h-0.5 rounded-full
-                  ${overflowActive ? "bg-brand" : "opacity-0"}`}
+                  ${overflowActive ? "bg-role" : "opacity-0"}`}
               />
               <MoreHorizontal size={24} aria-hidden="true" />
               <span className={`text-[10px] xs:text-xs leading-none

@@ -19,6 +19,7 @@ import { WebcamCapture, IDCardPreview, generateIDCard } from "@urs/shared/Profil
 import ThemeToggle from "@urs/shared/ui/ThemeToggle.jsx";
 import NotificationBell from "@urs/shared/ui/NotificationBell.jsx";
 import BottomNav, { BottomNavSpacer } from "@urs/shared/ui/BottomNav.jsx";
+import TabStrip from "@urs/shared/ui/TabStrip.jsx";
 import api, { apiError } from "@urs/shared/lib/httpClient.js";
 import { getSession, patchProfile, clearSession, getToken } from "@urs/shared/lib/auth.js";
 import { SOCKET_URL, DAYS, DAY_LABELS } from "@urs/shared/lib/constants.js";
@@ -480,7 +481,7 @@ export default function TeacherDashboard() {
         onClose={() => setTourOpen(false)}
         onExit={() => setTab("requests")}
       />
-      <URSHeader subtitle="Teacher Dashboard"
+      <URSHeader subtitle="Faculty dashboard"
         onHelp={() => setTourOpen(true)}
         actions={<NotificationBell socket={liveSocket} />}
         user={{ name: teacher.professor_name, sub: teacher.department }}
@@ -499,26 +500,8 @@ export default function TeacherDashboard() {
       )}
 
       {/* Desktop tab strip. On phones this is replaced by the bottom bar. */}
-      <div className="hidden lg:block bg-surface border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 flex gap-1">
-          {TABS.map(t => (
-            <button key={t.id} onClick={()=>setTab(t.id)}
-              aria-current={tab===t.id ? "page" : undefined}
-              className={`flex items-center gap-2 px-4 min-h-[44px] text-sm font-semibold
-                border-b-2 -mb-px transition-colors duration-200
-                ${tab===t.id
-                  ? "text-brand border-brand"
-                  : "text-muted-fg border-transparent hover:text-fg"}`}>
-              <t.icon size={16} aria-hidden="true" />{t.label}
-              {t.badge>0 && (
-                <span className="bg-accent text-brand-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {t.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Desktop tab strip. On phones this is replaced by the bottom bar. */}
+      <TabStrip tabs={TABS} active={tab} onSelect={setTab} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 w-full">
 
