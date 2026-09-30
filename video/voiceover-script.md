@@ -1,8 +1,8 @@
 # Teaser voiceover script
 
-About 220 words. With the pauses between paragraphs, that's about 1:30 of speech. With the
-music-only title and end-card beats, the finished video runs about 1:45. The
-animation is timed to the recorded audio, so the scene timings below are
+About 220 words. The recorded narration runs 1:24; with the logo sting before
+it and the end card after, the video runs 1:34. The animation is timed to the
+recording word by word (see `README.md`), so the scene timings below are
 targets, not limits.
 
 ## Paste into ElevenLabs
