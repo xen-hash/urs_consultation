@@ -1,2 +1,4 @@
 node_modules/
 out/
+capture/sessions.json
+capture/__pycache__/

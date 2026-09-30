@@ -1,7 +1,9 @@
 # URS teaser video
 
-A 1:34 motion-graphics teaser for social media, built in code with
-[Remotion](https://www.remotion.dev). Every animation is timed to the recorded
+A 1:34 teaser for social media, built in code with
+[Remotion](https://www.remotion.dev). The app scenes use the app's **real
+screens**: `capture/` runs the actual backend and frontend with a fictional
+roster and drives them with Playwright. Every animation is timed to the recorded
 voiceover word by word, so replacing the narration re-times the whole video.
 
 | | |
@@ -50,6 +52,33 @@ Scenes find their moments by the words spoken ("one tap", "notification", and
 so on) rather than by hard-coded seconds. A new recording therefore needs no
 code changes, as long as the script's wording stays the same.
 
+## Re-capture the app screens
+
+After a UI change, capture the screens again so the video shows the new UI:
+
+```bash
+# one-off: a local Postgres on 127.0.0.1:55432 with a user "urs", and
+pip install -r ../backend/requirements.txt time-machine
+# the frontend dev server, pointed at the local API:
+(cd ../frontend && VITE_API_BASE=/api npx vite --port 5173) &
+
+capture/run.sh            # fresh database → seed → sign in → capture
+npm run render
+```
+
+`run.sh` drops and recreates the `ursdb_video` database each time, so every
+capture starts from the same fictional morning:
+
+- `capture/backend.py` runs the real backend with the roster swapped for
+  made-up faculty, so no real name reaches the database. The clock is frozen
+  at Thursday 1 October 2026, 10:24 Manila time, in both Python and Postgres.
+- `capture/seed.py` creates schedules, statuses, students and past requests
+  through the app's own API.
+- `capture/capture.mjs` walks through each flow in the order the narration
+  tells it. It saves every screen to `public/screens/`, and records where the
+  buttons and rows sit in `src/data/screens.json`, so the video's taps and
+  highlights land on real elements.
+
 ## Where things are
 
 - `src/Teaser.jsx`: the scene order, captions and audio.
@@ -58,7 +87,7 @@ code changes, as long as the script's wording stays the same.
   - `Availability.jsx`: availability board, teacher status
   - `Booking.jsx`: booking, Navi
   - `Closing.jsx`: sign-in and install, kiosk and Dean's Office, end card
-- `src/ui.jsx`: the mock app parts: browser window, phone, faculty card, status badge, pointer.
-- `src/theme.js`: the app's colors, plus the faculty names shown on screen.
-  These names are fictional; the real roster in `backend/config.py` is never shown.
+- `src/screens.jsx`: captured screens, phone frame, highlight rings.
+- `src/ui.jsx`: the browser window, pointer and other shared pieces.
+- `src/theme.js`: the app's colors.
 - `scripts/stills.mjs 120 900`: renders single frames into `out/stills/` for a quick look.
