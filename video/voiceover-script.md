@@ -1,6 +1,6 @@
 # Teaser voiceover script
 
-About 240 words. Read at a natural pace, that's about 1:30 of speech. With the
+About 220 words. With the pauses between paragraphs, that's about 1:30 of speech. With the
 music-only title and end-card beats, the finished video runs about 1:45. The
 animation is timed to the recorded audio, so the scene timings below are
 targets, not limits.
