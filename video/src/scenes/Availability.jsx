@@ -4,12 +4,13 @@ import { cue } from "../timing";
 import { keys, pop, ramp, useScene } from "../anim";
 import { Kicker, Pointer, Window } from "../ui";
 import { box, centre, PhoneFrame, phoneScreenWidth, Ring, States } from "../screens";
+import { Camera3D, Depth, drift } from "../fx";
 
 const CHROME = 56;
 
 // "Open the live availability board, and see in real time who's available,
 //  who's not, and who's on leave. No more guessing. No more wasted trips."
-export const Board = () => {
+export const Board = ({ len }) => {
   const { frame, at } = useScene();
   const tLive = at(cue("real time"));
   const groups = [
@@ -23,7 +24,8 @@ export const Board = () => {
   const scroll = keys(frame, [[tDone, 0], [tDone + 60, 160]]);
   const enter = ramp(frame, 0, 22);
   return (
-    <AbsoluteFill style={{ fontFamily: FONT, perspective: 1800 }}>
+    <AbsoluteFill style={{ fontFamily: FONT }}>
+     <Camera3D {...drift(frame, len, { swing: 16, dolly: 110 })}>
       <Window path="/availability" width={W} height={CHROME + VIEW * (W / 1440)} style={{
         position: "absolute", left: 180, top: 34,
         transform: `rotateX(${(1 - enter) * 12}deg) scale(${0.95 + enter * 0.05})`, transformOrigin: "50% 100%",
@@ -43,13 +45,14 @@ export const Board = () => {
             </>
           )} />
       </Window>
+     </Camera3D>
     </AbsoluteFill>
   );
 };
 
 // "For faculty, it's just as easy. Your status updates itself from your
 //  schedule. Stepping out? Change it with one tap, and every student sees it instantly."
-export const Faculty = () => {
+export const Faculty = ({ len }) => {
   const { frame, at } = useScene();
   const tAuto = at(cue("your status updates"));
   const tSched = at(cue("from your schedule"));
@@ -72,6 +75,8 @@ export const Faculty = () => {
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT }}>
+     <Camera3D {...drift(frame, len, { swing: 14, dolly: 80 })}>
+     <Depth z={-40} blur={keys(frame, [[tTap + 2, 0], [tTap + 14, 2.6]])}>
       <Kicker style={{ position: "absolute", left: 120, top: 42, opacity: winIn }}>Teacher dashboard</Kicker>
       <Window path="/teacher/dashboard" width={W} height={CHROME + 900 * k0} style={{
         position: "absolute", left: 110, top: 88, opacity: winIn, transform: `translateX(${(1 - winIn) * -60}px)`,
@@ -92,6 +97,7 @@ export const Faculty = () => {
             )} />
         </div>
       </Window>
+     </Depth>
 
       {/* The change reaching a student's phone */}
       {[tTap + 4].map((t0) => {
@@ -104,6 +110,7 @@ export const Faculty = () => {
         ) : null;
       })}
 
+     <Depth z={70} blur={keys(frame, [[0, 2.6], [tTap - 4, 2.6], [tTap + 8, 0]])}>
       <Kicker style={{ position: "absolute", left: 1400, top: 42, opacity: phoneIn }}>Student's phone</Kicker>
       <PhoneFrame width={pw} style={{
         position: "absolute", left: 1390, top: 88, transform: `translateY(${(1 - phoneIn) * 140}px)`,
@@ -112,6 +119,8 @@ export const Faculty = () => {
           states={[["m-civil", 0], ["m-civil-live", tSees]]}
           overlay={(k) => <Ring frame={frame} at={tSees + 2} b={ana} k={k} color="#94a3b8" pad={4} />} />
       </PhoneFrame>
+     </Depth>
+     </Camera3D>
     </AbsoluteFill>
   );
 };

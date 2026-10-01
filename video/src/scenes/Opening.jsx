@@ -4,6 +4,7 @@ import { C, FONT } from "../theme";
 import { cue, FPS } from "../timing";
 import { keys, pop, ramp, useScene } from "../anim";
 import { Kicker, Logo, Navi } from "../ui";
+import { Camera3D, Depth, drift, GlitchText, glow, KineticText, LensFlare } from "../fx";
 
 // 0–3s, before the narration: the seal draws itself in.
 export const ColdOpen = () => {
@@ -27,14 +28,15 @@ export const ColdOpen = () => {
       </div>
       <div style={{
         position: "absolute", bottom: 150, color: "white", fontWeight: 700, fontSize: 30,
-        letterSpacing: "0.32em", opacity: ramp(frame, 22, 14) * (1 - out),
-      }}>UNIVERSITY OF RIZAL SYSTEM</div>
+        letterSpacing: "0.32em", opacity: (1 - out), textShadow: glow(C.amber, 18),
+      }}><KineticText text="UNIVERSITY OF RIZAL SYSTEM" frame={frame} at={20} stagger={0.8} /></div>
+      <LensFlare frame={frame} at={26} dur={44} x0={420} y0={400} x1={1500} y1={470} />
     </AbsoluteFill>
   );
 };
 
 // "Waiting outside the faculty room... again?"
-export const Hook = () => {
+export const Hook = ({ len }) => {
   const { frame, at } = useScene();
   const tWait = at(cue("waiting"));
   const tAgain = at(cue("again"));
@@ -65,6 +67,8 @@ export const Hook = () => {
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT, color: "white" }}>
+     <Camera3D {...drift(frame, len, { swing: 10, dolly: 90 })}>
+     <Depth z={-80}>
       {/* Door */}
       <div style={{
         position: "absolute", left: 250, top: 120, width: 400, height: 700, borderRadius: "22px 22px 0 0",
@@ -97,10 +101,12 @@ export const Hook = () => {
             background: outFlip > 0.5 ? C.danger : "white", color: outFlip > 0.5 ? "white" : C.navy,
             fontWeight: 800, fontSize: outFlip > 0.5 ? 46 : 58, boxShadow: "0 10px 20px rgba(0,0,0,0.3)",
             transform: `rotateY(${outFlip > 0.5 ? 180 : 0}deg)`,
-          }}>{outFlip > 0.5 ? "OUT" : "?"}</div>
+          }}>{outFlip > 0.5 ? <GlitchText frame={frame} at={tNotIn + 4} dur={10}>OUT</GlitchText> : "?"}</div>
         </div>
       </div>
       <div style={{ position: "absolute", left: 180, top: 820, width: 560, height: 8, borderRadius: 4, background: "rgba(255,255,255,0.18)" }} />
+     </Depth>
+     <Depth z={30}>
 
       {/* Navi waiting beside the door */}
       <Navi pose="bust" size={330} style={{
@@ -108,6 +114,8 @@ export const Hook = () => {
         transform: `translateY(${(1 - pop(frame, 4)) * 60}px)`,
         filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.4))",
       }} />
+     </Depth>
+     <Depth z={130}>
 
       {/* Waiting... again? */}
       <div style={{ position: "absolute", left: 1010, top: 250, opacity: 1 - headOut, transform: `translateY(${-headOut * 40}px)` }}>
@@ -121,14 +129,16 @@ export const Hook = () => {
             ))}
           </div>
           <div style={{ fontSize: 120, fontWeight: 800, letterSpacing: "-0.03em" }}>
-            Waiting{".".repeat(1 + (Math.floor(frame / 8) % 3))}
+            <KineticText text="Waiting" frame={frame} at={tWait} />
+            {frame > tWait + 10 && ".".repeat(1 + (Math.floor(frame / 8) % 3))}
           </div>
         </div>
         <div style={{
           fontSize: 150, fontWeight: 800, color: C.amber, marginTop: 10, marginLeft: 140,
           letterSpacing: "-0.03em", opacity: ramp(frame, tAgain, 4),
           transform: `scale(${0.6 + 0.4 * pop(frame, tAgain, { damping: 9 })}) rotate(-4deg)`, transformOrigin: "0 50%",
-        }}>again?</div>
+          textShadow: glow(C.amber, 30),
+        }}><GlitchText frame={frame} at={tAgain + 2} dur={10}>again?</GlitchText></div>
       </div>
 
       {/* Checklist */}
@@ -185,15 +195,19 @@ export const Hook = () => {
         </div>
         <div style={{
           marginTop: 30, fontSize: 60, fontWeight: 800, letterSpacing: "-0.02em",
-          opacity: ramp(frame, at(cue("every minute")), 8),
-        }}>Every minute <span style={{ color: C.amber }}>counts.</span></div>
+        }}>
+          <KineticText text="Every minute counts." frame={frame} at={at(cue("every minute"))} stagger={0.9}
+            colorOf={(w) => (w === 2 ? C.amber : "white")} />
+        </div>
       </div>
+     </Depth>
+     </Camera3D>
     </AbsoluteFill>
   );
 };
 
 // "Meet the URS Faculty Consultation System. Faculty consultation, without the guesswork."
-export const Title = () => {
+export const Title = ({ len }) => {
   const { frame, at } = useScene();
   const tMeet = at(cue("meet"));
   const words = [
@@ -208,7 +222,9 @@ export const Title = () => {
   const logoIn = pop(frame, tMeet - 6, { damping: 11 });
   const lift = ramp(frame, tTag - 4, 14);
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", fontFamily: FONT, color: "white" }}>
+    <AbsoluteFill style={{ fontFamily: FONT, color: "white" }}>
+     <Camera3D {...drift(frame, len, { swing: 6, dolly: 60, tilt: 2 })}>
+     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
       {[0, 1, 2].map((k) => {
         const g = ((frame + k * 30) % 90) / 90;
         return (
@@ -229,8 +245,10 @@ export const Title = () => {
         </div>
         <div style={{ display: "flex", gap: 30, fontSize: 118, fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 1.1 }}>
           {words.map(([w, t, color]) => (
-            <div key={w} style={{ overflow: "hidden", paddingBottom: 12 }}>
-              <div style={{ color, transform: `translateY(${(1 - ramp(frame, t - 3, 12)) * 130}%)` }}>{w}</div>
+            <div key={w} style={{ color, paddingBottom: 12, textShadow: color === "white" ? glow("#6e9bc8", 22) : glow(C.amber, 30) }}>
+              {w === "URS"
+                ? <GlitchText frame={frame} at={t + 6} dur={9}><KineticText text={w} frame={frame} at={t - 3} stagger={1.5} /></GlitchText>
+                : <KineticText text={w} frame={frame} at={t - 3} stagger={1} />}
             </div>
           ))}
         </div>
@@ -238,8 +256,8 @@ export const Title = () => {
           marginTop: 30, fontSize: 56, fontWeight: 700, opacity: ramp(frame, tTag, 10),
           transform: `translateY(${(1 - ramp(frame, tTag, 14)) * 30}px)`,
         }}>
-          Faculty consultation,{" "}
-          <span style={{ position: "relative", color: C.amber, fontWeight: 800 }}>
+          <KineticText text="Faculty consultation," frame={frame} at={tTag} stagger={0.6} />{" "}
+          <span style={{ position: "relative", color: C.amber, fontWeight: 800, textShadow: glow(C.amber, 18) }}>
             without the guesswork.
             <span style={{
               position: "absolute", left: 0, bottom: -10, height: 8, borderRadius: 4, background: C.amber,
@@ -248,6 +266,9 @@ export const Title = () => {
           </span>
         </div>
       </div>
+     </AbsoluteFill>
+     </Camera3D>
+      <LensFlare frame={frame} at={tMeet - 4} dur={40} x0={260} y0={170} x1={1640} y1={250} strength={0.9} />
     </AbsoluteFill>
   );
 };

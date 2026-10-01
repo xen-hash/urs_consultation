@@ -79,6 +79,23 @@ capture starts from the same fictional morning:
   buttons and rows sit in `src/data/screens.json`, so the video's taps and
   highlights land on real elements.
 
+## Effects
+
+`src/fx.jsx` holds the After Effects-style toolkit, all plain React and CSS:
+
+- **3D camera:** each scene sits in a `Camera3D`, with its parts on `Depth`
+  layers at different distances. `drift()` gives the camera its swing-in,
+  orbit and push-in. A `Depth` layer's `blur` is how the focus pulls work.
+- **Transitions:** set per cut in `CUTS` in `src/Teaser.jsx`, as `fade`,
+  `whip`, `zoom`, `cover` (a hard cut under a wipe) or `glitch`. The wipes,
+  flashes and light leaks drawn over each cut are in `CutEffects`.
+- **Motion blur:** real, from `@remotion/motion-blur`, but only for frames
+  around whip and zoom cuts, because it renders each of those frames 7 times.
+- **Type:** `KineticText` flies letters in one by one; `GlitchText` tears a
+  word into RGB-split slices for a few frames.
+- **Light and finish:** `LightLeak`, `LensFlare`, `glow()`, then `Grain`
+  (tiles in `public/fx/`) and `Vignette` over everything.
+
 ## Where things are
 
 - `src/Teaser.jsx`: the scene order, captions and audio.
@@ -87,6 +104,7 @@ capture starts from the same fictional morning:
   - `Availability.jsx`: availability board, teacher status
   - `Booking.jsx`: booking, Navi
   - `Closing.jsx`: sign-in and install, kiosk and Dean's Office, end card
+- `src/fx.jsx`: the effects above.
 - `src/screens.jsx`: captured screens, phone frame, highlight rings.
 - `src/ui.jsx`: the browser window, pointer and other shared pieces.
 - `src/theme.js`: the app's colors.

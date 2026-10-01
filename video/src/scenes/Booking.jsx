@@ -5,13 +5,14 @@ import { cue, cueEnd } from "../timing";
 import { keys, pop, ramp, useScene } from "../anim";
 import { Kicker, Navi, Pointer, Window } from "../ui";
 import { box, centre, PhoneFrame, phoneScreenWidth, Ring, States } from "../screens";
+import { Camera3D, Depth, drift, glow } from "../fx";
 
 const CHROME = 56;
 
 // "Need a consultation? Pick your professor, choose a time, and tell them what
 //  it's about, so they come prepared. The moment your teacher accepts, you'll
 //  get a notification."
-export const Booking = () => {
+export const Booking = ({ len }) => {
   const { frame, at } = useScene();
   const tPick = at(cue("pick your professor"));
   const tTime = at(cue("choose a time"));
@@ -44,6 +45,8 @@ export const Booking = () => {
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT }}>
+     <Camera3D {...drift(frame, len, { swing: -14, dolly: 70 })}>
+     <Depth z={80} blur={keys(frame, [[tArrive - 4, 0], [tArrive + 8, 2.6], [tAccept + 6, 2.6], [tAccept + 16, 0]])}>
       <Kicker style={{ position: "absolute", left: 150, top: 16, opacity: phoneIn }}>Student's phone</Kicker>
       <PhoneFrame width={pw} style={{
         position: "absolute", left: 140, top: 54, opacity: phoneIn, transform: `translateY(${(1 - phoneIn) * 60}px)`,
@@ -73,7 +76,9 @@ export const Booking = () => {
             taps={[tNotify - 3]} />
         </div>
       </PhoneFrame>
+     </Depth>
 
+     <Depth z={-60} blur={keys(frame, [[0, 2.6], [tArrive - 10, 2.6], [tArrive, 0], [tAccept + 8, 0], [tAccept + 20, 2.6]])}>
       <Kicker style={{ position: "absolute", left: 700, top: 150, opacity: winIn }}>Teacher's dashboard</Kicker>
       <Window path="/teacher/dashboard" width={W} height={CHROME + 900 * k} style={{
         position: "absolute", left: 690, top: 196, opacity: Math.min(1, winIn * 1.4),
@@ -95,6 +100,8 @@ export const Booking = () => {
           )} />
         </div>
       </Window>
+     </Depth>
+     </Camera3D>
     </AbsoluteFill>
   );
 };
@@ -114,7 +121,7 @@ const QUESTION_W = 150;
 
 // "Rather just ask? Say hi to Navi, your voice assistant. 'Is my professor free
 //  today?' Navi answers from live data, and takes you straight to the right screen."
-export const NaviScene = () => {
+export const NaviScene = ({ len }) => {
   const { frame, at } = useScene();
   const tHi = at(cue("say hi"));
   const tNavi = at(cue("navi", 46));
@@ -135,6 +142,8 @@ export const NaviScene = () => {
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT }}>
+     <Camera3D {...drift(frame, len, { swing: 12, dolly: 80 })}>
+     <Depth z={150}>
       <div style={{
         position: "absolute", left: 170, top: 250, transform: `translateX(${(1 - bust) * -500}px)`,
         filter: "drop-shadow(0 30px 40px rgba(0,0,0,0.45))",
@@ -148,7 +157,10 @@ export const NaviScene = () => {
         position: "absolute", left: 470, top: 170, padding: "18px 28px", borderRadius: "26px 26px 26px 6px",
         background: C.amber, color: C.navy900, fontWeight: 800, fontSize: 38,
         transform: `scale(${hi})`, transformOrigin: "0 100%", opacity: 1 - ramp(frame, tQ - 10, 8),
+        boxShadow: glow(C.amber, 24),
       }}>Hi, I'm Navi!</div>
+     </Depth>
+     <Depth z={30}>
 
       <PhoneFrame width={pw} style={{
         position: "absolute", left: 900, top: 40, opacity: phoneIn, transform: `translateY(${(1 - phoneIn) * 60}px)`,
@@ -189,6 +201,8 @@ export const NaviScene = () => {
             path={[[tTakes - 10, 250 * pk, 640 * pk], [tTakes + 2, ...centre(link, pk)], [tTakes + 20, 160 * pk, 700 * pk]]} taps={[tTakes + 2]} />
         </div>
       </PhoneFrame>
+     </Depth>
+     <Depth z={-40}>
 
       <div style={{
         position: "absolute", left: 1400, top: 360, width: 420, color: "white", opacity: ramp(frame, tAnswer + 6, 10),
@@ -203,6 +217,8 @@ export const NaviScene = () => {
           color: C.brand200, opacity: ramp(frame, tTakes, 8),
         }}><FileText size={24} color={C.amber} />Then takes you there</div>
       </div>
+     </Depth>
+     </Camera3D>
     </AbsoluteFill>
   );
 };

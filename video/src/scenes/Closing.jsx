@@ -8,6 +8,7 @@ import { cue, cueEnd } from "../timing";
 import { keys, pop, ramp, useScene } from "../anim";
 import { Kicker, Logo, Navi, Pill, Pointer, Typed, Window } from "../ui";
 import { box, centre, PhoneFrame, phoneScreenWidth, Ring, ScreenView, States } from "../screens";
+import { Camera3D, Depth, drift, GlitchText, glow, KineticText, LensFlare } from "../fx";
 
 const CHROME = 56;
 
@@ -19,7 +20,7 @@ const HOME_ICONS = [
 
 // "Sign in fast, with a QR code, a PIN, or your face. Then install it on your
 //  phone like any app. It even opens when the campus Wi-Fi drops."
-export const Login = () => {
+export const Login = ({ len }) => {
   const { frame, at } = useScene();
   const tQR = at(cue("qr code"));
   const tPIN = at(cue("a pin"));
@@ -49,8 +50,11 @@ export const Login = () => {
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT }}>
+     <Camera3D {...drift(frame, len, { swing: -12, dolly: 90 })}>
+     <Depth z={40}>
       {pair.map(([name, label, a, b, left], i) => {
-        const inT = pop(frame, 2 + i * 5);
+        // On screen as the glitch cut tears, not after it.
+        const inT = pop(frame, -8 + i * 4);
         return (
           <div key={name} style={{
             position: "absolute", left, top: 70, opacity: Math.min(1, inT) * (1 - out),
@@ -68,6 +72,8 @@ export const Login = () => {
           </div>
         );
       })}
+     </Depth>
+     <Depth z={180}>
       <Pill style={{
         position: "absolute", left: 960, top: 440, whiteSpace: "nowrap",
         opacity: Math.min(1, face) * (1 - out),
@@ -84,6 +90,8 @@ export const Login = () => {
         transform: `translateX(${(1 - ramp(frame, tWifi, 14)) * 40}px)`,
       }}><WifiOff size={34} color={C.amber} />Still opens offline</Pill>
 
+     </Depth>
+     <Depth z={60}>
       <div style={{
         position: "absolute", left: 760, top: 30, transform: `translateY(${(1 - phoneIn) * 1200}px)`,
         opacity: frame >= tThen - 2 ? 1 : 0,
@@ -138,13 +146,15 @@ export const Login = () => {
             path={[[tOpens - 12, slot.x + 120, slot.y + 200], [tOpens, slot.x + 36, slot.y + 36], [tOpens + 20, slot.x + 50, slot.y + 60]]} taps={[tOpens]} />
         </PhoneFrame>
       </div>
+     </Depth>
+     </Camera3D>
     </AbsoluteFill>
   );
 };
 
 // "On campus, a kiosk display shows who's in, right now. And for the Dean's
 //  Office, a live dashboard tracks every request, ready to export to Excel in one click."
-export const Campus = () => {
+export const Campus = ({ len }) => {
   const { frame, at } = useScene();
   const tKiosk = at(cue("kiosk"));
   const tDean = at(cue("and for the dean's"));
@@ -162,7 +172,8 @@ export const Campus = () => {
   const dl = "URS_Consultation_today_2026-10-01.xlsx";
 
   return (
-    <AbsoluteFill style={{ fontFamily: FONT, perspective: 2000 }}>
+    <AbsoluteFill style={{ fontFamily: FONT }}>
+     <Camera3D {...drift(frame, len, { swing: 14, dolly: 90 })}>
       <div style={{
         position: "absolute", left: 240, top: 30, opacity: 1 - monOut,
         transform: `translateX(${-monOut * 500}px) scale(${(0.86 + 0.14 * monIn) * (1 - monOut * 0.2)}) rotateY(${(1 - monIn) * -12}deg)`,
@@ -191,6 +202,7 @@ export const Campus = () => {
             </>
           )} />
       </Window>
+     <Depth z={160}>
       {/* The downloaded workbook, with the name the app gave it */}
       <div style={{
         position: "absolute", left: 1150, top: 36 + CHROME + 690 * k + (1 - file) * 40, display: "flex", alignItems: "center", gap: 14,
@@ -207,6 +219,8 @@ export const Campus = () => {
           </div>
         </div>
       </div>
+     </Depth>
+     </Camera3D>
     </AbsoluteFill>
   );
 };
@@ -232,6 +246,8 @@ export const EndCard = ({ len }) => {
 
   return (
     <AbsoluteFill style={{ fontFamily: FONT, color: "white" }}>
+     <Camera3D {...drift(frame, len, { swing: 8, dolly: 50, tilt: 2 })}>
+     <Depth z={40}>
       <div style={{
         position: "absolute", left: 120, top: 0, bottom: 0, width: 1300,
         display: "flex", flexDirection: "column", justifyContent: "center", gap: 34,
@@ -240,8 +256,10 @@ export const EndCard = ({ len }) => {
           <Logo size={190} style={{ transform: `scale(${logo})`, filter: "drop-shadow(0 0 30px rgba(255,160,0,0.4))" }} />
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0 26px", width: 900, fontSize: 96, fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 1.05 }}>
             {title.map(([w, t, col]) => (
-              <div key={w} style={{ overflow: "hidden", paddingBottom: 8 }}>
-                <div style={{ color: col, transform: `translateY(${(1 - ramp(frame, t - 3, 12)) * 130}%)` }}>{w}</div>
+              <div key={w} style={{ color: col, paddingBottom: 8, textShadow: col === "white" ? glow("#6e9bc8", 20) : glow(C.amber, 28) }}>
+                {w === "URS"
+                  ? <GlitchText frame={frame} at={t + 6} dur={9}><KineticText text={w} frame={frame} at={t - 3} stagger={1.5} /></GlitchText>
+                  : <KineticText text={w} frame={frame} at={t - 3} stagger={1} />}
               </div>
             ))}
           </div>
@@ -253,7 +271,8 @@ export const EndCard = ({ len }) => {
               <Pill key={text} style={{
                 color: col, fontSize: 42, padding: "18px 34px", opacity: Math.min(1, p * 1.5),
                 transform: `translateY(${(1 - p) * 30}px)`,
-              }}><Check size={36} strokeWidth={3.2} color={col} />{text}</Pill>
+              }}><Check size={36} strokeWidth={3.2} color={col} />
+                <GlitchText frame={frame} at={t + 4} dur={8}>{text}</GlitchText></Pill>
             );
           })}
         </div>
@@ -265,14 +284,22 @@ export const EndCard = ({ len }) => {
           minWidth: 900,
         }}>
           <Lock size={42} color={C.success} strokeWidth={2.8} />
-          <Typed frame={frame} text="urs-consultation.vercel.app" from={tUrl} to={tUrlEnd - 4} />
+          <GlitchText frame={frame} at={tUrlEnd} dur={9}>
+            <Typed frame={frame} text="urs-consultation.vercel.app" from={tUrl} to={tUrlEnd - 4} />
+          </GlitchText>
         </div>
       </div>
+     </Depth>
+     <Depth z={130}>
       <Navi pose="hero" size={330} style={{
         position: "absolute", right: 170, top: 40, height: 1000, width: "auto",
         transform: `translateX(${(1 - navi) * 600}px) translateY(${bob}px)`,
         filter: "drop-shadow(0 30px 40px rgba(0,0,0,0.5))",
       }} />
+     </Depth>
+     </Camera3D>
+      <LensFlare frame={frame} at={2} dur={42} x0={120} y0={380} x1={1300} y1={330} strength={0.85} />
+      <LensFlare frame={frame} at={tUrlEnd - 6} dur={36} x0={300} y0={760} x1={1250} y1={740} strength={0.6} />
       <AbsoluteFill style={{ background: C.navy900, opacity: fadeOut }} />
     </AbsoluteFill>
   );
