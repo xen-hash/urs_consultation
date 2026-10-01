@@ -1,0 +1,2615 @@
+{
+ "duration": 84.15,
+ "words": [
+  {
+   "text": "Waiting",
+   "key": "waiting",
+   "start": 0.0,
+   "end": 0.35
+  },
+  {
+   "text": "outside",
+   "key": "outside",
+   "start": 0.35,
+   "end": 0.7
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 0.7,
+   "end": 0.76
+  },
+  {
+   "text": "faculty",
+   "key": "faculty",
+   "start": 0.76,
+   "end": 1.34
+  },
+  {
+   "text": "room...",
+   "key": "room",
+   "start": 1.34,
+   "end": 1.76
+  },
+  {
+   "text": "again?",
+   "key": "again",
+   "start": 2.13,
+   "end": 2.77
+  },
+  {
+   "text": "You",
+   "key": "you",
+   "start": 3.26,
+   "end": 3.39
+  },
+  {
+   "text": "checked",
+   "key": "checked",
+   "start": 3.39,
+   "end": 3.67
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 3.67,
+   "end": 3.75
+  },
+  {
+   "text": "schedule,",
+   "key": "schedule",
+   "start": 3.75,
+   "end": 4.45
+  },
+  {
+   "text": "walked",
+   "key": "walked",
+   "start": 4.45,
+   "end": 4.89
+  },
+  {
+   "text": "across",
+   "key": "across",
+   "start": 4.89,
+   "end": 5.19
+  },
+  {
+   "text": "campus,",
+   "key": "campus",
+   "start": 5.19,
+   "end": 5.82
+  },
+  {
+   "text": "and",
+   "key": "and",
+   "start": 5.82,
+   "end": 6.09
+  },
+  {
+   "text": "your",
+   "key": "your",
+   "start": 6.09,
+   "end": 6.18
+  },
+  {
+   "text": "professor",
+   "key": "professor",
+   "start": 6.18,
+   "end": 6.77
+  },
+  {
+   "text": "isn't",
+   "key": "isn't",
+   "start": 6.77,
+   "end": 7.03
+  },
+  {
+   "text": "even",
+   "key": "even",
+   "start": 7.03,
+   "end": 7.26
+  },
+  {
+   "text": "in.",
+   "key": "in",
+   "start": 7.26,
+   "end": 7.73
+  },
+  {
+   "text": "Between",
+   "key": "between",
+   "start": 8.21,
+   "end": 8.61
+  },
+  {
+   "text": "classes,",
+   "key": "classes",
+   "start": 8.61,
+   "end": 9.2
+  },
+  {
+   "text": "every",
+   "key": "every",
+   "start": 9.48,
+   "end": 9.83
+  },
+  {
+   "text": "minute",
+   "key": "minute",
+   "start": 9.83,
+   "end": 10.16
+  },
+  {
+   "text": "counts.",
+   "key": "counts",
+   "start": 10.16,
+   "end": 10.75
+  },
+  {
+   "text": "Meet",
+   "key": "meet",
+   "start": 11.28,
+   "end": 11.55
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 11.55,
+   "end": 11.71
+  },
+  {
+   "text": "URS",
+   "key": "u r s",
+   "start": 11.71,
+   "end": 12.38
+  },
+  {
+   "text": "Faculty",
+   "key": "faculty",
+   "start": 12.38,
+   "end": 12.84
+  },
+  {
+   "text": "Consultation",
+   "key": "consultation",
+   "start": 12.84,
+   "end": 13.53
+  },
+  {
+   "text": "System.",
+   "key": "system",
+   "start": 13.53,
+   "end": 14.04
+  },
+  {
+   "text": "Faculty",
+   "key": "faculty",
+   "start": 14.45,
+   "end": 14.87
+  },
+  {
+   "text": "consultation,",
+   "key": "consultation",
+   "start": 14.87,
+   "end": 15.66
+  },
+  {
+   "text": "without",
+   "key": "without",
+   "start": 15.9,
+   "end": 16.27
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 16.27,
+   "end": 16.35
+  },
+  {
+   "text": "guesswork.",
+   "key": "guesswork",
+   "start": 16.35,
+   "end": 16.96
+  },
+  {
+   "text": "Open",
+   "key": "open",
+   "start": 17.45,
+   "end": 17.73
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 17.73,
+   "end": 17.8
+  },
+  {
+   "text": "live",
+   "key": "live",
+   "start": 17.8,
+   "end": 18.14
+  },
+  {
+   "text": "availability",
+   "key": "availability",
+   "start": 18.14,
+   "end": 18.78
+  },
+  {
+   "text": "board,",
+   "key": "board",
+   "start": 18.78,
+   "end": 19.14
+  },
+  {
+   "text": "and",
+   "key": "and",
+   "start": 19.14,
+   "end": 19.38
+  },
+  {
+   "text": "see",
+   "key": "see",
+   "start": 19.38,
+   "end": 19.65
+  },
+  {
+   "text": "in",
+   "key": "in",
+   "start": 19.65,
+   "end": 19.76
+  },
+  {
+   "text": "real",
+   "key": "real",
+   "start": 19.76,
+   "end": 20.11
+  },
+  {
+   "text": "time",
+   "key": "time",
+   "start": 20.11,
+   "end": 20.61
+  },
+  {
+   "text": "who's",
+   "key": "who's",
+   "start": 20.61,
+   "end": 20.86
+  },
+  {
+   "text": "available,",
+   "key": "available",
+   "start": 20.86,
+   "end": 21.5
+  },
+  {
+   "text": "who's",
+   "key": "who's",
+   "start": 21.64,
+   "end": 21.87
+  },
+  {
+   "text": "not,",
+   "key": "not",
+   "start": 21.87,
+   "end": 22.26
+  },
+  {
+   "text": "and",
+   "key": "and",
+   "start": 22.39,
+   "end": 22.54
+  },
+  {
+   "text": "who's",
+   "key": "who's",
+   "start": 22.54,
+   "end": 22.7
+  },
+  {
+   "text": "on",
+   "key": "on",
+   "start": 22.7,
+   "end": 22.84
+  },
+  {
+   "text": "leave.",
+   "key": "leave",
+   "start": 22.84,
+   "end": 23.24
+  },
+  {
+   "text": "No",
+   "key": "no",
+   "start": 23.67,
+   "end": 23.93
+  },
+  {
+   "text": "more",
+   "key": "more",
+   "start": 23.93,
+   "end": 24.11
+  },
+  {
+   "text": "guessing.",
+   "key": "guessing",
+   "start": 24.11,
+   "end": 24.68
+  },
+  {
+   "text": "No",
+   "key": "no",
+   "start": 24.85,
+   "end": 25.15
+  },
+  {
+   "text": "more",
+   "key": "more",
+   "start": 25.15,
+   "end": 25.38
+  },
+  {
+   "text": "wasted",
+   "key": "wasted",
+   "start": 25.38,
+   "end": 25.82
+  },
+  {
+   "text": "trips.",
+   "key": "trips",
+   "start": 25.82,
+   "end": 26.33
+  },
+  {
+   "text": "For",
+   "key": "for",
+   "start": 26.8,
+   "end": 26.91
+  },
+  {
+   "text": "faculty,",
+   "key": "faculty",
+   "start": 26.91,
+   "end": 27.5
+  },
+  {
+   "text": "it's",
+   "key": "it's",
+   "start": 27.61,
+   "end": 27.86
+  },
+  {
+   "text": "just",
+   "key": "just",
+   "start": 27.86,
+   "end": 28.15
+  },
+  {
+   "text": "as",
+   "key": "as",
+   "start": 28.15,
+   "end": 28.23
+  },
+  {
+   "text": "easy.",
+   "key": "easy",
+   "start": 28.23,
+   "end": 28.64
+  },
+  {
+   "text": "Your",
+   "key": "your",
+   "start": 29.04,
+   "end": 29.15
+  },
+  {
+   "text": "status",
+   "key": "status",
+   "start": 29.15,
+   "end": 29.6
+  },
+  {
+   "text": "updates",
+   "key": "updates",
+   "start": 29.6,
+   "end": 30.09
+  },
+  {
+   "text": "itself",
+   "key": "itself",
+   "start": 30.09,
+   "end": 30.57
+  },
+  {
+   "text": "from",
+   "key": "from",
+   "start": 30.57,
+   "end": 30.76
+  },
+  {
+   "text": "your",
+   "key": "your",
+   "start": 30.76,
+   "end": 30.85
+  },
+  {
+   "text": "schedule.",
+   "key": "schedule",
+   "start": 30.85,
+   "end": 31.39
+  },
+  {
+   "text": "Stepping",
+   "key": "stepping",
+   "start": 31.88,
+   "end": 32.26
+  },
+  {
+   "text": "out?",
+   "key": "out",
+   "start": 32.26,
+   "end": 32.55
+  },
+  {
+   "text": "Change",
+   "key": "change",
+   "start": 32.89,
+   "end": 33.14
+  },
+  {
+   "text": "it",
+   "key": "it",
+   "start": 33.14,
+   "end": 33.24
+  },
+  {
+   "text": "with",
+   "key": "with",
+   "start": 33.24,
+   "end": 33.37
+  },
+  {
+   "text": "one",
+   "key": "one",
+   "start": 33.37,
+   "end": 33.67
+  },
+  {
+   "text": "tap,",
+   "key": "tap",
+   "start": 33.67,
+   "end": 34.03
+  },
+  {
+   "text": "and",
+   "key": "and",
+   "start": 34.03,
+   "end": 34.16
+  },
+  {
+   "text": "every",
+   "key": "every",
+   "start": 34.35,
+   "end": 34.61
+  },
+  {
+   "text": "student",
+   "key": "student",
+   "start": 34.61,
+   "end": 35.02
+  },
+  {
+   "text": "sees",
+   "key": "sees",
+   "start": 35.02,
+   "end": 35.29
+  },
+  {
+   "text": "it",
+   "key": "it",
+   "start": 35.29,
+   "end": 35.42
+  },
+  {
+   "text": "instantly.",
+   "key": "instantly",
+   "start": 35.5,
+   "end": 36.14
+  },
+  {
+   "text": "Need",
+   "key": "need",
+   "start": 36.62,
+   "end": 36.77
+  },
+  {
+   "text": "a",
+   "key": "a",
+   "start": 36.77,
+   "end": 36.81
+  },
+  {
+   "text": "consultation?",
+   "key": "consultation",
+   "start": 36.81,
+   "end": 37.63
+  },
+  {
+   "text": "Pick",
+   "key": "pick",
+   "start": 37.97,
+   "end": 38.15
+  },
+  {
+   "text": "your",
+   "key": "your",
+   "start": 38.15,
+   "end": 38.24
+  },
+  {
+   "text": "professor,",
+   "key": "professor",
+   "start": 38.24,
+   "end": 38.86
+  },
+  {
+   "text": "choose",
+   "key": "choose",
+   "start": 39.06,
+   "end": 39.28
+  },
+  {
+   "text": "a",
+   "key": "a",
+   "start": 39.28,
+   "end": 39.34
+  },
+  {
+   "text": "time,",
+   "key": "time",
+   "start": 39.34,
+   "end": 39.78
+  },
+  {
+   "text": "and",
+   "key": "and",
+   "start": 39.78,
+   "end": 40.08
+  },
+  {
+   "text": "tell",
+   "key": "tell",
+   "start": 40.08,
+   "end": 40.28
+  },
+  {
+   "text": "them",
+   "key": "them",
+   "start": 40.28,
+   "end": 40.37
+  },
+  {
+   "text": "what",
+   "key": "what",
+   "start": 40.37,
+   "end": 40.51
+  },
+  {
+   "text": "it's",
+   "key": "it's",
+   "start": 40.51,
+   "end": 40.64
+  },
+  {
+   "text": "about,",
+   "key": "about",
+   "start": 40.64,
+   "end": 41.03
+  },
+  {
+   "text": "so",
+   "key": "so",
+   "start": 41.03,
+   "end": 41.16
+  },
+  {
+   "text": "they",
+   "key": "they",
+   "start": 41.16,
+   "end": 41.28
+  },
+  {
+   "text": "come",
+   "key": "come",
+   "start": 41.28,
+   "end": 41.48
+  },
+  {
+   "text": "prepared.",
+   "key": "prepared",
+   "start": 41.48,
+   "end": 42.02
+  },
+  {
+   "text": "The",
+   "key": "the",
+   "start": 42.45,
+   "end": 42.54
+  },
+  {
+   "text": "moment",
+   "key": "moment",
+   "start": 42.54,
+   "end": 42.95
+  },
+  {
+   "text": "your",
+   "key": "your",
+   "start": 42.95,
+   "end": 43.04
+  },
+  {
+   "text": "teacher",
+   "key": "teacher",
+   "start": 43.04,
+   "end": 43.37
+  },
+  {
+   "text": "accepts,",
+   "key": "accepts",
+   "start": 43.37,
+   "end": 43.94
+  },
+  {
+   "text": "you'll",
+   "key": "you'll",
+   "start": 44.1,
+   "end": 44.28
+  },
+  {
+   "text": "get",
+   "key": "get",
+   "start": 44.28,
+   "end": 44.42
+  },
+  {
+   "text": "a",
+   "key": "a",
+   "start": 44.42,
+   "end": 44.45
+  },
+  {
+   "text": "notification.",
+   "key": "notification",
+   "start": 44.45,
+   "end": 45.29
+  },
+  {
+   "text": "Rather",
+   "key": "rather",
+   "start": 45.82,
+   "end": 46.09
+  },
+  {
+   "text": "just",
+   "key": "just",
+   "start": 46.09,
+   "end": 46.3
+  },
+  {
+   "text": "ask?",
+   "key": "ask",
+   "start": 46.3,
+   "end": 46.78
+  },
+  {
+   "text": "Say",
+   "key": "say",
+   "start": 47.08,
+   "end": 47.3
+  },
+  {
+   "text": "hi",
+   "key": "hi",
+   "start": 47.3,
+   "end": 47.47
+  },
+  {
+   "text": "to",
+   "key": "to",
+   "start": 47.47,
+   "end": 47.55
+  },
+  {
+   "text": "Navi,",
+   "key": "navi",
+   "start": 47.55,
+   "end": 48.07
+  },
+  {
+   "text": "your",
+   "key": "your",
+   "start": 48.19,
+   "end": 48.32
+  },
+  {
+   "text": "voice",
+   "key": "voice",
+   "start": 48.32,
+   "end": 48.57
+  },
+  {
+   "text": "assistant.",
+   "key": "assistant",
+   "start": 48.57,
+   "end": 49.11
+  },
+  {
+   "text": "\"Is",
+   "key": "is",
+   "start": 49.55,
+   "end": 49.69
+  },
+  {
+   "text": "my",
+   "key": "my",
+   "start": 49.69,
+   "end": 49.83
+  },
+  {
+   "text": "professor",
+   "key": "professor",
+   "start": 49.83,
+   "end": 50.33
+  },
+  {
+   "text": "free",
+   "key": "free",
+   "start": 50.33,
+   "end": 50.57
+  },
+  {
+   "text": "today?\"",
+   "key": "today",
+   "start": 50.57,
+   "end": 50.98
+  },
+  {
+   "text": "Navi",
+   "key": "navi",
+   "start": 51.45,
+   "end": 51.79
+  },
+  {
+   "text": "answers",
+   "key": "answers",
+   "start": 51.79,
+   "end": 52.24
+  },
+  {
+   "text": "from",
+   "key": "from",
+   "start": 52.24,
+   "end": 52.38
+  },
+  {
+   "text": "live",
+   "key": "live",
+   "start": 52.38,
+   "end": 52.74
+  },
+  {
+   "text": "data,",
+   "key": "data",
+   "start": 52.74,
+   "end": 52.99
+  },
+  {
+   "text": "and",
+   "key": "and",
+   "start": 52.99,
+   "end": 53.31
+  },
+  {
+   "text": "takes",
+   "key": "takes",
+   "start": 53.31,
+   "end": 53.57
+  },
+  {
+   "text": "you",
+   "key": "you",
+   "start": 53.57,
+   "end": 53.68
+  },
+  {
+   "text": "straight",
+   "key": "straight",
+   "start": 53.68,
+   "end": 54.1
+  },
+  {
+   "text": "to",
+   "key": "to",
+   "start": 54.1,
+   "end": 54.21
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 54.21,
+   "end": 54.33
+  },
+  {
+   "text": "right",
+   "key": "right",
+   "start": 54.33,
+   "end": 54.54
+  },
+  {
+   "text": "screen.",
+   "key": "screen",
+   "start": 54.54,
+   "end": 54.98
+  },
+  {
+   "text": "Sign",
+   "key": "sign",
+   "start": 55.48,
+   "end": 55.75
+  },
+  {
+   "text": "in",
+   "key": "in",
+   "start": 55.75,
+   "end": 55.88
+  },
+  {
+   "text": "fast,",
+   "key": "fast",
+   "start": 55.88,
+   "end": 56.43
+  },
+  {
+   "text": "with",
+   "key": "with",
+   "start": 56.51,
+   "end": 56.63
+  },
+  {
+   "text": "a",
+   "key": "a",
+   "start": 56.63,
+   "end": 56.67
+  },
+  {
+   "text": "QR",
+   "key": "qr",
+   "start": 56.67,
+   "end": 57.08
+  },
+  {
+   "text": "code,",
+   "key": "code",
+   "start": 57.08,
+   "end": 57.5
+  },
+  {
+   "text": "a",
+   "key": "a",
+   "start": 57.65,
+   "end": 57.72
+  },
+  {
+   "text": "PIN,",
+   "key": "pin",
+   "start": 57.72,
+   "end": 58.18
+  },
+  {
+   "text": "or",
+   "key": "or",
+   "start": 58.32,
+   "end": 58.45
+  },
+  {
+   "text": "your",
+   "key": "your",
+   "start": 58.45,
+   "end": 58.58
+  },
+  {
+   "text": "face.",
+   "key": "face",
+   "start": 58.58,
+   "end": 59.09
+  },
+  {
+   "text": "Then",
+   "key": "then",
+   "start": 59.51,
+   "end": 59.75
+  },
+  {
+   "text": "install",
+   "key": "install",
+   "start": 59.75,
+   "end": 60.26
+  },
+  {
+   "text": "it",
+   "key": "it",
+   "start": 60.26,
+   "end": 60.33
+  },
+  {
+   "text": "on",
+   "key": "on",
+   "start": 60.33,
+   "end": 60.44
+  },
+  {
+   "text": "your",
+   "key": "your",
+   "start": 60.44,
+   "end": 60.56
+  },
+  {
+   "text": "phone",
+   "key": "phone",
+   "start": 60.56,
+   "end": 60.92
+  },
+  {
+   "text": "like",
+   "key": "like",
+   "start": 60.92,
+   "end": 61.12
+  },
+  {
+   "text": "any",
+   "key": "any",
+   "start": 61.12,
+   "end": 61.42
+  },
+  {
+   "text": "app.",
+   "key": "app",
+   "start": 61.42,
+   "end": 61.76
+  },
+  {
+   "text": "It",
+   "key": "it",
+   "start": 62.15,
+   "end": 62.21
+  },
+  {
+   "text": "even",
+   "key": "even",
+   "start": 62.21,
+   "end": 62.47
+  },
+  {
+   "text": "opens",
+   "key": "opens",
+   "start": 62.47,
+   "end": 62.89
+  },
+  {
+   "text": "when",
+   "key": "when",
+   "start": 62.89,
+   "end": 63.0
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 63.0,
+   "end": 63.07
+  },
+  {
+   "text": "campus",
+   "key": "campus",
+   "start": 63.07,
+   "end": 63.42
+  },
+  {
+   "text": "Wi-Fi",
+   "key": "wi fi",
+   "start": 63.42,
+   "end": 63.81
+  },
+  {
+   "text": "drops.",
+   "key": "drops",
+   "start": 63.81,
+   "end": 64.32
+  },
+  {
+   "text": "On",
+   "key": "on",
+   "start": 64.81,
+   "end": 64.97
+  },
+  {
+   "text": "campus,",
+   "key": "campus",
+   "start": 64.97,
+   "end": 65.59
+  },
+  {
+   "text": "a",
+   "key": "a",
+   "start": 65.72,
+   "end": 65.77
+  },
+  {
+   "text": "kiosk",
+   "key": "kiosk",
+   "start": 65.77,
+   "end": 66.26
+  },
+  {
+   "text": "display",
+   "key": "display",
+   "start": 66.26,
+   "end": 66.73
+  },
+  {
+   "text": "shows",
+   "key": "shows",
+   "start": 66.73,
+   "end": 67.07
+  },
+  {
+   "text": "who's",
+   "key": "who's",
+   "start": 67.07,
+   "end": 67.31
+  },
+  {
+   "text": "in,",
+   "key": "in",
+   "start": 67.31,
+   "end": 67.62
+  },
+  {
+   "text": "right",
+   "key": "right",
+   "start": 67.74,
+   "end": 68.07
+  },
+  {
+   "text": "now.",
+   "key": "now",
+   "start": 68.07,
+   "end": 68.42
+  },
+  {
+   "text": "And",
+   "key": "and",
+   "start": 68.88,
+   "end": 69.0
+  },
+  {
+   "text": "for",
+   "key": "for",
+   "start": 69.0,
+   "end": 69.08
+  },
+  {
+   "text": "the",
+   "key": "the",
+   "start": 69.08,
+   "end": 69.19
+  },
+  {
+   "text": "Dean's",
+   "key": "dean's",
+   "start": 69.19,
+   "end": 69.53
+  },
+  {
+   "text": "Office,",
+   "key": "office",
+   "start": 69.53,
+   "end": 70.03
+  },
+  {
+   "text": "a",
+   "key": "a",
+   "start": 70.24,
+   "end": 70.3
+  },
+  {
+   "text": "live",
+   "key": "live",
+   "start": 70.3,
+   "end": 70.69
+  },
+  {
+   "text": "dashboard",
+   "key": "dashboard",
+   "start": 70.69,
+   "end": 71.28
+  },
+  {
+   "text": "tracks",
+   "key": "tracks",
+   "start": 71.28,
+   "end": 71.58
+  },
+  {
+   "text": "every",
+   "key": "every",
+   "start": 71.79,
+   "end": 72.04
+  },
+  {
+   "text": "request,",
+   "key": "request",
+   "start": 72.04,
+   "end": 72.64
+  },
+  {
+   "text": "ready",
+   "key": "ready",
+   "start": 72.84,
+   "end": 73.1
+  },
+  {
+   "text": "to",
+   "key": "to",
+   "start": 73.1,
+   "end": 73.17
+  },
+  {
+   "text": "export",
+   "key": "export",
+   "start": 73.17,
+   "end": 73.64
+  },
+  {
+   "text": "to",
+   "key": "to",
+   "start": 73.64,
+   "end": 73.74
+  },
+  {
+   "text": "Excel",
+   "key": "excel",
+   "start": 73.74,
+   "end": 74.25
+  },
+  {
+   "text": "in",
+   "key": "in",
+   "start": 74.25,
+   "end": 74.42
+  },
+  {
+   "text": "one",
+   "key": "one",
+   "start": 74.42,
+   "end": 74.7
+  },
+  {
+   "text": "click.",
+   "key": "click",
+   "start": 74.7,
+   "end": 75.1
+  },
+  {
+   "text": "URS",
+   "key": "u r s",
+   "start": 75.59,
+   "end": 76.27
+  },
+  {
+   "text": "Faculty",
+   "key": "faculty",
+   "start": 76.27,
+   "end": 76.73
+  },
+  {
+   "text": "Consultation",
+   "key": "consultation",
+   "start": 76.73,
+   "end": 77.42
+  },
+  {
+   "text": "System.",
+   "key": "system",
+   "start": 77.42,
+   "end": 77.92
+  },
+  {
+   "text": "No",
+   "key": "no",
+   "start": 78.36,
+   "end": 78.54
+  },
+  {
+   "text": "more",
+   "key": "more",
+   "start": 78.54,
+   "end": 78.73
+  },
+  {
+   "text": "waiting.",
+   "key": "waiting",
+   "start": 78.73,
+   "end": 79.27
+  },
+  {
+   "text": "No",
+   "key": "no",
+   "start": 79.45,
+   "end": 79.71
+  },
+  {
+   "text": "more",
+   "key": "more",
+   "start": 79.71,
+   "end": 79.92
+  },
+  {
+   "text": "guessing.",
+   "key": "guessing",
+   "start": 79.92,
+   "end": 80.5
+  },
+  {
+   "text": "Visit",
+   "key": "visit",
+   "start": 80.96,
+   "end": 81.23
+  },
+  {
+   "text": "urs-consultation.vercel.app",
+   "key": "urs consultation dot vercel dot app",
+   "start": 81.23,
+   "end": 84.15
+  }
+ ],
+ "phrases": [
+  {
+   "start": 0.0,
+   "end": 1.76,
+   "words": [
+    {
+     "text": "Waiting",
+     "start": 0.0,
+     "end": 0.35
+    },
+    {
+     "text": "outside",
+     "start": 0.35,
+     "end": 0.7
+    },
+    {
+     "text": "the",
+     "start": 0.7,
+     "end": 0.76
+    },
+    {
+     "text": "faculty",
+     "start": 0.76,
+     "end": 1.34
+    },
+    {
+     "text": "room...",
+     "start": 1.34,
+     "end": 1.76
+    }
+   ]
+  },
+  {
+   "start": 2.13,
+   "end": 2.77,
+   "words": [
+    {
+     "text": "again?",
+     "start": 2.13,
+     "end": 2.77
+    }
+   ]
+  },
+  {
+   "start": 3.26,
+   "end": 5.82,
+   "words": [
+    {
+     "text": "You",
+     "start": 3.26,
+     "end": 3.39
+    },
+    {
+     "text": "checked",
+     "start": 3.39,
+     "end": 3.67
+    },
+    {
+     "text": "the",
+     "start": 3.67,
+     "end": 3.75
+    },
+    {
+     "text": "schedule,",
+     "start": 3.75,
+     "end": 4.45
+    },
+    {
+     "text": "walked",
+     "start": 4.45,
+     "end": 4.89
+    },
+    {
+     "text": "across",
+     "start": 4.89,
+     "end": 5.19
+    },
+    {
+     "text": "campus,",
+     "start": 5.19,
+     "end": 5.82
+    }
+   ]
+  },
+  {
+   "start": 5.82,
+   "end": 7.73,
+   "words": [
+    {
+     "text": "and",
+     "start": 5.82,
+     "end": 6.09
+    },
+    {
+     "text": "your",
+     "start": 6.09,
+     "end": 6.18
+    },
+    {
+     "text": "professor",
+     "start": 6.18,
+     "end": 6.77
+    },
+    {
+     "text": "isn't",
+     "start": 6.77,
+     "end": 7.03
+    },
+    {
+     "text": "even",
+     "start": 7.03,
+     "end": 7.26
+    },
+    {
+     "text": "in.",
+     "start": 7.26,
+     "end": 7.73
+    }
+   ]
+  },
+  {
+   "start": 8.21,
+   "end": 10.75,
+   "words": [
+    {
+     "text": "Between",
+     "start": 8.21,
+     "end": 8.61
+    },
+    {
+     "text": "classes,",
+     "start": 8.61,
+     "end": 9.2
+    },
+    {
+     "text": "every",
+     "start": 9.48,
+     "end": 9.83
+    },
+    {
+     "text": "minute",
+     "start": 9.83,
+     "end": 10.16
+    },
+    {
+     "text": "counts.",
+     "start": 10.16,
+     "end": 10.75
+    }
+   ]
+  },
+  {
+   "start": 11.28,
+   "end": 14.04,
+   "words": [
+    {
+     "text": "Meet",
+     "start": 11.28,
+     "end": 11.55
+    },
+    {
+     "text": "the",
+     "start": 11.55,
+     "end": 11.71
+    },
+    {
+     "text": "URS",
+     "start": 11.71,
+     "end": 12.38
+    },
+    {
+     "text": "Faculty",
+     "start": 12.38,
+     "end": 12.84
+    },
+    {
+     "text": "Consultation",
+     "start": 12.84,
+     "end": 13.53
+    },
+    {
+     "text": "System.",
+     "start": 13.53,
+     "end": 14.04
+    }
+   ]
+  },
+  {
+   "start": 14.45,
+   "end": 16.96,
+   "words": [
+    {
+     "text": "Faculty",
+     "start": 14.45,
+     "end": 14.87
+    },
+    {
+     "text": "consultation,",
+     "start": 14.87,
+     "end": 15.66
+    },
+    {
+     "text": "without",
+     "start": 15.9,
+     "end": 16.27
+    },
+    {
+     "text": "the",
+     "start": 16.27,
+     "end": 16.35
+    },
+    {
+     "text": "guesswork.",
+     "start": 16.35,
+     "end": 16.96
+    }
+   ]
+  },
+  {
+   "start": 17.45,
+   "end": 19.14,
+   "words": [
+    {
+     "text": "Open",
+     "start": 17.45,
+     "end": 17.73
+    },
+    {
+     "text": "the",
+     "start": 17.73,
+     "end": 17.8
+    },
+    {
+     "text": "live",
+     "start": 17.8,
+     "end": 18.14
+    },
+    {
+     "text": "availability",
+     "start": 18.14,
+     "end": 18.78
+    },
+    {
+     "text": "board,",
+     "start": 18.78,
+     "end": 19.14
+    }
+   ]
+  },
+  {
+   "start": 19.14,
+   "end": 21.5,
+   "words": [
+    {
+     "text": "and",
+     "start": 19.14,
+     "end": 19.38
+    },
+    {
+     "text": "see",
+     "start": 19.38,
+     "end": 19.65
+    },
+    {
+     "text": "in",
+     "start": 19.65,
+     "end": 19.76
+    },
+    {
+     "text": "real",
+     "start": 19.76,
+     "end": 20.11
+    },
+    {
+     "text": "time",
+     "start": 20.11,
+     "end": 20.61
+    },
+    {
+     "text": "who's",
+     "start": 20.61,
+     "end": 20.86
+    },
+    {
+     "text": "available,",
+     "start": 20.86,
+     "end": 21.5
+    }
+   ]
+  },
+  {
+   "start": 21.64,
+   "end": 23.24,
+   "words": [
+    {
+     "text": "who's",
+     "start": 21.64,
+     "end": 21.87
+    },
+    {
+     "text": "not,",
+     "start": 21.87,
+     "end": 22.26
+    },
+    {
+     "text": "and",
+     "start": 22.39,
+     "end": 22.54
+    },
+    {
+     "text": "who's",
+     "start": 22.54,
+     "end": 22.7
+    },
+    {
+     "text": "on",
+     "start": 22.7,
+     "end": 22.84
+    },
+    {
+     "text": "leave.",
+     "start": 22.84,
+     "end": 23.24
+    }
+   ]
+  },
+  {
+   "start": 23.67,
+   "end": 24.68,
+   "words": [
+    {
+     "text": "No",
+     "start": 23.67,
+     "end": 23.93
+    },
+    {
+     "text": "more",
+     "start": 23.93,
+     "end": 24.11
+    },
+    {
+     "text": "guessing.",
+     "start": 24.11,
+     "end": 24.68
+    }
+   ]
+  },
+  {
+   "start": 24.85,
+   "end": 26.33,
+   "words": [
+    {
+     "text": "No",
+     "start": 24.85,
+     "end": 25.15
+    },
+    {
+     "text": "more",
+     "start": 25.15,
+     "end": 25.38
+    },
+    {
+     "text": "wasted",
+     "start": 25.38,
+     "end": 25.82
+    },
+    {
+     "text": "trips.",
+     "start": 25.82,
+     "end": 26.33
+    }
+   ]
+  },
+  {
+   "start": 26.8,
+   "end": 28.64,
+   "words": [
+    {
+     "text": "For",
+     "start": 26.8,
+     "end": 26.91
+    },
+    {
+     "text": "faculty,",
+     "start": 26.91,
+     "end": 27.5
+    },
+    {
+     "text": "it's",
+     "start": 27.61,
+     "end": 27.86
+    },
+    {
+     "text": "just",
+     "start": 27.86,
+     "end": 28.15
+    },
+    {
+     "text": "as",
+     "start": 28.15,
+     "end": 28.23
+    },
+    {
+     "text": "easy.",
+     "start": 28.23,
+     "end": 28.64
+    }
+   ]
+  },
+  {
+   "start": 29.04,
+   "end": 31.39,
+   "words": [
+    {
+     "text": "Your",
+     "start": 29.04,
+     "end": 29.15
+    },
+    {
+     "text": "status",
+     "start": 29.15,
+     "end": 29.6
+    },
+    {
+     "text": "updates",
+     "start": 29.6,
+     "end": 30.09
+    },
+    {
+     "text": "itself",
+     "start": 30.09,
+     "end": 30.57
+    },
+    {
+     "text": "from",
+     "start": 30.57,
+     "end": 30.76
+    },
+    {
+     "text": "your",
+     "start": 30.76,
+     "end": 30.85
+    },
+    {
+     "text": "schedule.",
+     "start": 30.85,
+     "end": 31.39
+    }
+   ]
+  },
+  {
+   "start": 31.88,
+   "end": 32.55,
+   "words": [
+    {
+     "text": "Stepping",
+     "start": 31.88,
+     "end": 32.26
+    },
+    {
+     "text": "out?",
+     "start": 32.26,
+     "end": 32.55
+    }
+   ]
+  },
+  {
+   "start": 32.89,
+   "end": 34.03,
+   "words": [
+    {
+     "text": "Change",
+     "start": 32.89,
+     "end": 33.14
+    },
+    {
+     "text": "it",
+     "start": 33.14,
+     "end": 33.24
+    },
+    {
+     "text": "with",
+     "start": 33.24,
+     "end": 33.37
+    },
+    {
+     "text": "one",
+     "start": 33.37,
+     "end": 33.67
+    },
+    {
+     "text": "tap,",
+     "start": 33.67,
+     "end": 34.03
+    }
+   ]
+  },
+  {
+   "start": 34.03,
+   "end": 36.14,
+   "words": [
+    {
+     "text": "and",
+     "start": 34.03,
+     "end": 34.16
+    },
+    {
+     "text": "every",
+     "start": 34.35,
+     "end": 34.61
+    },
+    {
+     "text": "student",
+     "start": 34.61,
+     "end": 35.02
+    },
+    {
+     "text": "sees",
+     "start": 35.02,
+     "end": 35.29
+    },
+    {
+     "text": "it",
+     "start": 35.29,
+     "end": 35.42
+    },
+    {
+     "text": "instantly.",
+     "start": 35.5,
+     "end": 36.14
+    }
+   ]
+  },
+  {
+   "start": 36.62,
+   "end": 37.63,
+   "words": [
+    {
+     "text": "Need",
+     "start": 36.62,
+     "end": 36.77
+    },
+    {
+     "text": "a",
+     "start": 36.77,
+     "end": 36.81
+    },
+    {
+     "text": "consultation?",
+     "start": 36.81,
+     "end": 37.63
+    }
+   ]
+  },
+  {
+   "start": 37.97,
+   "end": 39.78,
+   "words": [
+    {
+     "text": "Pick",
+     "start": 37.97,
+     "end": 38.15
+    },
+    {
+     "text": "your",
+     "start": 38.15,
+     "end": 38.24
+    },
+    {
+     "text": "professor,",
+     "start": 38.24,
+     "end": 38.86
+    },
+    {
+     "text": "choose",
+     "start": 39.06,
+     "end": 39.28
+    },
+    {
+     "text": "a",
+     "start": 39.28,
+     "end": 39.34
+    },
+    {
+     "text": "time,",
+     "start": 39.34,
+     "end": 39.78
+    }
+   ]
+  },
+  {
+   "start": 39.78,
+   "end": 41.03,
+   "words": [
+    {
+     "text": "and",
+     "start": 39.78,
+     "end": 40.08
+    },
+    {
+     "text": "tell",
+     "start": 40.08,
+     "end": 40.28
+    },
+    {
+     "text": "them",
+     "start": 40.28,
+     "end": 40.37
+    },
+    {
+     "text": "what",
+     "start": 40.37,
+     "end": 40.51
+    },
+    {
+     "text": "it's",
+     "start": 40.51,
+     "end": 40.64
+    },
+    {
+     "text": "about,",
+     "start": 40.64,
+     "end": 41.03
+    }
+   ]
+  },
+  {
+   "start": 41.03,
+   "end": 42.02,
+   "words": [
+    {
+     "text": "so",
+     "start": 41.03,
+     "end": 41.16
+    },
+    {
+     "text": "they",
+     "start": 41.16,
+     "end": 41.28
+    },
+    {
+     "text": "come",
+     "start": 41.28,
+     "end": 41.48
+    },
+    {
+     "text": "prepared.",
+     "start": 41.48,
+     "end": 42.02
+    }
+   ]
+  },
+  {
+   "start": 42.45,
+   "end": 43.94,
+   "words": [
+    {
+     "text": "The",
+     "start": 42.45,
+     "end": 42.54
+    },
+    {
+     "text": "moment",
+     "start": 42.54,
+     "end": 42.95
+    },
+    {
+     "text": "your",
+     "start": 42.95,
+     "end": 43.04
+    },
+    {
+     "text": "teacher",
+     "start": 43.04,
+     "end": 43.37
+    },
+    {
+     "text": "accepts,",
+     "start": 43.37,
+     "end": 43.94
+    }
+   ]
+  },
+  {
+   "start": 44.1,
+   "end": 45.29,
+   "words": [
+    {
+     "text": "you'll",
+     "start": 44.1,
+     "end": 44.28
+    },
+    {
+     "text": "get",
+     "start": 44.28,
+     "end": 44.42
+    },
+    {
+     "text": "a",
+     "start": 44.42,
+     "end": 44.45
+    },
+    {
+     "text": "notification.",
+     "start": 44.45,
+     "end": 45.29
+    }
+   ]
+  },
+  {
+   "start": 45.82,
+   "end": 46.78,
+   "words": [
+    {
+     "text": "Rather",
+     "start": 45.82,
+     "end": 46.09
+    },
+    {
+     "text": "just",
+     "start": 46.09,
+     "end": 46.3
+    },
+    {
+     "text": "ask?",
+     "start": 46.3,
+     "end": 46.78
+    }
+   ]
+  },
+  {
+   "start": 47.08,
+   "end": 49.11,
+   "words": [
+    {
+     "text": "Say",
+     "start": 47.08,
+     "end": 47.3
+    },
+    {
+     "text": "hi",
+     "start": 47.3,
+     "end": 47.47
+    },
+    {
+     "text": "to",
+     "start": 47.47,
+     "end": 47.55
+    },
+    {
+     "text": "Navi,",
+     "start": 47.55,
+     "end": 48.07
+    },
+    {
+     "text": "your",
+     "start": 48.19,
+     "end": 48.32
+    },
+    {
+     "text": "voice",
+     "start": 48.32,
+     "end": 48.57
+    },
+    {
+     "text": "assistant.",
+     "start": 48.57,
+     "end": 49.11
+    }
+   ]
+  },
+  {
+   "start": 49.55,
+   "end": 50.98,
+   "words": [
+    {
+     "text": "\"Is",
+     "start": 49.55,
+     "end": 49.69
+    },
+    {
+     "text": "my",
+     "start": 49.69,
+     "end": 49.83
+    },
+    {
+     "text": "professor",
+     "start": 49.83,
+     "end": 50.33
+    },
+    {
+     "text": "free",
+     "start": 50.33,
+     "end": 50.57
+    },
+    {
+     "text": "today?\"",
+     "start": 50.57,
+     "end": 50.98
+    }
+   ]
+  },
+  {
+   "start": 51.45,
+   "end": 52.99,
+   "words": [
+    {
+     "text": "Navi",
+     "start": 51.45,
+     "end": 51.79
+    },
+    {
+     "text": "answers",
+     "start": 51.79,
+     "end": 52.24
+    },
+    {
+     "text": "from",
+     "start": 52.24,
+     "end": 52.38
+    },
+    {
+     "text": "live",
+     "start": 52.38,
+     "end": 52.74
+    },
+    {
+     "text": "data,",
+     "start": 52.74,
+     "end": 52.99
+    }
+   ]
+  },
+  {
+   "start": 52.99,
+   "end": 54.1,
+   "words": [
+    {
+     "text": "and",
+     "start": 52.99,
+     "end": 53.31
+    },
+    {
+     "text": "takes",
+     "start": 53.31,
+     "end": 53.57
+    },
+    {
+     "text": "you",
+     "start": 53.57,
+     "end": 53.68
+    },
+    {
+     "text": "straight",
+     "start": 53.68,
+     "end": 54.1
+    }
+   ]
+  },
+  {
+   "start": 54.1,
+   "end": 54.98,
+   "words": [
+    {
+     "text": "to",
+     "start": 54.1,
+     "end": 54.21
+    },
+    {
+     "text": "the",
+     "start": 54.21,
+     "end": 54.33
+    },
+    {
+     "text": "right",
+     "start": 54.33,
+     "end": 54.54
+    },
+    {
+     "text": "screen.",
+     "start": 54.54,
+     "end": 54.98
+    }
+   ]
+  },
+  {
+   "start": 55.48,
+   "end": 57.5,
+   "words": [
+    {
+     "text": "Sign",
+     "start": 55.48,
+     "end": 55.75
+    },
+    {
+     "text": "in",
+     "start": 55.75,
+     "end": 55.88
+    },
+    {
+     "text": "fast,",
+     "start": 55.88,
+     "end": 56.43
+    },
+    {
+     "text": "with",
+     "start": 56.51,
+     "end": 56.63
+    },
+    {
+     "text": "a",
+     "start": 56.63,
+     "end": 56.67
+    },
+    {
+     "text": "QR",
+     "start": 56.67,
+     "end": 57.08
+    },
+    {
+     "text": "code,",
+     "start": 57.08,
+     "end": 57.5
+    }
+   ]
+  },
+  {
+   "start": 57.65,
+   "end": 59.09,
+   "words": [
+    {
+     "text": "a",
+     "start": 57.65,
+     "end": 57.72
+    },
+    {
+     "text": "PIN,",
+     "start": 57.72,
+     "end": 58.18
+    },
+    {
+     "text": "or",
+     "start": 58.32,
+     "end": 58.45
+    },
+    {
+     "text": "your",
+     "start": 58.45,
+     "end": 58.58
+    },
+    {
+     "text": "face.",
+     "start": 58.58,
+     "end": 59.09
+    }
+   ]
+  },
+  {
+   "start": 59.51,
+   "end": 60.56,
+   "words": [
+    {
+     "text": "Then",
+     "start": 59.51,
+     "end": 59.75
+    },
+    {
+     "text": "install",
+     "start": 59.75,
+     "end": 60.26
+    },
+    {
+     "text": "it",
+     "start": 60.26,
+     "end": 60.33
+    },
+    {
+     "text": "on",
+     "start": 60.33,
+     "end": 60.44
+    },
+    {
+     "text": "your",
+     "start": 60.44,
+     "end": 60.56
+    }
+   ]
+  },
+  {
+   "start": 60.56,
+   "end": 61.76,
+   "words": [
+    {
+     "text": "phone",
+     "start": 60.56,
+     "end": 60.92
+    },
+    {
+     "text": "like",
+     "start": 60.92,
+     "end": 61.12
+    },
+    {
+     "text": "any",
+     "start": 61.12,
+     "end": 61.42
+    },
+    {
+     "text": "app.",
+     "start": 61.42,
+     "end": 61.76
+    }
+   ]
+  },
+  {
+   "start": 62.15,
+   "end": 63.0,
+   "words": [
+    {
+     "text": "It",
+     "start": 62.15,
+     "end": 62.21
+    },
+    {
+     "text": "even",
+     "start": 62.21,
+     "end": 62.47
+    },
+    {
+     "text": "opens",
+     "start": 62.47,
+     "end": 62.89
+    },
+    {
+     "text": "when",
+     "start": 62.89,
+     "end": 63.0
+    }
+   ]
+  },
+  {
+   "start": 63.0,
+   "end": 64.32,
+   "words": [
+    {
+     "text": "the",
+     "start": 63.0,
+     "end": 63.07
+    },
+    {
+     "text": "campus",
+     "start": 63.07,
+     "end": 63.42
+    },
+    {
+     "text": "Wi-Fi",
+     "start": 63.42,
+     "end": 63.81
+    },
+    {
+     "text": "drops.",
+     "start": 63.81,
+     "end": 64.32
+    }
+   ]
+  },
+  {
+   "start": 64.81,
+   "end": 65.59,
+   "words": [
+    {
+     "text": "On",
+     "start": 64.81,
+     "end": 64.97
+    },
+    {
+     "text": "campus,",
+     "start": 64.97,
+     "end": 65.59
+    }
+   ]
+  },
+  {
+   "start": 65.72,
+   "end": 67.62,
+   "words": [
+    {
+     "text": "a",
+     "start": 65.72,
+     "end": 65.77
+    },
+    {
+     "text": "kiosk",
+     "start": 65.77,
+     "end": 66.26
+    },
+    {
+     "text": "display",
+     "start": 66.26,
+     "end": 66.73
+    },
+    {
+     "text": "shows",
+     "start": 66.73,
+     "end": 67.07
+    },
+    {
+     "text": "who's",
+     "start": 67.07,
+     "end": 67.31
+    },
+    {
+     "text": "in,",
+     "start": 67.31,
+     "end": 67.62
+    }
+   ]
+  },
+  {
+   "start": 67.74,
+   "end": 68.42,
+   "words": [
+    {
+     "text": "right",
+     "start": 67.74,
+     "end": 68.07
+    },
+    {
+     "text": "now.",
+     "start": 68.07,
+     "end": 68.42
+    }
+   ]
+  },
+  {
+   "start": 68.88,
+   "end": 70.03,
+   "words": [
+    {
+     "text": "And",
+     "start": 68.88,
+     "end": 69.0
+    },
+    {
+     "text": "for",
+     "start": 69.0,
+     "end": 69.08
+    },
+    {
+     "text": "the",
+     "start": 69.08,
+     "end": 69.19
+    },
+    {
+     "text": "Dean's",
+     "start": 69.19,
+     "end": 69.53
+    },
+    {
+     "text": "Office,",
+     "start": 69.53,
+     "end": 70.03
+    }
+   ]
+  },
+  {
+   "start": 70.24,
+   "end": 72.64,
+   "words": [
+    {
+     "text": "a",
+     "start": 70.24,
+     "end": 70.3
+    },
+    {
+     "text": "live",
+     "start": 70.3,
+     "end": 70.69
+    },
+    {
+     "text": "dashboard",
+     "start": 70.69,
+     "end": 71.28
+    },
+    {
+     "text": "tracks",
+     "start": 71.28,
+     "end": 71.58
+    },
+    {
+     "text": "every",
+     "start": 71.79,
+     "end": 72.04
+    },
+    {
+     "text": "request,",
+     "start": 72.04,
+     "end": 72.64
+    }
+   ]
+  },
+  {
+   "start": 72.84,
+   "end": 73.74,
+   "words": [
+    {
+     "text": "ready",
+     "start": 72.84,
+     "end": 73.1
+    },
+    {
+     "text": "to",
+     "start": 73.1,
+     "end": 73.17
+    },
+    {
+     "text": "export",
+     "start": 73.17,
+     "end": 73.64
+    },
+    {
+     "text": "to",
+     "start": 73.64,
+     "end": 73.74
+    }
+   ]
+  },
+  {
+   "start": 73.74,
+   "end": 75.1,
+   "words": [
+    {
+     "text": "Excel",
+     "start": 73.74,
+     "end": 74.25
+    },
+    {
+     "text": "in",
+     "start": 74.25,
+     "end": 74.42
+    },
+    {
+     "text": "one",
+     "start": 74.42,
+     "end": 74.7
+    },
+    {
+     "text": "click.",
+     "start": 74.7,
+     "end": 75.1
+    }
+   ]
+  },
+  {
+   "start": 75.59,
+   "end": 77.92,
+   "words": [
+    {
+     "text": "URS",
+     "start": 75.59,
+     "end": 76.27
+    },
+    {
+     "text": "Faculty",
+     "start": 76.27,
+     "end": 76.73
+    },
+    {
+     "text": "Consultation",
+     "start": 76.73,
+     "end": 77.42
+    },
+    {
+     "text": "System.",
+     "start": 77.42,
+     "end": 77.92
+    }
+   ]
+  },
+  {
+   "start": 78.36,
+   "end": 79.27,
+   "words": [
+    {
+     "text": "No",
+     "start": 78.36,
+     "end": 78.54
+    },
+    {
+     "text": "more",
+     "start": 78.54,
+     "end": 78.73
+    },
+    {
+     "text": "waiting.",
+     "start": 78.73,
+     "end": 79.27
+    }
+   ]
+  },
+  {
+   "start": 79.45,
+   "end": 80.5,
+   "words": [
+    {
+     "text": "No",
+     "start": 79.45,
+     "end": 79.71
+    },
+    {
+     "text": "more",
+     "start": 79.71,
+     "end": 79.92
+    },
+    {
+     "text": "guessing.",
+     "start": 79.92,
+     "end": 80.5
+    }
+   ]
+  },
+  {
+   "start": 80.96,
+   "end": 84.15,
+   "words": [
+    {
+     "text": "Visit",
+     "start": 80.96,
+     "end": 81.23
+    },
+    {
+     "text": "urs-consultation.vercel.app",
+     "start": 81.23,
+     "end": 84.15
+    }
+   ]
+  }
+ ]
+}

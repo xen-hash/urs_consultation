@@ -1,0 +1,31 @@
+// The app's own tokens (frontend/index.css), so the mockups read as the app.
+export const C = {
+  navy: "#003366",
+  navy700: "#002a55",
+  navy800: "#002044",
+  navy900: "#0d1b2a",
+  brand500: "#1a4e85",
+  brand400: "#3f73a8",
+  brand300: "#6e9bc8",
+  brand200: "#a1c1df",
+  brand100: "#d0e0ef",
+  brand50: "#eaf1f8",
+  amber: "#ffa000",
+  amberText: "#b45309",
+  amber50: "#fff7e6",
+  success: "#15803d",
+  success50: "#dcfce7",
+  danger: "#dc2626",
+  danger50: "#fee2e2",
+  warning: "#a16207",
+  warning50: "#fef3c7",
+  canvas: "#f8fafc",
+  surface: "#ffffff",
+  fg: "#1e293b",
+  muted: "#475569",
+  subtle: "#64748b",
+  border: "#e2e8f0",
+  borderStrong: "#cbd5e1",
+};
+
+export const FONT = '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif';

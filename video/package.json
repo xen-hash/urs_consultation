@@ -1,0 +1,18 @@
+{
+  "name": "urs-teaser-video",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.js",
+    "render": "remotion render src/index.js Teaser out/urs-teaser.mp4",
+    "still": "remotion still src/index.js Teaser"
+  },
+  "dependencies": {
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
+    "@remotion/cli": "^4.0.531",
+    "@remotion/motion-blur": "^4.0.531",
+    "lucide-react": "^1.49.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.531"
+  }
+}
